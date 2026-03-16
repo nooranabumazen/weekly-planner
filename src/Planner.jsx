@@ -887,7 +887,7 @@ export default function Planner({ data, onSave, onSaveFuture, onSaveNotebooks, o
                 {!isMobile && (
                   <>
                     <ResizeHandle currentHeight={laterHeight} minHeight={36} maxHeight={400} onHeightChange={setLaterHeight} />
-                    <div style={{ height: laterHeight, flexShrink: 0, padding: "4px 8px", overflowY: "auto" }}>
+                    <div style={{ height: laterHeight, flexShrink: 0, padding: "4px 8px", overflowY: "auto", background: "var(--bg-surface)", borderTop: "1px solid var(--border)" }}>
                       {layout === "vertical" ? (
                         <DaySection dayInfo={null} columnId="later" tasks={tasks.later} categories={categories} onDragStart={() => {}} onDrop={handleDrop}
                           onToggle={toggleDone} onDelete={deleteTask} onEdit={editTask} onAdd={addTask} onChangeCategory={changeCategory} />
@@ -897,7 +897,7 @@ export default function Planner({ data, onSave, onSaveFuture, onSaveNotebooks, o
                       )}
                     </div>
                     <ResizeHandle currentHeight={notesHeight} minHeight={36} maxHeight={300} onHeightChange={setNotesHeight} />
-                    <div style={{ height: notesHeight, flexShrink: 0 }}>
+                    <div style={{ height: notesHeight, flexShrink: 0, background: "var(--bg)", borderTop: "1px solid var(--border)" }}>
                       <NotesSection notes={notes} onChange={(val) => { update({ notes: val }); onSaveSettings({ categories, layout, notes: val, darkMode }); }} />
                     </div>
                   </>
