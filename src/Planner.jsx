@@ -457,7 +457,7 @@ function DaySection({ dayInfo, columnId, tasks, categories, onDragStart, onDrop,
       }}>
       {/* Day header */}
       <div style={{
-        padding: isMobile ? "10px 10px 4px" : "8px 10px 4px", display: "flex", alignItems: "baseline", gap: 8,
+        padding: isLater ? (isMobile ? "4px 10px 2px" : "2px 10px 2px") : (isMobile ? "10px 10px 4px" : "8px 10px 4px"), display: "flex", alignItems: "baseline", gap: 8,
       }}>
         <span style={{
           fontFamily: "'JetBrains Mono', monospace", fontWeight: 700,
@@ -886,8 +886,8 @@ export default function Planner({ data, onSave, onSaveFuture, onSaveNotebooks, o
                 )}
                 {!isMobile && (
                   <>
-                    <ResizeHandle currentHeight={laterHeight} minHeight={36} maxHeight={400} onHeightChange={setLaterHeight} />
-                    <div style={{ height: laterHeight, flexShrink: 0, padding: "4px 8px", overflowY: "auto", background: "var(--bg-surface)", borderTop: "1px solid var(--border)" }}>
+                    <ResizeHandle currentHeight={laterHeight} minHeight={55} maxHeight={400} onHeightChange={setLaterHeight} />
+                    <div style={{ height: laterHeight, flexShrink: 0, padding: "0px 8px", overflowY: "auto", background: "var(--bg-surface)", borderTop: "1px solid var(--border)" }}>
                       {layout === "vertical" ? (
                         <DaySection dayInfo={null} columnId="later" tasks={tasks.later} categories={categories} onDragStart={() => {}} onDrop={handleDrop}
                           onToggle={toggleDone} onDelete={deleteTask} onEdit={editTask} onAdd={addTask} onChangeCategory={changeCategory} />
