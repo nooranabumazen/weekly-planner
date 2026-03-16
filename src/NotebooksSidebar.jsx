@@ -231,6 +231,7 @@ export default function NotebooksPanel({ notebooks, onChange, userId }) {
   const [renaming, setRenaming] = useState(null);
   const [renameText, setRenameText] = useState("");
   const [dragId, setDragId] = useState(null);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
   const renameRef = useRef(null);
 
   useEffect(() => { if (renaming && renameRef.current) renameRef.current.focus(); }, [renaming]);
@@ -280,21 +281,30 @@ export default function NotebooksPanel({ notebooks, onChange, userId }) {
 
   return (
     <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
-      {/* Vertical note list */}
+      {/* Collapsible note list */}
       <div style={{
-        width: 180, minWidth: 180, background: "var(--bg-surface)", borderRight: "1px solid var(--border)",
-        display: "flex", flexDirection: "column", overflowY: "auto",
+        width: sidebarOpen ? 180 : 32, minWidth: sidebarOpen ? 180 : 32, background: "var(--bg-surface)", borderRight: "1px solid var(--border)",
+        display: "flex", flexDirection: "column", overflow: "hidden", transition: "width 0.2s, min-width 0.2s",
       }}>
         <div style={{
-          padding: "10px 10px 6px", display: "flex", justifyContent: "space-between", alignItems: "center",
-          borderBottom: "1px solid var(--border)",
+          padding: sidebarOpen ? "10px 10px 6px" : "10px 4px 6px", display: "flex", justifyContent: "space-between", alignItems: "center",
+          borderBottom: "1px solid var(--border)", flexShrink: 0,
         }}>
-          <span style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, fontSize: 9, color: "var(--text-muted)", letterSpacing: 1.5, textTransform: "uppercase" }}>Notes</span>
-          <button onClick={addNotebook} title="Add note" style={{
-            background: "none", border: "1px solid var(--border)", borderRadius: 4, cursor: "pointer",
-            color: "var(--text-muted)", fontSize: 14, width: 20, height: 20, display: "flex", alignItems: "center", justifyContent: "center", padding: 0,
-          }}>+</button>
+          <button onClick={() => setSidebarOpen(!sidebarOpen)} title={sidebarOpen ? "Hide notes list" : "Show notes list"}
+            style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", fontSize: 14, padding: 0, lineHeight: 1 }}>
+            {sidebarOpen ? "\u25C0" : "\u25B6"}
+          </button>
+          {sidebarOpen && (
+            <>
+              <span style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, fontSize: 9, color: "var(--text-muted)", letterSpacing: 1.5, textTransform: "uppercase", flex: 1, marginLeft: 6 }}>Notes</span>
+              <button onClick={addNotebook} title="Add note" style={{
+                background: "none", border: "1px solid var(--border)", borderRadius: 4, cursor: "pointer",
+                color: "var(--text-muted)", fontSize: 14, width: 20, height: 20, display: "flex", alignItems: "center", justifyContent: "center", padding: 0,
+              }}>+</button>
+            </>
+          )}
         </div>
+        {sidebarOpen && (
         <div style={{ flex: 1, overflowY: "auto", padding: "4px 0" }}>
           {notebooks.map((nb) => (
             <div
@@ -332,6 +342,7 @@ export default function NotebooksPanel({ notebooks, onChange, userId }) {
             </div>
           ))}
         </div>
+        )}
       </div>
 
       {/* Editor */}

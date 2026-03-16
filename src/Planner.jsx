@@ -6,6 +6,17 @@ import ContactsPanel from "./ContactsPanel";
 
 const DAYS = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"];
 
+/* ─── Mobile detection ─── */
+function useIsMobile(breakpoint = 640) {
+  const [isMobile, setIsMobile] = useState(typeof window !== "undefined" && window.innerWidth < breakpoint);
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < breakpoint);
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, [breakpoint]);
+  return isMobile;
+}
+
 /* ─── Category Helpers ─── */
 function getCatColor(categories, catId) {
   const cat = categories.find((c) => c.id === catId);
@@ -339,7 +350,7 @@ function NotesSection({ notes, onChange }) {
 }
 
 /* ─── Task Card ─── */
-function TaskCard({ task, columnId, categories, onDragStart, onToggle, onDelete, onEdit, onChangeCategory }) {
+function TaskCard({ task, columnId, categories, onDragStart, onToggle, onDelete, onEdit, onChangeCategory, isMobile }) {
   const [editing, setEditing] = useState(false);
   const [editText, setEditText] = useState(task.text);
   const [hover, setHover] = useState(false);
@@ -361,15 +372,15 @@ function TaskCard({ task, columnId, categories, onDragStart, onToggle, onDelete,
       onDragStart={(e) => { e.dataTransfer.setData("text/plain", JSON.stringify({ taskId: task.id, from: columnId })); e.dataTransfer.effectAllowed = "move"; onDragStart(); }}
       onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}
       style={{
-        display: "flex", alignItems: "center", gap: 8, padding: "3px 10px",
+        display: "flex", alignItems: "center", gap: isMobile ? 10 : 8, padding: isMobile ? "8px 12px" : "3px 10px",
         borderLeft: `4px solid ${catColor}`,
         background: hover ? "var(--bg-hover)" : `${catColor}18`,
         cursor: editing ? "text" : "grab",
         opacity: task.done ? 0.45 : 1, transition: "opacity 0.2s, background 0.15s",
-        fontSize: 13, lineHeight: 1.4, userSelect: "none", position: "relative",
+        fontSize: isMobile ? 16 : 13, lineHeight: 1.4, userSelect: "none", position: "relative",
       }}>
       <input type="checkbox" checked={task.done} onChange={() => onToggle(columnId, task.id)}
-        style={{ cursor: "pointer", accentColor: "#5a5a5a", flexShrink: 0, width: 15, height: 15 }} />
+        style={{ cursor: "pointer", accentColor: "#5a5a5a", flexShrink: 0, width: isMobile ? 20 : 15, height: isMobile ? 20 : 15 }} />
       {editing ? (
         <input ref={inputRef} value={editText} onChange={(e) => setEditText(e.target.value)} onBlur={save}
           onKeyDown={(e) => { if (e.key === "Enter") save(); if (e.key === "Escape") setEditing(false); }}
@@ -411,7 +422,7 @@ function DropZone({ onDrop }) {
 }
 
 /* ─── Day Section ─── */
-function DaySection({ dayInfo, columnId, tasks, categories, onDragStart, onDrop, onToggle, onDelete, onEdit, onAdd, onChangeCategory }) {
+function DaySection({ dayInfo, columnId, tasks, categories, onDragStart, onDrop, onToggle, onDelete, onEdit, onAdd, onChangeCategory, isMobile }) {
   const [dragOver, setDragOver] = useState(false);
   const [adding, setAdding] = useState(false);
   const [newText, setNewText] = useState("");
@@ -446,16 +457,16 @@ function DaySection({ dayInfo, columnId, tasks, categories, onDragStart, onDrop,
       }}>
       {/* Day header */}
       <div style={{
-        padding: "8px 10px 4px", display: "flex", alignItems: "baseline", gap: 8,
+        padding: isMobile ? "10px 10px 4px" : "8px 10px 4px", display: "flex", alignItems: "baseline", gap: 8,
       }}>
         <span style={{
           fontFamily: "'JetBrains Mono', monospace", fontWeight: 700,
-          fontSize: 13, color: isToday ? "#8B6914" : "#444", letterSpacing: 0.5,
+          fontSize: isMobile ? 16 : 13, color: isToday ? "#8B6914" : "var(--text)", letterSpacing: 0.5,
         }}>
           {dayLabel}
         </span>
-        {!isLater && <span style={{ fontSize: 11, color: "var(--text-muted)", fontWeight: 400 }}>{dayInfo?.date}</span>}
-        {isToday && <span style={{ fontSize: 8, background: "#8B6914", color: "#fff", padding: "1px 5px", borderRadius: 3, fontWeight: 600 }}>TODAY</span>}
+        {!isLater && <span style={{ fontSize: isMobile ? 14 : 11, color: "var(--text-muted)", fontWeight: 400 }}>{dayInfo?.date}</span>}
+        {isToday && <span style={{ fontSize: isMobile ? 10 : 8, background: "#8B6914", color: "#fff", padding: "1px 5px", borderRadius: 3, fontWeight: 600 }}>TODAY</span>}
       </div>
 
       {/* Task list */}
@@ -463,34 +474,34 @@ function DaySection({ dayInfo, columnId, tasks, categories, onDragStart, onDrop,
         {incompleteTasks.map((task, idx) => (
           <div key={task.id}>
             <DropZone onDrop={(e) => handleDropAtIndex(e, task.id)} />
-            <TaskCard task={task} columnId={columnId} categories={categories} onDragStart={onDragStart} onToggle={onToggle} onDelete={onDelete} onEdit={onEdit} onChangeCategory={onChangeCategory} />
+            <TaskCard task={task} columnId={columnId} categories={categories} onDragStart={onDragStart} onToggle={onToggle} onDelete={onDelete} onEdit={onEdit} onChangeCategory={onChangeCategory} isMobile={isMobile} />
           </div>
         ))}
         <DropZone onDrop={(e) => handleDropAtIndex(e, null)} />
         {doneTasks.length > 0 && doneTasks.map((task) => (
-          <TaskCard key={task.id} task={task} columnId={columnId} categories={categories} onDragStart={onDragStart} onToggle={onToggle} onDelete={onDelete} onEdit={onEdit} onChangeCategory={onChangeCategory} />
+          <TaskCard key={task.id} task={task} columnId={columnId} categories={categories} onDragStart={onDragStart} onToggle={onToggle} onDelete={onDelete} onEdit={onEdit} onChangeCategory={onChangeCategory} isMobile={isMobile} />
         ))}
       </div>
 
       {/* Add task */}
       {adding ? (
-        <div style={{ padding: "4px 10px 4px 26px" }}>
+        <div style={{ padding: isMobile ? "6px 10px 6px 20px" : "4px 10px 4px 26px" }}>
           <input ref={addRef} value={newText} onChange={isLater ? (e) => setNewText(e.target.value) : handleTextChange}
             onKeyDown={(e) => { if (e.key === "Enter") submitAdd(); if (e.key === "Escape") setAdding(false); }}
-            placeholder="Task name..." style={{ width: "100%", maxWidth: 400, border: "1px solid var(--border)", borderRadius: 4, padding: "5px 8px", fontSize: 12, outline: "none", background: "var(--input-bg)", boxSizing: "border-box", marginBottom: 4 }} />
+            placeholder="Task name..." style={{ width: "100%", maxWidth: 400, border: "1px solid var(--border)", borderRadius: 4, padding: isMobile ? "8px 10px" : "5px 8px", fontSize: isMobile ? 16 : 12, outline: "none", background: "var(--input-bg)", color: "var(--text)", boxSizing: "border-box", marginBottom: 4 }} />
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
             {!isLater && <CategoryDot categories={categories} selected={newCat} onSelect={handleManualCat} />}
-            <button onClick={submitAdd} style={{ background: "#555", color: "#fff", border: "none", borderRadius: 4, padding: "4px 12px", cursor: "pointer", fontSize: 10 }}>Add</button>
-            <button onClick={() => { setAdding(false); setCatManuallySet(false); }} style={{ background: "var(--border)", color: "var(--text-muted)", border: "none", borderRadius: 4, padding: "4px 10px", cursor: "pointer", fontSize: 10 }}>Cancel</button>
+            <button onClick={submitAdd} style={{ background: "#555", color: "#fff", border: "none", borderRadius: 4, padding: isMobile ? "6px 16px" : "4px 12px", cursor: "pointer", fontSize: isMobile ? 13 : 10 }}>Add</button>
+            <button onClick={() => { setAdding(false); setCatManuallySet(false); }} style={{ background: "var(--border)", color: "var(--text-muted)", border: "none", borderRadius: 4, padding: isMobile ? "6px 14px" : "4px 10px", cursor: "pointer", fontSize: isMobile ? 13 : 10 }}>Cancel</button>
           </div>
         </div>
       ) : (
         <button onClick={() => setAdding(true)} style={{
-          background: "none", border: "none", cursor: "pointer", color: "var(--text-faint)", fontSize: 12,
-          padding: "4px 10px 4px 26px", transition: "color 0.15s",
+          background: "none", border: "none", cursor: "pointer", color: "var(--text-faint)", fontSize: isMobile ? 15 : 12,
+          padding: isMobile ? "8px 10px 8px 20px" : "4px 10px 4px 26px", transition: "color 0.15s",
         }}
-          onMouseEnter={(e) => (e.target.style.color = "#888")}
-          onMouseLeave={(e) => (e.target.style.color = "#bbb")}>+ Add task</button>
+          onMouseEnter={(e) => (e.target.style.color = "var(--text-muted)")}
+          onMouseLeave={(e) => (e.target.style.color = "var(--text-faint)")}>+ Add task</button>
       )}
     </div>
   );
@@ -634,13 +645,14 @@ function FutureSidebar({ futureTasks, onAddFuture, onDeleteFuture }) {
 
 /* ─── Main Planner ─── */
 export default function Planner({ data, onSave, onSaveFuture, onSaveNotebooks, onSaveJournal, onSaveContacts, onSaveArchive, onSaveDailyHabits, onSaveWeeklyHabits, onSaveSettings, onLogout, userEmail, userId }) {
+  const isMobile = useIsMobile();
   const weekDates = getWeekDates();
   const { tasks, futureTasks, dailyHabits, weeklyHabits, notes } = data;
   const [activeView, setActiveView] = useState("planner");
   const [searchQuery, setSearchQuery] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
-  const [laterHeight, setLaterHeight] = useState(120);
-  const [notesHeight, setNotesHeight] = useState(90);
+  const [laterHeight, setLaterHeight] = useState(50);
+  const [notesHeight, setNotesHeight] = useState(70);
   const notebooks = data.notebooks || [];
   const journal = data.journal || {};
   const contacts = data.contacts || [];
@@ -795,34 +807,42 @@ export default function Planner({ data, onSave, onSaveFuture, onSaveNotebooks, o
     { id: "categories", icon: "\u{2699}", label: "Settings" },
   ];
 
-  return (
-    <div style={{ display: "flex", height: "100vh", fontFamily: "'DM Sans', 'Segoe UI', sans-serif", background: "var(--bg)", color: "var(--text)" }}>
-      <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet" />
-      <div style={{ width: 56, minWidth: 56, background: "var(--bg-surface)", borderRight: "1px solid var(--border)", display: "flex", flexDirection: "column", alignItems: "center", padding: "8px 0", gap: 2 }}>
-        {navItems.map((item) => (
-          <button key={item.id} onClick={() => setActiveView(item.id)} title={item.label}
-            style={{ width: 42, height: 42, borderRadius: 8, border: "none", cursor: "pointer", background: activeView === item.id ? "var(--border)" : "transparent", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", fontSize: 16, color: activeView === item.id ? "#555" : "#aaa", transition: "all 0.15s", gap: 1 }}>
-            <span>{item.icon}</span><span style={{ fontSize: 7, fontWeight: 600, letterSpacing: 0.3 }}>{item.label}</span>
-          </button>
-        ))}
-        <div style={{ flex: 1 }} />
-        <button onClick={() => { setSearchOpen(!searchOpen); if (searchOpen) setSearchQuery(""); }} title="Search"
-          style={{ width: 42, height: 42, borderRadius: 8, border: "none", cursor: "pointer", background: searchOpen ? "var(--border)" : "transparent", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, color: searchOpen ? "#555" : "#aaa" }}>{"\u{1F50D}"}</button>
-        <button onClick={onLogout} title={`Sign out (${userEmail})`}
-          style={{ width: 42, height: 32, borderRadius: 8, border: "none", cursor: "pointer", background: "transparent", fontSize: 8, color: "var(--text-faint)", fontWeight: 600, letterSpacing: 0.3 }}>Sign out</button>
-      </div>
+  const mFS = isMobile ? 15 : 13; // mobile font size for tasks
+  const mPad = isMobile ? "12px" : "8px";
 
+  return (
+    <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", height: "100vh", fontFamily: "'DM Sans', 'Segoe UI', sans-serif", background: "var(--bg)", color: "var(--text)" }}>
+      <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet" />
+
+      {/* Desktop: left sidebar nav */}
+      {!isMobile && (
+        <div style={{ width: 56, minWidth: 56, background: "var(--bg-surface)", borderRight: "1px solid var(--border)", display: "flex", flexDirection: "column", alignItems: "center", padding: "8px 0", gap: 2 }}>
+          {navItems.map((item) => (
+            <button key={item.id} onClick={() => setActiveView(item.id)} title={item.label}
+              style={{ width: 42, height: 42, borderRadius: 8, border: "none", cursor: "pointer", background: activeView === item.id ? "var(--border)" : "transparent", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", fontSize: 16, color: activeView === item.id ? "var(--text)" : "var(--text-muted)", transition: "all 0.15s", gap: 1 }}>
+              <span>{item.icon}</span><span style={{ fontSize: 7, fontWeight: 600, letterSpacing: 0.3 }}>{item.label}</span>
+            </button>
+          ))}
+          <div style={{ flex: 1 }} />
+          <button onClick={() => { setSearchOpen(!searchOpen); if (searchOpen) setSearchQuery(""); }} title="Search"
+            style={{ width: 42, height: 42, borderRadius: 8, border: "none", cursor: "pointer", background: searchOpen ? "var(--border)" : "transparent", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, color: searchOpen ? "var(--text)" : "var(--text-muted)" }}>{"\u{1F50D}"}</button>
+          <button onClick={onLogout} title={`Sign out (${userEmail})`}
+            style={{ width: 42, height: 32, borderRadius: 8, border: "none", cursor: "pointer", background: "transparent", fontSize: 8, color: "var(--text-faint)", fontWeight: 600, letterSpacing: 0.3 }}>Sign out</button>
+        </div>
+      )}
+
+      {/* Main content */}
       <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
         {searchOpen && (
           <div style={{ padding: "8px 12px", borderBottom: "1px solid var(--border)", background: "var(--input-bg)" }}>
             <input autoFocus value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Escape") { setSearchQuery(""); setSearchOpen(false); } }}
-              placeholder="Search everything..." style={{ width: "100%", border: "1px solid var(--border)", borderRadius: 5, padding: "6px 10px", fontSize: 12, outline: "none", background: "var(--bg-card)", boxSizing: "border-box" }} />
+              placeholder="Search everything..." style={{ width: "100%", border: "1px solid var(--border)", borderRadius: 5, padding: "6px 10px", fontSize: isMobile ? 16 : 12, outline: "none", background: "var(--bg-card)", color: "var(--text)", boxSizing: "border-box" }} />
             {searchQuery.trim() && (() => {
               const results = getSearchResults();
               return (<div style={{ maxHeight: 200, overflowY: "auto", marginTop: 6 }}>
                 <div style={{ fontSize: 10, color: "var(--text-muted)", marginBottom: 4, fontWeight: 600 }}>{results.length} result{results.length !== 1 ? "s" : ""}</div>
-                {results.map((r, i) => (<div key={i} style={{ padding: "4px 8px", marginBottom: 2, borderRadius: 4, background: "var(--bg-card)", fontSize: 11 }}>
+                {results.map((r, i) => (<div key={i} style={{ padding: "4px 8px", marginBottom: 2, borderRadius: 4, background: "var(--bg-card)", fontSize: isMobile ? 14 : 11 }}>
                   <span style={{ fontSize: 9, fontWeight: 600, color: "#8B6914", background: "rgba(139,105,20,0.08)", padding: "1px 4px", borderRadius: 2, marginRight: 6 }}>{r.type}</span>
                   {r.section && <span style={{ fontSize: 9, color: "var(--text-faint)", marginRight: 6 }}>{r.section}</span>}
                   <span style={{ color: "var(--text)" }}>{r.text}</span></div>))}
@@ -834,24 +854,29 @@ export default function Planner({ data, onSave, onSaveFuture, onSaveNotebooks, o
 
         {activeView === "planner" && (
           <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
-            <div style={{ padding: "10px 16px 6px", borderBottom: "1px solid var(--border)" }}>
-              <h1 style={{ margin: 0, fontSize: 18, fontWeight: 700, letterSpacing: -0.5 }}>Weekly Planner</h1>
-              <span style={{ fontSize: 11, color: "var(--text-muted)" }}>{weekDates[0]?.date} , {weekDates[6]?.date}</span>
+            <div style={{ padding: isMobile ? "8px 12px 4px" : "10px 16px 6px", borderBottom: "1px solid var(--border)" }}>
+              <h1 style={{ margin: 0, fontSize: isMobile ? 20 : 18, fontWeight: 700, letterSpacing: -0.5 }}>Weekly Planner</h1>
+              <span style={{ fontSize: isMobile ? 13 : 11, color: "var(--text-muted)" }}>{weekDates[0]?.date} , {weekDates[6]?.date}</span>
             </div>
-            <HabitsTracker dailyHabits={dailyHabits} weeklyHabits={weeklyHabits} onToggleDaily={toggleDaily} onToggleWeekly={toggleWeekly}
-              onAddDaily={addDailyHabit} onAddWeekly={addWeeklyHabit} onDeleteDaily={deleteDaily} onDeleteWeekly={deleteWeekly} />
+            {!isMobile && (
+              <HabitsTracker dailyHabits={dailyHabits} weeklyHabits={weeklyHabits} onToggleDaily={toggleDaily} onToggleWeekly={toggleWeekly}
+                onAddDaily={addDailyHabit} onAddWeekly={addWeeklyHabit} onDeleteDaily={deleteDaily} onDeleteWeekly={deleteWeekly} />
+            )}
             <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
               <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
-                {layout === "vertical" ? (
-                  /* Vertical list layout */
-                  <div style={{ flex: 1, overflowY: "auto", padding: "4px 8px", display: "flex", flexDirection: "column", gap: 2 }}>
+                {(isMobile || layout === "vertical") ? (
+                  <div style={{ flex: 1, overflowY: "auto", padding: isMobile ? "4px 4px" : "4px 8px", display: "flex", flexDirection: "column", gap: 2 }}>
                     {DAYS.map((day, i) => (
                       <DaySection key={day} dayInfo={weekDates[i]} columnId={day.toLowerCase()} tasks={tasks[day.toLowerCase()]} categories={categories}
-                        onDragStart={() => {}} onDrop={handleDrop} onToggle={toggleDone} onDelete={deleteTask} onEdit={editTask} onAdd={addTask} onChangeCategory={changeCategory} />
+                        onDragStart={() => {}} onDrop={handleDrop} onToggle={toggleDone} onDelete={deleteTask} onEdit={editTask} onAdd={addTask} onChangeCategory={changeCategory} isMobile={isMobile} />
                     ))}
+                    {/* On mobile, show Later inline at the bottom of the scroll instead of a separate resize section */}
+                    {isMobile && (
+                      <DaySection dayInfo={null} columnId="later" tasks={tasks.later} categories={categories} onDragStart={() => {}} onDrop={handleDrop}
+                        onToggle={toggleDone} onDelete={deleteTask} onEdit={editTask} onAdd={addTask} onChangeCategory={changeCategory} isMobile={isMobile} />
+                    )}
                   </div>
                 ) : (
-                  /* Horizontal columns layout */
                   <div style={{ flex: 1, display: "flex", gap: 2, padding: "8px 6px", overflow: "hidden" }}>
                     {DAYS.map((day, i) => (
                       <DayColumn key={day} dayInfo={weekDates[i]} columnId={day.toLowerCase()} tasks={tasks[day.toLowerCase()]} categories={categories}
@@ -859,22 +884,26 @@ export default function Planner({ data, onSave, onSaveFuture, onSaveNotebooks, o
                     ))}
                   </div>
                 )}
-                <ResizeHandle currentHeight={laterHeight} minHeight={120} maxHeight={400} onHeightChange={setLaterHeight} />
-                <div style={{ height: laterHeight, flexShrink: 0, padding: "4px 8px", overflowY: "auto" }}>
-                  {layout === "vertical" ? (
-                    <DaySection dayInfo={null} columnId="later" tasks={tasks.later} categories={categories} onDragStart={() => {}} onDrop={handleDrop}
-                      onToggle={toggleDone} onDelete={deleteTask} onEdit={editTask} onAdd={addTask} onChangeCategory={changeCategory} />
-                  ) : (
-                    <DayColumn dayInfo={null} columnId="later" tasks={tasks.later} categories={categories} onDragStart={() => {}} onDrop={handleDrop}
-                      onToggle={toggleDone} onDelete={deleteTask} onEdit={editTask} onAdd={addTask} onChangeCategory={changeCategory} />
-                  )}
-                </div>
-                <ResizeHandle currentHeight={notesHeight} minHeight={90} maxHeight={300} onHeightChange={setNotesHeight} />
-                <div style={{ height: notesHeight, flexShrink: 0 }}>
-                  <NotesSection notes={notes} onChange={(val) => { update({ notes: val }); onSaveSettings({ categories, layout, notes: val, darkMode }); }} />
-                </div>
+                {!isMobile && (
+                  <>
+                    <ResizeHandle currentHeight={laterHeight} minHeight={36} maxHeight={400} onHeightChange={setLaterHeight} />
+                    <div style={{ height: laterHeight, flexShrink: 0, padding: "4px 8px", overflowY: "auto" }}>
+                      {layout === "vertical" ? (
+                        <DaySection dayInfo={null} columnId="later" tasks={tasks.later} categories={categories} onDragStart={() => {}} onDrop={handleDrop}
+                          onToggle={toggleDone} onDelete={deleteTask} onEdit={editTask} onAdd={addTask} onChangeCategory={changeCategory} />
+                      ) : (
+                        <DayColumn dayInfo={null} columnId="later" tasks={tasks.later} categories={categories} onDragStart={() => {}} onDrop={handleDrop}
+                          onToggle={toggleDone} onDelete={deleteTask} onEdit={editTask} onAdd={addTask} onChangeCategory={changeCategory} />
+                      )}
+                    </div>
+                    <ResizeHandle currentHeight={notesHeight} minHeight={36} maxHeight={300} onHeightChange={setNotesHeight} />
+                    <div style={{ height: notesHeight, flexShrink: 0 }}>
+                      <NotesSection notes={notes} onChange={(val) => { update({ notes: val }); onSaveSettings({ categories, layout, notes: val, darkMode }); }} />
+                    </div>
+                  </>
+                )}
               </div>
-              <FutureSidebar futureTasks={futureTasks} onAddFuture={addFuture} onDeleteFuture={deleteFuture} />
+              {!isMobile && <FutureSidebar futureTasks={futureTasks} onAddFuture={addFuture} onDeleteFuture={deleteFuture} />}
             </div>
           </div>
         )}
@@ -897,9 +926,9 @@ export default function Planner({ data, onSave, onSaveFuture, onSaveNotebooks, o
                 const completedLabel = new Date(entry.completedAt).toLocaleDateString("en-US", { month: "short", day: "numeric" });
                 const catColor = getCatColor(categories, entry.category);
                 return (
-                  <div key={entry.id} style={{ background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 5, padding: "6px 8px", marginBottom: 4, fontSize: 11, borderLeft: `3px solid ${catColor}` }}>
+                  <div key={entry.id} style={{ background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 5, padding: "6px 8px", marginBottom: 4, fontSize: isMobile ? 14 : 11, borderLeft: `3px solid ${catColor}` }}>
                     <div style={{ color: "var(--text)", fontWeight: 500 }}>{entry.text}</div>
-                    <div style={{ fontSize: 9, color: "var(--text-muted)", marginTop: 3 }}>
+                    <div style={{ fontSize: isMobile ? 11 : 9, color: "var(--text-muted)", marginTop: 3 }}>
                       {entry.category && <span style={{ background: catColor, padding: "1px 4px", borderRadius: 2, marginRight: 4, color: "var(--text)", fontSize: 8 }}>{getCatName(categories, entry.category)}</span>}
                       Assigned: {dateLabel} &middot; Done: {completedLabel}
                     </div>
@@ -910,7 +939,39 @@ export default function Planner({ data, onSave, onSaveFuture, onSaveNotebooks, o
             <div style={{ padding: "6px 16px", borderTop: "1px solid var(--border)", fontSize: 10, color: "var(--text-faint)" }}>{archive.length} completed {archive.length === 1 ? "task" : "tasks"}</div>
           </div>
         )}
+
+        {/* Mobile: habits as a separate tab-like section when on planner view */}
+        {isMobile && activeView === "planner" && (
+          <div style={{ borderTop: "1px solid var(--border)", maxHeight: 120, overflowY: "auto", padding: "6px 8px" }}>
+            <NotesSection notes={notes} onChange={(val) => { update({ notes: val }); onSaveSettings({ categories, layout, notes: val, darkMode }); }} />
+          </div>
+        )}
       </div>
+
+      {/* Mobile: bottom nav bar */}
+      {isMobile && (
+        <div style={{
+          display: "flex", background: "var(--bg-surface)", borderTop: "1px solid var(--border)",
+          padding: "4px 0 2px", flexShrink: 0, justifyContent: "space-around", alignItems: "center",
+        }}>
+          {navItems.map((item) => (
+            <button key={item.id} onClick={() => setActiveView(item.id)}
+              style={{
+                background: "none", border: "none", cursor: "pointer",
+                display: "flex", flexDirection: "column", alignItems: "center", gap: 1,
+                color: activeView === item.id ? "var(--accent)" : "var(--text-muted)",
+                fontSize: 18, padding: "4px 8px",
+              }}>
+              <span>{item.icon}</span>
+              <span style={{ fontSize: 8, fontWeight: 600 }}>{item.label}</span>
+            </button>
+          ))}
+          <button onClick={() => { setSearchOpen(!searchOpen); if (searchOpen) setSearchQuery(""); }}
+            style={{ background: "none", border: "none", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 1, color: searchOpen ? "var(--accent)" : "var(--text-muted)", fontSize: 18, padding: "4px 8px" }}>
+            <span>{"\u{1F50D}"}</span><span style={{ fontSize: 8, fontWeight: 600 }}>Search</span>
+          </button>
+        </div>
+      )}
     </div>
   );
 }
