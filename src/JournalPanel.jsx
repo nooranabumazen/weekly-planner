@@ -147,6 +147,7 @@ function JournalEditor({ content, onChange, userId }) {
 export default function JournalPanel({ journal, onChange, userId }) {
   const today = new Date().toISOString().split("T")[0];
   const [selectedDate, setSelectedDate] = useState(today);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
 
   if (!journal) return null;
 
@@ -160,33 +161,40 @@ export default function JournalPanel({ journal, onChange, userId }) {
 
   return (
     <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
-      {/* Left: calendar + entry list */}
-      <div style={{ width: 220, minWidth: 220, background: "var(--bg-surface)", borderRight: "1px solid var(--border)", display: "flex", flexDirection: "column" }}>
-        <div style={{ padding: "10px 10px 6px", borderBottom: "1px solid var(--border)" }}>
-          <span style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, fontSize: 9, color: "var(--text-muted)", letterSpacing: 1.5, textTransform: "uppercase" }}>Calendar</span>
+      {/* Left: collapsible calendar + entry list */}
+      <div style={{ width: sidebarOpen ? 220 : 32, minWidth: sidebarOpen ? 220 : 32, background: "var(--bg-surface)", borderRight: "1px solid var(--border)", display: "flex", flexDirection: "column", overflow: "hidden", transition: "width 0.2s, min-width 0.2s" }}>
+        <div style={{ padding: sidebarOpen ? "10px 10px 6px" : "10px 4px 6px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
+          <button onClick={() => setSidebarOpen(!sidebarOpen)} title={sidebarOpen ? "Hide calendar" : "Show calendar"}
+            style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", fontSize: 14, padding: 0, lineHeight: 1 }}>
+            {sidebarOpen ? "\u25C0" : "\u25B6"}
+          </button>
+          {sidebarOpen && <span style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, fontSize: 9, color: "var(--text-muted)", letterSpacing: 1.5, textTransform: "uppercase" }}>Calendar</span>}
         </div>
-        <div style={{ padding: "10px 8px", borderBottom: "1px solid var(--border)" }}>
-          <MiniCalendar selectedDate={selectedDate} onSelect={setSelectedDate} entryDates={entryDates} />
-        </div>
-        <div style={{ padding: "6px 10px", fontSize: 10, color: "var(--text-faint)", borderBottom: "1px solid var(--border)" }}>
-          {entryDates.size} journal {entryDates.size === 1 ? "entry" : "entries"}
-        </div>
-        {/* Recent entries list */}
-        <div style={{ flex: 1, overflowY: "auto", padding: "4px 0" }}>
-          {[...entryDates].sort().reverse().map((date) => {
-            const d = new Date(date + "T12:00:00");
-            const label = d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
-            return (
-              <div key={date} onClick={() => setSelectedDate(date)} style={{
-                padding: "6px 10px", cursor: "pointer", fontSize: 11,
-                background: date === selectedDate ? "#fff" : "transparent",
-                color: date === selectedDate ? "#444" : "#888",
-                fontWeight: date === selectedDate ? 600 : 400,
-                borderLeft: date === selectedDate ? "3px solid #8B6914" : "3px solid transparent",
-              }}>{label}</div>
-            );
-          })}
-        </div>
+        {sidebarOpen && (
+          <>
+            <div style={{ padding: "10px 8px", borderBottom: "1px solid var(--border)" }}>
+              <MiniCalendar selectedDate={selectedDate} onSelect={setSelectedDate} entryDates={entryDates} />
+            </div>
+            <div style={{ padding: "6px 10px", fontSize: 10, color: "var(--text-faint)", borderBottom: "1px solid var(--border)" }}>
+              {entryDates.size} journal {entryDates.size === 1 ? "entry" : "entries"}
+            </div>
+            <div style={{ flex: 1, overflowY: "auto", padding: "4px 0" }}>
+              {[...entryDates].sort().reverse().map((date) => {
+                const d = new Date(date + "T12:00:00");
+                const label = d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+                return (
+                  <div key={date} onClick={() => setSelectedDate(date)} style={{
+                    padding: "6px 10px", cursor: "pointer", fontSize: 11,
+                    background: date === selectedDate ? "var(--bg-card)" : "transparent",
+                    color: date === selectedDate ? "var(--text)" : "var(--text-muted)",
+                    fontWeight: date === selectedDate ? 600 : 400,
+                    borderLeft: date === selectedDate ? "3px solid #8B6914" : "3px solid transparent",
+                  }}>{label}</div>
+                );
+              })}
+            </div>
+          </>
+        )}
       </div>
 
       {/* Right: editor */}
