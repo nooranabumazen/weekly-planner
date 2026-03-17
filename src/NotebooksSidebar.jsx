@@ -111,9 +111,9 @@ function RichEditor({ content, onChange, userId }) {
 
   const insertTable = () => {
     const table = `<table style="border-collapse:collapse;width:100%;margin:8px 0;">
-      <tr><td style="border:1px solid var(--border);padding:6px 8px;min-width:60px;">&nbsp;</td><td style="border:1px solid var(--border);padding:6px 8px;min-width:60px;">&nbsp;</td><td style="border:1px solid var(--border);padding:6px 8px;min-width:60px;">&nbsp;</td></tr>
-      <tr><td style="border:1px solid var(--border);padding:6px 8px;">&nbsp;</td><td style="border:1px solid var(--border);padding:6px 8px;">&nbsp;</td><td style="border:1px solid var(--border);padding:6px 8px;">&nbsp;</td></tr>
-      <tr><td style="border:1px solid var(--border);padding:6px 8px;">&nbsp;</td><td style="border:1px solid var(--border);padding:6px 8px;">&nbsp;</td><td style="border:1px solid var(--border);padding:6px 8px;">&nbsp;</td></tr>
+      <tr><td style="border:1px solid #999;padding:6px 8px;min-width:60px;">&nbsp;</td><td style="border:1px solid #999;padding:6px 8px;min-width:60px;">&nbsp;</td><td style="border:1px solid #999;padding:6px 8px;min-width:60px;">&nbsp;</td></tr>
+      <tr><td style="border:1px solid #999;padding:6px 8px;">&nbsp;</td><td style="border:1px solid #999;padding:6px 8px;">&nbsp;</td><td style="border:1px solid #999;padding:6px 8px;">&nbsp;</td></tr>
+      <tr><td style="border:1px solid #999;padding:6px 8px;">&nbsp;</td><td style="border:1px solid #999;padding:6px 8px;">&nbsp;</td><td style="border:1px solid #999;padding:6px 8px;">&nbsp;</td></tr>
     </table><p></p>`;
     exec("insertHTML", table);
   };
