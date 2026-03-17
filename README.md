@@ -8,63 +8,94 @@ A personal weekly planner and productivity app that syncs across all your device
 ## Features
 
 ### Weekly Task Planner
-Organize your week with a clean, scrollable day-by-day view. Add tasks to any day, drag and drop them between days, and check them off when done. Tasks that aren't completed by the end of the week automatically carry forward to Monday of the next week.
+Organize your week with a clean day-by-day view. Add tasks to any day, drag and drop them between days, and check them off when done. Tasks that aren't completed by the end of the week automatically carry forward to Monday of the next week, so nothing gets lost.
 
 <!-- Replace with a screenshot showing tasks with category colors -->
 ![Tasks with categories](screenshots/tasks-categories.png)
 
-### Smart Categories
-Tasks are automatically color-coded by category based on keywords. Type "cook dinner" and it detects Cooking. Type "water the plants" and it picks Gardening. You can also manually assign categories, create your own custom categories with any name and color, and manage everything from the Settings tab.
+### Two Layout Options
+Choose the view that works best for you in Settings:
+- **Vertical layout** stacks days top to bottom as a scrollable list, similar to a to-do app. Each day is a full-width section with tasks listed below it.
+- **Horizontal layout** arranges days side by side as columns, like a traditional weekly planner. Drag the edge of any column to resize all columns at once, and scroll horizontally if you widen them beyond the screen.
 
-Default categories: Cleaning, Cooking, Learning, Crafts/Art/Reading, Sporas, Events, Volunteering, Gardening, and Other.
+Your layout preference syncs across devices.
+
+<!-- Replace with a screenshot showing horizontal column layout -->
+![Layout options](screenshots/layout-options.png)
+
+### Smart Categories with Auto-Detection
+Tasks are automatically color-coded by category based on keywords in the task name. Type "cook dinner" and it detects Cooking. Type "water the plants" and it picks Gardening. Type "sporas meeting" and it assigns Sporas. You can always override the detected category manually by clicking the palette icon on any task.
+
+Create your own custom categories with any name and color from a 32-color palette in the Settings tab. Default categories include: Cleaning, Cooking, Learning, Crafts/Art/Reading, Sporas, Events, Volunteering, Gardening, and Other.
+
+Each task shows its category as a colored left stripe and a subtle background tint, making it easy to scan your week and see how your time is distributed.
 
 ### Later List
-A dedicated section for tasks you want to remember but haven't scheduled yet. Tasks in Later are uncategorized by default and get auto-categorized when you drag them into a specific day.
+A dedicated section for tasks you want to remember but haven't scheduled yet. Tasks in Later are intentionally uncategorized. When you drag them into a specific day, they get auto-categorized based on their name. The Later section is resizable by dragging the handle above it.
 
-### Upcoming Tasks
-Schedule tasks for future weeks. When a scheduled week arrives, those tasks automatically move to the correct day in your planner.
+### Upcoming Tasks and Birthday Reminders
+Schedule tasks for future weeks in the Upcoming sidebar. When a scheduled week arrives, those tasks automatically move to the correct day in your planner with their category auto-detected. Hit Enter to save an upcoming task quickly without clicking the Add button.
+
+**Birthday reminders:** When you add a birthday to someone's contact card (in the People tab), the app automatically creates an upcoming task reminder 2 weeks before their birthday, complete with a cake emoji. These show up in the Upcoming sidebar and auto-promote to your planner when the week arrives.
 
 ### Daily and Weekly Habits
-Track recurring habits with a checkbox grid. Daily habits show a Mon through Sun row of checkboxes. Weekly habits are a simple checklist that resets each week. Habit names persist across weeks, only the checkboxes reset.
+Track recurring habits with a checkbox grid. Daily habits show a Mon through Sun row of checkboxes. Weekly habits are a simple checklist. Habit names persist across weeks, only the checkboxes reset each Monday.
+
+Double-click any habit name to edit it. Drag the divider between the Daily and Weekly sections to give either side more space. On mobile, habits get their own dedicated tab with large, touch-friendly checkboxes.
 
 <!-- Replace with a screenshot of the habits tracker section -->
 ![Habits tracker](screenshots/habits.png)
 
 ### Rich Text Notebooks
-A built-in notes system with multiple notebooks. Each notebook has a rich text editor supporting bold, italic, underline, strikethrough, highlights, text colors, links, tables, lists, and image pasting. Notebooks are listed in a collapsible sidebar that you can drag to reorder.
+A built-in notes system with multiple notebooks. Each notebook has a rich text editor supporting bold, italic, underline, strikethrough, highlights, text colors, links, lists, and image pasting.
+
+**Dynamic tables:** Insert a table (starts as 2x2), then use the toolbar buttons to add or remove rows and columns as needed. Drag the edge of any cell to resize column widths. Hover over a cell to see a highlight showing which cell you're in.
+
+Notebooks are listed in a collapsible sidebar on the left. Drag to reorder them however you want. Double-click a notebook name to rename it.
 
 <!-- Replace with a screenshot of the notebooks panel -->
 ![Notebooks](screenshots/notebooks.png)
 
 ### Daily Journal
-Write daily journal entries with the same rich text editor. A mini calendar on the side shows green dots on days with entries, making it easy to navigate your history.
+Write daily journal entries with the same rich text editor. A mini calendar on the side shows green dots on days with entries, making it easy to navigate your history. The calendar sidebar is collapsible if you want the full width for writing.
 
 <!-- Replace with a screenshot of the journal panel -->
 ![Journal](screenshots/journal.png)
 
 ### People / Contacts
-Keep track of people in your life with expandable cards. Store names, birthdays, likes, dislikes, relationship notes, and general notes. Searchable and always accessible.
+Keep track of people in your life with expandable cards. Store names, birthdays, likes, dislikes, relationship notes, and general notes. Searchable and always accessible. Birthdays you enter here automatically generate reminder tasks in the Upcoming sidebar.
 
 ### Task Archive
-Every task you complete gets logged in the archive with its category, assigned date, and completion date. The last 500 completed tasks are kept for reference.
+Every task you complete gets logged in the archive with its category badge, assigned date, and completion date. The last 500 completed tasks are kept for reference.
 
 ### Dark Mode
-Full dark theme that applies to every part of the app. Toggle it in Settings and it syncs across devices.
+Full dark theme that applies to every part of the app, including all tabs, editors, and the mobile view. Toggle it in Settings and it syncs across devices.
 
 <!-- Replace with a screenshot of the app in dark mode -->
 ![Dark mode](screenshots/dark-mode.png)
 
-### Layout Options
-Switch between a vertical list layout (days stacked top to bottom) and a horizontal column layout (days side by side) in Settings. Your preference syncs across devices.
+### Resizable Sections
+The Later section and Notes section at the bottom of the planner are both resizable. Drag the handle between sections to give either one more or less space. Each section has a minimum height so it doesn't collapse too small.
+
+### Global Search
+Click the search icon to search across everything: tasks, completed tasks, upcoming tasks, notebooks, journal entries, contacts, habits, and notes. Results show which section each match came from.
 
 ### Mobile Friendly
-On phones (screens under 640px), the app automatically switches to a mobile layout with a bottom navigation bar, larger text and touch targets, and a simplified single-column view.
+On phones (screens under 640px), the app automatically switches to a mobile-optimized layout:
+- Bottom navigation bar instead of the left sidebar
+- Larger text (16px) and bigger touch targets for checkboxes and buttons
+- Dedicated Habits tab with large, tappable checkboxes
+- Simplified single-column vertical layout
+- Later section flows inline at the bottom of the day list
+- Quick notes section at the bottom
+
+All inputs are 16px to prevent iOS auto-zoom on focus.
 
 <!-- Replace with a screenshot of the app on a phone -->
 ![Mobile view](screenshots/mobile.png)
 
 ### Cross-Device Sync
-Sign in with the same account on your phone, laptop, tablet, or any device with a browser. All your tasks, habits, notebooks, journal entries, contacts, and settings sync in real time through Firebase.
+Sign in with the same account on your phone, laptop, tablet, or any device with a browser. All your tasks, habits, notebooks, journal entries, contacts, categories, and settings sync in real time through Firebase.
 
 ### Installable PWA
 Install the app on your home screen (phone) or taskbar (desktop) for a native app-like experience. Works in Chrome, Edge, and Firefox on Windows.
@@ -107,7 +138,7 @@ git commit -m "description of changes"
 git push
 ```
 
-Vercel automatically deploys from GitHub within about a minute.
+Vercel automatically deploys from GitHub within about a minute. If the deployed version doesn't update right away, do a hard refresh (`Ctrl + Shift + R`).
 
 ### Project structure
 
@@ -134,10 +165,11 @@ To add screenshots to this README:
 
 1. Create a `screenshots/` folder in the project root
 2. Take screenshots of the app and save them as:
-   - `planner-view.png` (main weekly view with some tasks)
-   - `tasks-categories.png` (close-up of tasks showing category colors)
-   - `habits.png` (the habits tracker section)
-   - `notebooks.png` (notebooks panel with the editor open)
+   - `planner-view.png` (main weekly view with tasks in vertical layout)
+   - `tasks-categories.png` (close-up showing category color stripes)
+   - `layout-options.png` (horizontal column layout)
+   - `habits.png` (habits tracker with daily and weekly sections)
+   - `notebooks.png` (notebooks panel with editor and a table)
    - `journal.png` (journal with calendar sidebar)
    - `dark-mode.png` (the app in dark mode)
    - `mobile.png` (the app on a phone screen)
