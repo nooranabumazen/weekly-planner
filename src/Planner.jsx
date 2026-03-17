@@ -766,6 +766,7 @@ export default function Planner({ data, onSave, onSaveFuture, onSaveNotebooks, o
   useEffect(() => {
     const r = document.documentElement.style;
     if (darkMode) {
+      document.body.classList.add("dark-mode");
       r.setProperty("--bg", "#1e2028");
       r.setProperty("--bg-surface", "#262830");
       r.setProperty("--bg-card", "#2c2e38");
@@ -779,6 +780,7 @@ export default function Planner({ data, onSave, onSaveFuture, onSaveNotebooks, o
       r.setProperty("--accent", "#c9a227");
       r.setProperty("--done-bg", "#1e2028");
     } else {
+      document.body.classList.remove("dark-mode");
       r.setProperty("--bg", "#fdfcf8");
       r.setProperty("--bg-surface", "#f2f1ed");
       r.setProperty("--bg-card", "#fff");
@@ -1065,6 +1067,31 @@ export default function Planner({ data, onSave, onSaveFuture, onSaveNotebooks, o
                       <DaySection dayInfo={null} columnId="later" tasks={tasks.later} categories={categories} onDragStart={() => {}} onDrop={handleDrop}
                         onToggle={toggleDone} onDelete={deleteTask} onEdit={editTask} onAdd={addTask} onChangeCategory={changeCategory} isMobile={isMobile} onMove={moveTask} />
                     )}
+                    {/* Mobile upcoming section */}
+                    {isMobile && futureTasks.length > 0 && (() => {
+                      const grouped = {};
+                      futureTasks.forEach((t) => { if (!grouped[t.date]) grouped[t.date] = []; grouped[t.date].push(t); });
+                      const sortedDates = Object.keys(grouped).sort();
+                      return (
+                        <div style={{ padding: "8px 4px" }}>
+                          <div style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, fontSize: 14, color: "var(--text-muted)", letterSpacing: 0.5, textTransform: "uppercase", padding: "4px 6px 6px" }}>Upcoming</div>
+                          {sortedDates.map((date) => {
+                            const label = new Date(date + "T12:00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+                            return (
+                              <div key={date} style={{ marginBottom: 8, padding: "0 6px" }}>
+                                <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-muted)", marginBottom: 3 }}>{label}</div>
+                                {grouped[date].map((task) => (
+                                  <div key={task.id} style={{ background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 4, padding: "8px 10px", marginBottom: 4, fontSize: 15, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                                    <span style={{ flex: 1, wordBreak: "break-word" }}>{task.text}</span>
+                                    <button onClick={() => deleteFuture(task.id)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-faint)", fontSize: 18, padding: "0 4px", fontWeight: 600 }}>&times;</button>
+                                  </div>
+                                ))}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      );
+                    })()}
                   </div>
                 ) : (
                   <div style={{ overflow: "auto", padding: "8px 6px" }}>
@@ -1134,8 +1161,8 @@ export default function Planner({ data, onSave, onSaveFuture, onSaveNotebooks, o
           </div>
         )}
 
-        {activeView === "notebooks" && <NotebooksPanel notebooks={notebooks} onChange={updateNotebooks} userId={userId} />}
-        {activeView === "journal" && <JournalPanel journal={journal} onChange={updateJournal} userId={userId} />}
+        {activeView === "notebooks" && <NotebooksPanel notebooks={notebooks} onChange={updateNotebooks} userId={userId} isMobile={isMobile} />}
+        {activeView === "journal" && <JournalPanel journal={journal} onChange={updateJournal} userId={userId} isMobile={isMobile} />}
         {activeView === "contacts" && <ContactsPanel contacts={contacts} onChange={updateContacts} />}
         {activeView === "categories" && <CategoryManager categories={categories} onChange={updateCategories} layout={layout} onLayoutChange={(l) => { update({ layout: l }); onSaveSettings({ categories, layout: l, notes, darkMode }); }} darkMode={darkMode} onDarkModeChange={(dm) => { update({ darkMode: dm }); onSaveSettings({ categories, layout, notes, darkMode: dm }); }} />}
 

@@ -144,10 +144,11 @@ function JournalEditor({ content, onChange, userId }) {
   );
 }
 
-export default function JournalPanel({ journal, onChange, userId }) {
+export default function JournalPanel({ journal, onChange, userId, isMobile }) {
   const today = new Date().toISOString().split("T")[0];
   const [selectedDate, setSelectedDate] = useState(today);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [mobileEditing, setMobileEditing] = useState(false);
 
   if (!journal) return null;
 
@@ -158,6 +159,55 @@ export default function JournalPanel({ journal, onChange, userId }) {
 
   const selectedDateObj = new Date(selectedDate + "T12:00:00");
   const dateLabel = selectedDateObj.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" });
+
+  const selectDate = (date) => { setSelectedDate(date); if (isMobile) setMobileEditing(true); };
+
+  // Mobile: calendar first, then editor with back button
+  if (isMobile) {
+    if (mobileEditing) {
+      return (
+        <div style={{ display: "flex", flexDirection: "column", flex: 1, overflow: "hidden" }}>
+          <div style={{ padding: "8px 12px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", gap: 8 }}>
+            <button onClick={() => setMobileEditing(false)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--accent)", fontSize: 14, fontWeight: 600, padding: 0 }}>{"\u25C0"} Calendar</button>
+            <span style={{ flex: 1, fontSize: 14, fontWeight: 600, color: "var(--text)", textAlign: "center" }}>{dateLabel}</span>
+            {selectedDate === today && (
+              <span style={{ fontSize: 9, background: "#8B6914", color: "#fff", padding: "1px 5px", borderRadius: 3, fontWeight: 600 }}>TODAY</span>
+            )}
+          </div>
+          <JournalEditor key={selectedDate} content={currentContent} onChange={updateEntry} userId={userId} />
+        </div>
+      );
+    }
+    return (
+      <div style={{ display: "flex", flexDirection: "column", flex: 1, overflow: "hidden" }}>
+        <div style={{ padding: "10px 12px", borderBottom: "1px solid var(--border)" }}>
+          <span style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, fontSize: 12, color: "var(--text-muted)", letterSpacing: 1.5, textTransform: "uppercase" }}>Journal</span>
+        </div>
+        <div style={{ flex: 1, overflowY: "auto", padding: "12px 16px" }}>
+          <MiniCalendar selectedDate={selectedDate} onSelect={selectDate} entryDates={entryDates} />
+          <div style={{ padding: "10px 0", fontSize: 13, color: "var(--text-faint)" }}>
+            {entryDates.size} journal {entryDates.size === 1 ? "entry" : "entries"}
+          </div>
+          <div style={{ marginTop: 4 }}>
+            <button onClick={() => { setSelectedDate(today); setMobileEditing(true); }}
+              style={{ width: "100%", background: "var(--accent)", color: "#fff", border: "none", borderRadius: 6, padding: "10px", cursor: "pointer", fontSize: 15, fontWeight: 600, marginBottom: 12 }}>
+              Write Today's Entry
+            </button>
+            {[...entryDates].sort().reverse().map((date) => {
+              const d = new Date(date + "T12:00:00");
+              const label = d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric" });
+              return (
+                <div key={date} onClick={() => selectDate(date)}
+                  style={{ padding: "10px 12px", cursor: "pointer", fontSize: 15, borderBottom: "1px solid var(--border-light)", color: "var(--text)" }}>
+                  {label}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
