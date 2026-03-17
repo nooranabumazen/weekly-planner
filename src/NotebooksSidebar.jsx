@@ -111,11 +111,30 @@ function RichEditor({ content, onChange, userId }) {
 
   const insertTable = () => {
     const tid = "t" + Date.now();
-    const table = `<table data-tid="${tid}" style="border-collapse:collapse;width:100%;margin:8px 0;table-layout:fixed;">
-      <tr><td style="border:1px solid #999;padding:6px 8px;min-width:40px;">&nbsp;</td><td style="border:1px solid #999;padding:6px 8px;min-width:40px;">&nbsp;</td></tr>
-      <tr><td style="border:1px solid #999;padding:6px 8px;">&nbsp;</td><td style="border:1px solid #999;padding:6px 8px;">&nbsp;</td></tr>
+    const table = `<table data-tid="${tid}" style="border-collapse:collapse;margin:8px 0;table-layout:auto;">
+      <tr><td style="border:1px solid #999;padding:6px 8px;min-width:60px;">&nbsp;</td><td style="border:1px solid #999;padding:6px 8px;min-width:60px;">&nbsp;</td></tr>
+      <tr><td style="border:1px solid #999;padding:6px 8px;min-width:60px;">&nbsp;</td><td style="border:1px solid #999;padding:6px 8px;min-width:60px;">&nbsp;</td></tr>
     </table><p></p>`;
     exec("insertHTML", table);
+  };
+
+  const insertHeader = () => {
+    const sel = window.getSelection();
+    if (sel.rangeCount) {
+      const range = sel.getRangeAt(0);
+      const block = range.startContainer.nodeType === 3 ? range.startContainer.parentElement : range.startContainer;
+      const tag = block?.tagName?.toLowerCase();
+      if (tag === "h2") {
+        document.execCommand("formatBlock", false, "p");
+      } else {
+        document.execCommand("formatBlock", false, "h2");
+      }
+      handleInput();
+    }
+  };
+
+  const insertDivider = () => {
+    exec("insertHTML", '<hr style="border:none;border-top:1px solid #999;margin:12px 0;">');
   };
 
   const addTableRow = () => {
@@ -256,12 +275,13 @@ function RichEditor({ content, onChange, userId }) {
         <ToolbarButton icon={<i>I</i>} title="Italic" onClick={() => exec("italic")} />
         <ToolbarButton icon={<u>U</u>} title="Underline" onClick={() => exec("underline")} />
         <ToolbarButton icon={<s>S</s>} title="Strikethrough" onClick={() => exec("strikeThrough")} />
-        <div style={{ width: 1, height: 18, background: "#e0ddd6", margin: "0 3px" }} />
+        <ToolbarButton icon={<span style={{ fontSize: 12, fontWeight: 700 }}>H</span>} title="Toggle heading" onClick={insertHeader} />
+        <div style={{ width: 1, height: 18, background: "var(--border)", margin: "0 3px" }} />
         <ColorPicker colors={HIGHLIGHT_COLORS} onSelect={(c) => exec("hiliteColor", c)}
           buttonIcon={<span style={{ background: "#fff3a8", padding: "0 3px", borderRadius: 2, fontSize: 11, fontWeight: 600 }}>H</span>} title="Highlight" />
         <ColorPicker colors={TEXT_COLORS} onSelect={(c) => exec("foreColor", c)}
           buttonIcon={<span style={{ fontSize: 12, fontWeight: 700 }}>A<span style={{ display: "block", height: 2, background: "#c44040", borderRadius: 1, marginTop: -2 }} /></span>} title="Text color" />
-        <div style={{ width: 1, height: 18, background: "#e0ddd6", margin: "0 3px" }} />
+        <div style={{ width: 1, height: 18, background: "var(--border)", margin: "0 3px" }} />
         <ToolbarButton icon={<span style={{ fontSize: 12 }}>&#128279;</span>} title="Insert link" onClick={insertLink} />
         <ToolbarButton icon={<span style={{ fontSize: 12 }}>&#128444;</span>} title="Insert image" onClick={insertImage} />
         <ToolbarButton icon={<span style={{ fontSize: 10, fontFamily: "monospace" }}>&#9638;</span>} title="Insert table" onClick={insertTable} />
@@ -269,14 +289,18 @@ function RichEditor({ content, onChange, userId }) {
         <ToolbarButton icon={<span style={{ fontSize: 9, fontFamily: "monospace" }}>+C</span>} title="Add column (click in table first)" onClick={addTableCol} />
         <ToolbarButton icon={<span style={{ fontSize: 9, fontFamily: "monospace", color: "#c44" }}>{"\u2212"}R</span>} title="Remove row" onClick={removeTableRow} />
         <ToolbarButton icon={<span style={{ fontSize: 9, fontFamily: "monospace", color: "#c44" }}>{"\u2212"}C</span>} title="Remove column" onClick={removeTableCol} />
-        <div style={{ width: 1, height: 18, background: "#e0ddd6", margin: "0 3px" }} />
+        <div style={{ width: 1, height: 18, background: "var(--border)", margin: "0 3px" }} />
         <ToolbarButton icon={<span style={{ fontSize: 10 }}>&bull; &ndash;</span>} title="Bullet list" onClick={() => exec("insertUnorderedList")} />
         <ToolbarButton icon={<span style={{ fontSize: 10 }}>1. &ndash;</span>} title="Numbered list" onClick={() => exec("insertOrderedList")} />
+        <div style={{ width: 1, height: 18, background: "var(--border)", margin: "0 3px" }} />
+        <ToolbarButton icon={<span style={{ fontSize: 11 }}>&mdash;</span>} title="Insert divider" onClick={insertDivider} />
       </div>
       <style dangerouslySetInnerHTML={{ __html: `
         [contenteditable] table { table-layout: auto; }
         [contenteditable] td { resize: horizontal; overflow: auto; min-width: 40px; }
         [contenteditable] td:hover { outline: 1px dashed #8B6914; outline-offset: -1px; }
+        [contenteditable] h2 { font-size: 18px; font-weight: 700; margin: 12px 0 6px; color: var(--text); }
+        [contenteditable] hr { border: none; border-top: 1px solid var(--text-faint); margin: 12px 0; }
       `}} />
       <div ref={editorRef} contentEditable onInput={handleInput} onBlur={handleInput} onPaste={handlePaste}
         suppressContentEditableWarning

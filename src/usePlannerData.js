@@ -89,18 +89,36 @@ export function usePlannerData(userId) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const saveTimeout = useRef(null);
-  const weekKey = getWeekKey();
+  const [weekKey, setWeekKey] = useState(getWeekKey);
   const docPath = `users/${userId}/weeks/${weekKey}`;
-  const isRemoteUpdate = useRef(false);
   const carryForwardDone = useRef(false);
+  const pendingSave = useRef(false);
+
+  // Check if week has changed (handles midnight rollover)
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const currentKey = getWeekKey();
+      if (currentKey !== weekKey) {
+        carryForwardDone.current = false;
+        setWeekKey(currentKey);
+      }
+    }, 30000); // Check every 30 seconds
+    return () => clearInterval(interval);
+  }, [weekKey]);
 
   // Listen for weekly tasks data
   useEffect(() => {
     if (!userId) return;
     const unsub = onSnapshot(doc(db, docPath), async (snap) => {
+      // Skip remote updates while a local save is pending to prevent clobbering
+      if (pendingSave.current) return;
+
       if (snap.exists()) {
-        isRemoteUpdate.current = true;
-        setData((prev) => ({ ...(prev || defaultData()), ...snap.data() }));
+        setData((prev) => {
+          if (!prev) return { ...defaultData(), ...snap.data() };
+          // Merge: only update tasks from the weekly doc, keep meta docs intact
+          return { ...prev, tasks: snap.data().tasks || prev.tasks };
+        });
         setLoading(false);
       } else {
         // New week: carry forward incomplete tasks
@@ -148,10 +166,13 @@ export function usePlannerData(userId) {
   const save = useCallback(
     (newData) => {
       setData(newData);
+      pendingSave.current = true;
       if (saveTimeout.current) clearTimeout(saveTimeout.current);
       saveTimeout.current = setTimeout(() => {
         // Only save tasks to the weekly doc
-        setDoc(doc(db, docPath), { tasks: newData.tasks }).catch(console.error);
+        setDoc(doc(db, docPath), { tasks: newData.tasks }).then(() => {
+          pendingSave.current = false;
+        }).catch((err) => { console.error(err); pendingSave.current = false; });
       }, 500);
     },
     [docPath]
