@@ -290,22 +290,47 @@ function ResizeHandle({ currentHeight, minHeight, maxHeight, onHeightChange }) {
 }
 
 /* ─── Habits Tracker ─── */
-function HabitsTracker({ dailyHabits, weeklyHabits, onToggleDaily, onToggleWeekly, onAddDaily, onAddWeekly, onDeleteDaily, onDeleteWeekly }) {
+function HabitsTracker({ dailyHabits, weeklyHabits, onToggleDaily, onToggleWeekly, onAddDaily, onAddWeekly, onDeleteDaily, onDeleteWeekly, onEditDaily, onEditWeekly }) {
   const [addingDaily, setAddingDaily] = useState(false);
   const [addingWeekly, setAddingWeekly] = useState(false);
   const [newDaily, setNewDaily] = useState("");
   const [newWeekly, setNewWeekly] = useState("");
+  const [editingHabit, setEditingHabit] = useState(null);
+  const [editText, setEditText] = useState("");
+  const [splitPct, setSplitPct] = useState(55);
   const dailyRef = useRef(null);
   const weeklyRef = useRef(null);
+  const editRef = useRef(null);
+  const containerRef = useRef(null);
   useEffect(() => { if (addingDaily && dailyRef.current) dailyRef.current.focus(); }, [addingDaily]);
   useEffect(() => { if (addingWeekly && weeklyRef.current) weeklyRef.current.focus(); }, [addingWeekly]);
+  useEffect(() => { if (editingHabit && editRef.current) editRef.current.focus(); }, [editingHabit]);
   const addDH = () => { if (newDaily.trim()) { onAddDaily(newDaily.trim()); setNewDaily(""); } setAddingDaily(false); };
   const addWH = () => { if (newWeekly.trim()) { onAddWeekly(newWeekly.trim()); setNewWeekly(""); } setAddingWeekly(false); };
+  const saveEdit = () => { if (editText.trim() && editingHabit) { if (editingHabit.type === "daily") onEditDaily(editingHabit.id, editText.trim()); else onEditWeekly(editingHabit.id, editText.trim()); } setEditingHabit(null); };
   const sLabel = { fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, fontSize: 10, color: "var(--text-muted)", letterSpacing: 1.5, textTransform: "uppercase", marginBottom: 6 };
-  const chk = (on) => ({ width: 16, height: 16, borderRadius: 3, cursor: "pointer", border: on ? "none" : "1.5px solid #ccc", background: on ? "#6a9955" : "transparent", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.15s", flexShrink: 0, fontSize: 10, color: "#fff", fontWeight: 700 });
+  const chk = (on) => ({ width: 16, height: 16, borderRadius: 3, cursor: "pointer", border: on ? "none" : "1.5px solid var(--border)", background: on ? "#6a9955" : "transparent", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.15s", flexShrink: 0, fontSize: 10, color: "#fff", fontWeight: 700 });
+
+  const handleDividerDrag = (e) => {
+    e.preventDefault();
+    const container = containerRef.current;
+    if (!container) return;
+    const rect = container.getBoundingClientRect();
+    const onMove = (e2) => {
+      const x = (e2.clientX || e2.touches?.[0]?.clientX) - rect.left;
+      const pct = Math.max(30, Math.min(70, (x / rect.width) * 100));
+      setSplitPct(pct);
+    };
+    const onUp = () => { document.removeEventListener("mousemove", onMove); document.removeEventListener("mouseup", onUp); document.body.style.cursor = ""; document.body.style.userSelect = ""; };
+    document.addEventListener("mousemove", onMove);
+    document.addEventListener("mouseup", onUp);
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+  };
+
   return (
-    <div style={{ borderBottom: "1px solid var(--border)", padding: "10px 12px", display: "flex", gap: 16, overflow: "hidden" }}>
-      <div style={{ flex: "1 1 50%", minWidth: 0, overflow: "hidden" }}>
+    <div ref={containerRef} style={{ borderBottom: "1px solid var(--border)", padding: "10px 12px", display: "flex", overflow: "hidden" }}>
+      <div style={{ flex: `0 0 ${splitPct}%`, minWidth: 0, overflow: "hidden", paddingRight: 4 }}>
         <div style={sLabel}>Daily Habits</div>
         <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
           <div style={{ display: "flex", alignItems: "center" }}>
@@ -317,21 +342,43 @@ function HabitsTracker({ dailyHabits, weeklyHabits, onToggleDaily, onToggleWeekl
             const cnt = Object.values(h.checks).filter(Boolean).length;
             return (
               <div key={h.id} style={{ display: "flex", alignItems: "center" }}>
-                <div style={{ flex: "0 0 140px", fontSize: 12, color: "var(--text)", paddingRight: 4, wordBreak: "break-word", lineHeight: 1.3 }}>{h.name}<span style={{ fontSize: 9, color: "var(--text-faint)", marginLeft: 4 }}>{cnt}/7</span></div>
+                {editingHabit?.id === h.id && editingHabit?.type === "daily" ? (
+                  <input ref={editRef} value={editText} onChange={(e) => setEditText(e.target.value)} onBlur={saveEdit}
+                    onKeyDown={(e) => { if (e.key === "Enter") saveEdit(); if (e.key === "Escape") setEditingHabit(null); }}
+                    style={{ flex: "0 0 140px", border: "1px solid var(--border)", borderRadius: 3, padding: "1px 4px", fontSize: 12, outline: "none", background: "var(--input-bg)", color: "var(--text)" }} />
+                ) : (
+                  <div onDoubleClick={() => { setEditingHabit({ id: h.id, type: "daily" }); setEditText(h.name); }}
+                    style={{ flex: "0 0 140px", fontSize: 12, color: "var(--text)", paddingRight: 4, wordBreak: "break-word", lineHeight: 1.3, cursor: "default" }}>{h.name}<span style={{ fontSize: 9, color: "var(--text-faint)", marginLeft: 4 }}>{cnt}/7</span></div>
+                )}
                 {DAYS.map((d) => (<div key={d} style={{ width: 28, display: "flex", justifyContent: "center", flexShrink: 0 }}><div onClick={() => onToggleDaily(h.id, d.toLowerCase())} style={chk(h.checks[d.toLowerCase()])}>{h.checks[d.toLowerCase()] && "\u2713"}</div></div>))}
-                <button onClick={() => onDeleteDaily(h.id)} style={{ width: 18, flexShrink: 0, background: "none", border: "none", cursor: "pointer", color: "var(--text-faint)", fontSize: 13, padding: 0, fontWeight: 600 }} onMouseEnter={(e) => (e.target.style.color = "#c44")} onMouseLeave={(e) => (e.target.style.color = "#ccc")}>&times;</button>
+                <button onClick={() => onDeleteDaily(h.id)} style={{ width: 18, flexShrink: 0, background: "none", border: "none", cursor: "pointer", color: "var(--text-faint)", fontSize: 13, padding: 0, fontWeight: 600 }} onMouseEnter={(e) => (e.target.style.color = "#c44")} onMouseLeave={(e) => (e.target.style.color = "var(--text-faint)")}>&times;</button>
               </div>);
           })}
-          {addingDaily ? (<div style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 2 }}><input ref={dailyRef} value={newDaily} onChange={(e) => setNewDaily(e.target.value)} onBlur={addDH} onKeyDown={(e) => { if (e.key === "Enter") addDH(); if (e.key === "Escape") setAddingDaily(false); }} placeholder="Habit name..." style={{ width: 140, border: "1px solid var(--border)", borderRadius: 4, padding: "3px 6px", fontSize: 11, outline: "none", background: "var(--input-bg)" }} /></div>
-          ) : (<button onClick={() => setAddingDaily(true)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-faint)", fontSize: 11, padding: "2px 0", textAlign: "left" }} onMouseEnter={(e) => (e.target.style.color = "#777")} onMouseLeave={(e) => (e.target.style.color = "#bbb")}>+ Add daily habit</button>)}
+          {addingDaily ? (<div style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 2 }}><input ref={dailyRef} value={newDaily} onChange={(e) => setNewDaily(e.target.value)} onBlur={addDH} onKeyDown={(e) => { if (e.key === "Enter") addDH(); if (e.key === "Escape") setAddingDaily(false); }} placeholder="Habit name..." style={{ width: 140, border: "1px solid var(--border)", borderRadius: 4, padding: "3px 6px", fontSize: 11, outline: "none", background: "var(--input-bg)", color: "var(--text)" }} /></div>
+          ) : (<button onClick={() => setAddingDaily(true)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-faint)", fontSize: 11, padding: "2px 0", textAlign: "left" }} onMouseEnter={(e) => (e.target.style.color = "var(--text-muted)")} onMouseLeave={(e) => (e.target.style.color = "var(--text-faint)")}>+ Add daily habit</button>)}
         </div>
       </div>
-      <div style={{ flex: "1 1 50%", minWidth: 0, overflow: "hidden" }}>
+      {/* Draggable divider */}
+      <div onMouseDown={handleDividerDrag} style={{ width: 8, cursor: "col-resize", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+        <div style={{ width: 3, height: 30, borderRadius: 2, background: "var(--border)" }} />
+      </div>
+      <div style={{ flex: 1, minWidth: 0, overflow: "hidden", paddingLeft: 4 }}>
         <div style={sLabel}>Weekly Habits</div>
         <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
-          {weeklyHabits.map((h) => (<div key={h.id} style={{ display: "flex", alignItems: "center", gap: 6 }}><div onClick={() => onToggleWeekly(h.id)} style={chk(h.done)}>{h.done && "\u2713"}</div><span style={{ fontSize: 12, color: h.done ? "#aaa" : "#555", textDecoration: h.done ? "line-through" : "none", wordBreak: "break-word", minWidth: 0 }}>{h.name}</span><button onClick={() => onDeleteWeekly(h.id)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-faint)", fontSize: 13, padding: 0, marginLeft: "auto", fontWeight: 600, flexShrink: 0 }} onMouseEnter={(e) => (e.target.style.color = "#c44")} onMouseLeave={(e) => (e.target.style.color = "#ccc")}>&times;</button></div>))}
-          {addingWeekly ? (<input ref={weeklyRef} value={newWeekly} onChange={(e) => setNewWeekly(e.target.value)} onBlur={addWH} onKeyDown={(e) => { if (e.key === "Enter") addWH(); if (e.key === "Escape") setAddingWeekly(false); }} placeholder="Habit name..." style={{ border: "1px solid var(--border)", borderRadius: 4, padding: "3px 6px", fontSize: 11, outline: "none", background: "var(--input-bg)" }} />
-          ) : (<button onClick={() => setAddingWeekly(true)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-faint)", fontSize: 11, padding: "2px 0", textAlign: "left" }} onMouseEnter={(e) => (e.target.style.color = "#777")} onMouseLeave={(e) => (e.target.style.color = "#bbb")}>+ Add weekly habit</button>)}
+          {weeklyHabits.map((h) => (<div key={h.id} style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <div onClick={() => onToggleWeekly(h.id)} style={chk(h.done)}>{h.done && "\u2713"}</div>
+            {editingHabit?.id === h.id && editingHabit?.type === "weekly" ? (
+              <input ref={editRef} value={editText} onChange={(e) => setEditText(e.target.value)} onBlur={saveEdit}
+                onKeyDown={(e) => { if (e.key === "Enter") saveEdit(); if (e.key === "Escape") setEditingHabit(null); }}
+                style={{ flex: 1, border: "1px solid var(--border)", borderRadius: 3, padding: "1px 4px", fontSize: 12, outline: "none", background: "var(--input-bg)", color: "var(--text)" }} />
+            ) : (
+              <span onDoubleClick={() => { setEditingHabit({ id: h.id, type: "weekly" }); setEditText(h.name); }}
+                style={{ fontSize: 12, color: h.done ? "var(--text-muted)" : "var(--text)", textDecoration: h.done ? "line-through" : "none", wordBreak: "break-word", minWidth: 0, cursor: "default" }}>{h.name}</span>
+            )}
+            <button onClick={() => onDeleteWeekly(h.id)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-faint)", fontSize: 13, padding: 0, marginLeft: "auto", fontWeight: 600, flexShrink: 0 }} onMouseEnter={(e) => (e.target.style.color = "#c44")} onMouseLeave={(e) => (e.target.style.color = "var(--text-faint)")}>&times;</button>
+          </div>))}
+          {addingWeekly ? (<input ref={weeklyRef} value={newWeekly} onChange={(e) => setNewWeekly(e.target.value)} onBlur={addWH} onKeyDown={(e) => { if (e.key === "Enter") addWH(); if (e.key === "Escape") setAddingWeekly(false); }} placeholder="Habit name..." style={{ border: "1px solid var(--border)", borderRadius: 4, padding: "3px 6px", fontSize: 11, outline: "none", background: "var(--input-bg)", color: "var(--text)" }} />
+          ) : (<button onClick={() => setAddingWeekly(true)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-faint)", fontSize: 11, padding: "2px 0", textAlign: "left" }} onMouseEnter={(e) => (e.target.style.color = "var(--text-muted)")} onMouseLeave={(e) => (e.target.style.color = "var(--text-faint)")}>+ Add weekly habit</button>)}
         </div>
       </div>
     </div>
@@ -394,7 +441,7 @@ function TaskCard({ task, columnId, categories, onDragStart, onToggle, onDelete,
           <button onClick={() => setShowCatPicker(!showCatPicker)} title="Change category"
             style={{ background: "none", border: "none", cursor: "pointer", fontSize: 11, padding: 0, lineHeight: 1, color: "var(--text-muted)" }}>{"\u{1F3A8}"}</button>
           <button onClick={() => onDelete(columnId, task.id)} title="Remove"
-            style={{ background: "none", border: "none", cursor: "pointer", color: "#c44", fontSize: 14, padding: 0, lineHeight: 1, fontWeight: 600 }}>&times;</button>
+            style={{ background: "none", border: "none", cursor: "pointer", color: "#c44", fontSize: isMobile ? 20 : 16, padding: isMobile ? "2px 4px" : "0 2px", lineHeight: 1, fontWeight: 600 }}>&times;</button>
         </div>
       )}
       {showCatPicker && (
@@ -508,7 +555,7 @@ function DaySection({ dayInfo, columnId, tasks, categories, onDragStart, onDrop,
 }
 
 /* ─── Day Column (horizontal layout) ─── */
-function DayColumn({ dayInfo, columnId, tasks, categories, onDragStart, onDrop, onToggle, onDelete, onEdit, onAdd, onChangeCategory }) {
+function DayColumn({ dayInfo, columnId, tasks, categories, onDragStart, onDrop, onToggle, onDelete, onEdit, onAdd, onChangeCategory, colWidth }) {
   const [dragOver, setDragOver] = useState(false);
   const [adding, setAdding] = useState(false);
   const [newText, setNewText] = useState("");
@@ -534,20 +581,19 @@ function DayColumn({ dayInfo, columnId, tasks, categories, onDragStart, onDrop, 
       onDragLeave={(e) => { dragCounter.current--; if (dragCounter.current <= 0) { dragCounter.current = 0; setDragOver(false); } }}
       onDrop={handleDropEnd}
       style={{
-        flex: isLater ? "0 0 100%" : "1 1 0%", minWidth: isLater ? "auto" : 0,
+        width: isLater ? "100%" : colWidth, minWidth: isLater ? "auto" : colWidth, flexShrink: 0,
         background: dragOver ? "rgba(139,105,20,0.04)" : isToday ? "rgba(180,140,80,0.06)" : "transparent",
         borderRadius: 8, padding: "6px 4px", transition: "background 0.2s", display: "flex", flexDirection: "column",
         border: isToday ? "1.5px solid rgba(180,140,80,0.25)" : dragOver ? "1.5px dashed rgba(139,105,20,0.3)" : "1.5px solid transparent",
-        overflow: "hidden",
       }}>
       <div style={{ flexShrink: 0, marginBottom: 4, padding: "0 2px" }}>
-        <div style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, fontSize: "clamp(9px, 1.1vw, 12px)", color: isToday ? "#8B6914" : "#555", letterSpacing: 0.5 }}>
+        <div style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, fontSize: "clamp(9px, 1.1vw, 12px)", color: isToday ? "#8B6914" : "var(--text)", letterSpacing: 0.5 }}>
           {isLater ? "LATER" : dayInfo?.label}
         </div>
         {!isLater && <div style={{ fontSize: "clamp(8px, 0.9vw, 10px)", color: "var(--text-muted)", fontWeight: 400 }}>{dayInfo?.date}</div>}
         {isToday && <span style={{ fontSize: 7, background: "#8B6914", color: "#fff", padding: "1px 3px", borderRadius: 2, fontWeight: 600 }}>TODAY</span>}
       </div>
-      <div style={{ flex: 1, minHeight: 0, overflowY: "auto" }}>
+      <div style={{ flex: 1 }}>
         {incompleteTasks.map((task, idx) => (
           <div key={task.id}>
             <DropZone onDrop={(e) => handleDropAtIndex(e, task.id)} />
@@ -570,7 +616,7 @@ function DayColumn({ dayInfo, columnId, tasks, categories, onDragStart, onDrop, 
         <div style={{ marginTop: 2, flexShrink: 0 }}>
           <input ref={addRef} value={newText} onChange={isLater ? (e) => setNewText(e.target.value) : handleTextChange}
             onKeyDown={(e) => { if (e.key === "Enter") submitAdd(); if (e.key === "Escape") setAdding(false); }}
-            placeholder="Task..." style={{ width: "100%", border: "1px solid var(--border)", borderRadius: 4, padding: "4px 6px", fontSize: 11, outline: "none", background: "var(--input-bg)", boxSizing: "border-box", marginBottom: 2 }} />
+            placeholder="Task..." style={{ width: "100%", border: "1px solid var(--border)", borderRadius: 4, padding: "4px 6px", fontSize: 11, outline: "none", background: "var(--input-bg)", color: "var(--text)", boxSizing: "border-box", marginBottom: 2 }} />
           <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
             {!isLater && <CategoryDot categories={categories} selected={newCat} onSelect={handleManualCat} />}
             <button onClick={submitAdd} style={{ background: "#555", color: "#fff", border: "none", borderRadius: 4, padding: "3px 8px", cursor: "pointer", fontSize: 9 }}>Add</button>
@@ -579,8 +625,8 @@ function DayColumn({ dayInfo, columnId, tasks, categories, onDragStart, onDrop, 
         </div>
       ) : (
         <button onClick={() => setAdding(true)} style={{ background: "none", border: "1px dashed #ccc", borderRadius: 4, padding: "3px 0", cursor: "pointer", color: "var(--text-muted)", fontSize: "clamp(9px, 1vw, 11px)", marginTop: 2, width: "100%", flexShrink: 0 }}
-          onMouseEnter={(e) => { e.target.style.borderColor = "#999"; e.target.style.color = "#777"; }}
-          onMouseLeave={(e) => { e.target.style.borderColor = "#ccc"; e.target.style.color = "#aaa"; }}>+ Add</button>
+          onMouseEnter={(e) => { e.target.style.borderColor = "#999"; e.target.style.color = "var(--text-muted)"; }}
+          onMouseLeave={(e) => { e.target.style.borderColor = "#ccc"; e.target.style.color = "var(--text-faint)"; }}>+ Add</button>
       )}
     </div>
   );
@@ -624,8 +670,8 @@ function FutureSidebar({ futureTasks, onAddFuture, onDeleteFuture }) {
           </div>
           {adding ? (
             <div style={{ padding: "6px 8px", borderTop: "1px solid var(--border)" }}>
-              <input ref={addRef} value={newText} onChange={(e) => setNewText(e.target.value)} placeholder="Task..." style={{ width: "100%", border: "1px solid var(--border)", borderRadius: 4, padding: "4px 6px", fontSize: 10, outline: "none", marginBottom: 2, background: "var(--bg-card)", boxSizing: "border-box" }} />
-              <input type="date" value={newDate} onChange={(e) => setNewDate(e.target.value)} style={{ width: "100%", border: "1px solid var(--border)", borderRadius: 4, padding: "4px 6px", fontSize: 10, outline: "none", marginBottom: 2, background: "var(--bg-card)", boxSizing: "border-box" }} />
+              <input ref={addRef} value={newText} onChange={(e) => setNewText(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") submitAdd(); if (e.key === "Escape") setAdding(false); }} placeholder="Task..." style={{ width: "100%", border: "1px solid var(--border)", borderRadius: 4, padding: "4px 6px", fontSize: 10, outline: "none", marginBottom: 2, background: "var(--bg-card)", color: "var(--text)", boxSizing: "border-box" }} />
+              <input type="date" value={newDate} onChange={(e) => setNewDate(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") submitAdd(); }} style={{ width: "100%", border: "1px solid var(--border)", borderRadius: 4, padding: "4px 6px", fontSize: 10, outline: "none", marginBottom: 2, background: "var(--bg-card)", color: "var(--text)", boxSizing: "border-box" }} />
               <div style={{ display: "flex", gap: 2 }}>
                 <button onClick={submitAdd} style={{ flex: 1, background: "#555", color: "#fff", border: "none", borderRadius: 4, padding: "3px 0", cursor: "pointer", fontSize: 9 }}>Add</button>
                 <button onClick={() => setAdding(false)} style={{ flex: 1, background: "var(--border)", color: "var(--text-muted)", border: "none", borderRadius: 4, padding: "3px 0", cursor: "pointer", fontSize: 9 }}>Cancel</button>
@@ -653,6 +699,7 @@ export default function Planner({ data, onSave, onSaveFuture, onSaveNotebooks, o
   const [searchOpen, setSearchOpen] = useState(false);
   const [laterHeight, setLaterHeight] = useState(50);
   const [notesHeight, setNotesHeight] = useState(70);
+  const [colWidth, setColWidth] = useState(160);
   const notebooks = data.notebooks || [];
   const journal = data.journal || {};
   const contacts = data.contacts || [];
@@ -776,6 +823,8 @@ export default function Planner({ data, onSave, onSaveFuture, onSaveNotebooks, o
   const addWeeklyHabit = (name) => { const updated = [...weeklyHabits, { id: "wh" + Date.now(), name, done: false }]; update({ weeklyHabits: updated }); onSaveWeeklyHabits(updated); };
   const deleteDaily = (id) => { const updated = dailyHabits.filter((h) => h.id !== id); update({ dailyHabits: updated }); onSaveDailyHabits(updated); };
   const deleteWeekly = (id) => { const updated = weeklyHabits.filter((h) => h.id !== id); update({ weeklyHabits: updated }); onSaveWeeklyHabits(updated); };
+  const editDaily = (id, name) => { const updated = dailyHabits.map((h) => h.id === id ? { ...h, name } : h); update({ dailyHabits: updated }); onSaveDailyHabits(updated); };
+  const editWeekly = (id, name) => { const updated = weeklyHabits.map((h) => h.id === id ? { ...h, name } : h); update({ weeklyHabits: updated }); onSaveWeeklyHabits(updated); };
   const addFuture = (text, date) => { const nf = [...futureTasks, { id: "f" + Date.now(), text, date }]; update({ futureTasks: nf }); onSaveFuture(nf); };
   const deleteFuture = (id) => { const nf = futureTasks.filter((t) => t.id !== id); update({ futureTasks: nf }); onSaveFuture(nf); };
   const updateNotebooks = (nbs) => { update({ notebooks: nbs }); onSaveNotebooks(nbs); };
@@ -867,7 +916,7 @@ export default function Planner({ data, onSave, onSaveFuture, onSaveNotebooks, o
             </div>
             {!isMobile && (
               <HabitsTracker dailyHabits={dailyHabits} weeklyHabits={weeklyHabits} onToggleDaily={toggleDaily} onToggleWeekly={toggleWeekly}
-                onAddDaily={addDailyHabit} onAddWeekly={addWeeklyHabit} onDeleteDaily={deleteDaily} onDeleteWeekly={deleteWeekly} />
+                onAddDaily={addDailyHabit} onAddWeekly={addWeeklyHabit} onDeleteDaily={deleteDaily} onDeleteWeekly={deleteWeekly} onEditDaily={editDaily} onEditWeekly={editWeekly} />
             )}
             <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
               <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
@@ -884,11 +933,30 @@ export default function Planner({ data, onSave, onSaveFuture, onSaveNotebooks, o
                     )}
                   </div>
                 ) : (
-                  <div style={{ flex: 1, display: "flex", gap: 2, padding: "8px 6px", overflow: "hidden" }}>
-                    {DAYS.map((day, i) => (
-                      <DayColumn key={day} dayInfo={weekDates[i]} columnId={day.toLowerCase()} tasks={tasks[day.toLowerCase()]} categories={categories}
-                        onDragStart={() => {}} onDrop={handleDrop} onToggle={toggleDone} onDelete={deleteTask} onEdit={editTask} onAdd={addTask} onChangeCategory={changeCategory} />
-                    ))}
+                  <div style={{ flex: 1, overflow: "auto", padding: "8px 6px" }}>
+                    <div style={{ display: "flex", gap: 0, minWidth: colWidth * 7 + 30, alignItems: "flex-start" }}>
+                      {DAYS.map((day, i) => (
+                        <div key={day} style={{ display: "flex" }}>
+                          <DayColumn dayInfo={weekDates[i]} columnId={day.toLowerCase()} tasks={tasks[day.toLowerCase()]} categories={categories}
+                            onDragStart={() => {}} onDrop={handleDrop} onToggle={toggleDone} onDelete={deleteTask} onEdit={editTask} onAdd={addTask} onChangeCategory={changeCategory} colWidth={colWidth} />
+                          {i < 6 && (
+                            <div onMouseDown={(e) => {
+                              e.preventDefault();
+                              const startX = e.clientX;
+                              const startW = colWidth;
+                              const onMove = (e2) => { setColWidth(Math.max(100, Math.min(400, startW + (e2.clientX - startX) / 7))); };
+                              const onUp = () => { document.removeEventListener("mousemove", onMove); document.removeEventListener("mouseup", onUp); document.body.style.cursor = ""; document.body.style.userSelect = ""; };
+                              document.addEventListener("mousemove", onMove);
+                              document.addEventListener("mouseup", onUp);
+                              document.body.style.cursor = "col-resize";
+                              document.body.style.userSelect = "none";
+                            }} style={{ width: 5, cursor: "col-resize", flexShrink: 0, background: "transparent" }}
+                              onMouseEnter={(e) => e.currentTarget.style.background = "var(--border)"}
+                              onMouseLeave={(e) => e.currentTarget.style.background = "transparent"} />
+                          )}
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
                 {!isMobile && (
@@ -900,7 +968,7 @@ export default function Planner({ data, onSave, onSaveFuture, onSaveNotebooks, o
                           onToggle={toggleDone} onDelete={deleteTask} onEdit={editTask} onAdd={addTask} onChangeCategory={changeCategory} />
                       ) : (
                         <DayColumn dayInfo={null} columnId="later" tasks={tasks.later} categories={categories} onDragStart={() => {}} onDrop={handleDrop}
-                          onToggle={toggleDone} onDelete={deleteTask} onEdit={editTask} onAdd={addTask} onChangeCategory={changeCategory} />
+                          onToggle={toggleDone} onDelete={deleteTask} onEdit={editTask} onAdd={addTask} onChangeCategory={changeCategory} colWidth="100%" />
                       )}
                     </div>
                     <ResizeHandle currentHeight={notesHeight} minHeight={36} maxHeight={300} onHeightChange={setNotesHeight} />
