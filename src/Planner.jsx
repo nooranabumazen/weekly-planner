@@ -798,7 +798,14 @@ export default function Planner({ data, onSave, onSaveFuture, onSaveNotebooks, o
     return results;
   };
 
-  const navItems = [
+  const navItems = isMobile ? [
+    { id: "planner", icon: "\u{1F4C5}", label: "Planner" },
+    { id: "habits", icon: "\u{1F4CA}", label: "Habits" },
+    { id: "notebooks", icon: "\u{1F4D3}", label: "Notes" },
+    { id: "journal", icon: "\u{1F4DD}", label: "Journal" },
+    { id: "contacts", icon: "\u{1F465}", label: "People" },
+    { id: "categories", icon: "\u{2699}", label: "Settings" },
+  ] : [
     { id: "planner", icon: "\u{1F4C5}", label: "Planner" },
     { id: "notebooks", icon: "\u{1F4D3}", label: "Notes" },
     { id: "journal", icon: "\u{1F4DD}", label: "Journal" },
@@ -912,6 +919,67 @@ export default function Planner({ data, onSave, onSaveFuture, onSaveNotebooks, o
         {activeView === "journal" && <JournalPanel journal={journal} onChange={updateJournal} userId={userId} />}
         {activeView === "contacts" && <ContactsPanel contacts={contacts} onChange={updateContacts} />}
         {activeView === "categories" && <CategoryManager categories={categories} onChange={updateCategories} layout={layout} onLayoutChange={(l) => { update({ layout: l }); onSaveSettings({ categories, layout: l, notes, darkMode }); }} darkMode={darkMode} onDarkModeChange={(dm) => { update({ darkMode: dm }); onSaveSettings({ categories, layout, notes, darkMode: dm }); }} />}
+
+        {activeView === "habits" && (
+          <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+            <div style={{ padding: "12px 16px 8px", borderBottom: "1px solid var(--border)" }}>
+              <span style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, fontSize: 10, color: "var(--text-muted)", letterSpacing: 1.5, textTransform: "uppercase" }}>Habits</span>
+            </div>
+            <div style={{ flex: 1, overflowY: "auto", padding: "12px 16px" }}>
+              <div style={{ marginBottom: 20 }}>
+                <div style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, fontSize: 11, color: "var(--text-muted)", letterSpacing: 1, textTransform: "uppercase", marginBottom: 10 }}>Daily Habits</div>
+                {dailyHabits.map((h) => {
+                  const cnt = Object.values(h.checks).filter(Boolean).length;
+                  return (
+                    <div key={h.id} style={{ marginBottom: 10, padding: "8px 10px", background: "var(--bg-surface)", borderRadius: 6 }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                        <span style={{ fontSize: 15, color: "var(--text)", fontWeight: 500 }}>{h.name}</span>
+                        <span style={{ fontSize: 12, color: "var(--text-muted)" }}>{cnt}/7</span>
+                      </div>
+                      <div style={{ display: "flex", gap: 6 }}>
+                        {DAYS.map((d) => (
+                          <div key={d} onClick={() => toggleDaily(h.id, d.toLowerCase())}
+                            style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 2, cursor: "pointer" }}>
+                            <span style={{ fontSize: 9, color: "var(--text-muted)", fontFamily: "'JetBrains Mono', monospace" }}>{d.slice(0,2)}</span>
+                            <div style={{
+                              width: 28, height: 28, borderRadius: 5, display: "flex", alignItems: "center", justifyContent: "center",
+                              background: h.checks[d.toLowerCase()] ? "#6a9955" : "transparent",
+                              border: h.checks[d.toLowerCase()] ? "none" : "1.5px solid var(--border)",
+                              color: "#fff", fontSize: 14, fontWeight: 700,
+                            }}>{h.checks[d.toLowerCase()] && "\u2713"}</div>
+                          </div>
+                        ))}
+                        <button onClick={() => deleteDaily(h.id)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-faint)", fontSize: 16, padding: "0 4px", alignSelf: "flex-end" }}>&times;</button>
+                      </div>
+                    </div>
+                  );
+                })}
+                <button onClick={() => { const name = prompt("Daily habit name:"); if (name?.trim()) addDailyHabit(name.trim()); }}
+                  style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-faint)", fontSize: 14, padding: "4px 0" }}>+ Add daily habit</button>
+              </div>
+
+              <div>
+                <div style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, fontSize: 11, color: "var(--text-muted)", letterSpacing: 1, textTransform: "uppercase", marginBottom: 10 }}>Weekly Habits</div>
+                {weeklyHabits.map((h) => (
+                  <div key={h.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 10px", background: "var(--bg-surface)", borderRadius: 6, marginBottom: 6 }}>
+                    <div onClick={() => toggleWeekly(h.id)}
+                      style={{
+                        width: 28, height: 28, borderRadius: 5, cursor: "pointer", flexShrink: 0,
+                        background: h.done ? "#6a9955" : "transparent",
+                        border: h.done ? "none" : "1.5px solid var(--border)",
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                        color: "#fff", fontSize: 14, fontWeight: 700,
+                      }}>{h.done && "\u2713"}</div>
+                    <span style={{ flex: 1, fontSize: 15, color: h.done ? "var(--text-muted)" : "var(--text)", textDecoration: h.done ? "line-through" : "none" }}>{h.name}</span>
+                    <button onClick={() => deleteWeekly(h.id)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-faint)", fontSize: 16, padding: 0 }}>&times;</button>
+                  </div>
+                ))}
+                <button onClick={() => { const name = prompt("Weekly habit name:"); if (name?.trim()) addWeeklyHabit(name.trim()); }}
+                  style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-faint)", fontSize: 14, padding: "4px 0" }}>+ Add weekly habit</button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {activeView === "archive" && (
           <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
