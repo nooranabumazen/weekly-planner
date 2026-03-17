@@ -387,12 +387,12 @@ function HabitsTracker({ dailyHabits, weeklyHabits, onToggleDaily, onToggleWeekl
       <div onMouseDown={handleDividerDrag} style={{ width: 8, cursor: "col-resize", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
         <div style={{ width: 3, height: 30, borderRadius: 2, background: "var(--border)" }} />
       </div>
-      <div style={{ flex: 1, minWidth: 0, overflow: "hidden", paddingLeft: 4 }}>
+      <div style={{ flex: 1, minWidth: 0, overflow: "hidden", paddingLeft: 4, display: "flex", flexDirection: "column" }}>
         <div style={sLabel}>Weekly Habits</div>
-        <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 3, alignItems: "flex-end" }}>
           {weeklyHabits.map((h) => (
             <div key={h.id} draggable onDragStart={() => setDragHabit({ id: h.id, type: "weekly" })} onDragOver={(e) => e.preventDefault()} onDrop={() => handleWeeklyDrop(h.id)}
-              style={{ display: "flex", alignItems: "center", gap: 6, cursor: "grab" }}>
+              style={{ display: "flex", alignItems: "center", gap: 6, cursor: "grab", width: "100%" }}>
               <div onClick={() => onToggleWeekly(h.id)} style={chk(h.done)}>{h.done && "\u2713"}</div>
               {editingHabit?.id === h.id && editingHabit?.type === "weekly" ? (
                 <input ref={editRef} value={editText} onChange={(e) => setEditText(e.target.value)} onBlur={saveEdit}
@@ -425,7 +425,7 @@ function NotesSection({ notes, onChange }) {
 }
 
 /* ─── Task Card ─── */
-function TaskCard({ task, columnId, categories, onDragStart, onToggle, onDelete, onEdit, onChangeCategory, isMobile }) {
+function TaskCard({ task, columnId, categories, onDragStart, onToggle, onDelete, onEdit, onChangeCategory, isMobile, onMove }) {
   const [editing, setEditing] = useState(false);
   const [editText, setEditText] = useState(task.text);
   const [hover, setHover] = useState(false);
@@ -465,7 +465,15 @@ function TaskCard({ task, columnId, categories, onDragStart, onToggle, onDelete,
           style={{ flex: 1, textDecoration: task.done ? "line-through" : "none", cursor: "pointer", color: task.done ? "var(--text-muted)" : "var(--text)" }}>{task.text}</span>
       )}
       {(hover || showCatPicker) && !editing && (
-        <div style={{ display: "flex", gap: 4, flexShrink: 0 }}>
+        <div style={{ display: "flex", gap: 2, flexShrink: 0, alignItems: "center" }}>
+          {onMove && (
+            <>
+              <button onClick={() => onMove(columnId, task.id, -1)} title="Move up"
+                style={{ background: "none", border: "none", cursor: "pointer", fontSize: isMobile ? 14 : 11, padding: "0 1px", lineHeight: 1, color: "var(--text-muted)" }}>{"\u25B2"}</button>
+              <button onClick={() => onMove(columnId, task.id, 1)} title="Move down"
+                style={{ background: "none", border: "none", cursor: "pointer", fontSize: isMobile ? 14 : 11, padding: "0 1px", lineHeight: 1, color: "var(--text-muted)" }}>{"\u25BC"}</button>
+            </>
+          )}
           <button onClick={() => setShowCatPicker(!showCatPicker)} title="Change category"
             style={{ background: "none", border: "none", cursor: "pointer", fontSize: 11, padding: 0, lineHeight: 1, color: "var(--text-muted)" }}>{"\u{1F3A8}"}</button>
           <button onClick={() => onDelete(columnId, task.id)} title="Remove"
@@ -497,7 +505,7 @@ function DropZone({ onDrop }) {
 }
 
 /* ─── Day Section ─── */
-function DaySection({ dayInfo, columnId, tasks, categories, onDragStart, onDrop, onToggle, onDelete, onEdit, onAdd, onChangeCategory, isMobile }) {
+function DaySection({ dayInfo, columnId, tasks, categories, onDragStart, onDrop, onToggle, onDelete, onEdit, onAdd, onChangeCategory, isMobile, onMove }) {
   const [dragOver, setDragOver] = useState(false);
   const [adding, setAdding] = useState(false);
   const [newText, setNewText] = useState("");
@@ -549,12 +557,12 @@ function DaySection({ dayInfo, columnId, tasks, categories, onDragStart, onDrop,
         {incompleteTasks.map((task, idx) => (
           <div key={task.id}>
             <DropZone onDrop={(e) => handleDropAtIndex(e, task.id)} />
-            <TaskCard task={task} columnId={columnId} categories={categories} onDragStart={onDragStart} onToggle={onToggle} onDelete={onDelete} onEdit={onEdit} onChangeCategory={onChangeCategory} isMobile={isMobile} />
+            <TaskCard task={task} columnId={columnId} categories={categories} onDragStart={onDragStart} onToggle={onToggle} onDelete={onDelete} onEdit={onEdit} onChangeCategory={onChangeCategory} isMobile={isMobile} onMove={onMove} />
           </div>
         ))}
         <DropZone onDrop={(e) => handleDropAtIndex(e, null)} />
         {doneTasks.length > 0 && doneTasks.map((task) => (
-          <TaskCard key={task.id} task={task} columnId={columnId} categories={categories} onDragStart={onDragStart} onToggle={onToggle} onDelete={onDelete} onEdit={onEdit} onChangeCategory={onChangeCategory} isMobile={isMobile} />
+          <TaskCard key={task.id} task={task} columnId={columnId} categories={categories} onDragStart={onDragStart} onToggle={onToggle} onDelete={onDelete} onEdit={onEdit} onChangeCategory={onChangeCategory} isMobile={isMobile} onMove={onMove} />
         ))}
       </div>
 
@@ -583,7 +591,7 @@ function DaySection({ dayInfo, columnId, tasks, categories, onDragStart, onDrop,
 }
 
 /* ─── Day Column (horizontal layout) ─── */
-function DayColumn({ dayInfo, columnId, tasks, categories, onDragStart, onDrop, onToggle, onDelete, onEdit, onAdd, onChangeCategory, colWidth }) {
+function DayColumn({ dayInfo, columnId, tasks, categories, onDragStart, onDrop, onToggle, onDelete, onEdit, onAdd, onChangeCategory, colWidth, onMove }) {
   const [dragOver, setDragOver] = useState(false);
   const [adding, setAdding] = useState(false);
   const [newText, setNewText] = useState("");
@@ -625,7 +633,7 @@ function DayColumn({ dayInfo, columnId, tasks, categories, onDragStart, onDrop, 
         {incompleteTasks.map((task, idx) => (
           <div key={task.id}>
             <DropZone onDrop={(e) => handleDropAtIndex(e, task.id)} />
-            <TaskCard task={task} columnId={columnId} categories={categories} onDragStart={onDragStart} onToggle={onToggle} onDelete={onDelete} onEdit={onEdit} onChangeCategory={onChangeCategory} />
+            <TaskCard task={task} columnId={columnId} categories={categories} onDragStart={onDragStart} onToggle={onToggle} onDelete={onDelete} onEdit={onEdit} onChangeCategory={onChangeCategory} onMove={onMove} />
           </div>
         ))}
         <DropZone onDrop={(e) => handleDropAtIndex(e, null)} />
@@ -635,7 +643,7 @@ function DayColumn({ dayInfo, columnId, tasks, categories, onDragStart, onDrop, 
               <span style={{ background: isToday ? "rgba(180,140,80,0.06)" : "var(--bg)", padding: "0 3px", position: "relative", top: -5 }}>done</span>
             </div>
             {doneTasks.map((task) => (
-              <TaskCard key={task.id} task={task} columnId={columnId} categories={categories} onDragStart={onDragStart} onToggle={onToggle} onDelete={onDelete} onEdit={onEdit} onChangeCategory={onChangeCategory} />
+              <TaskCard key={task.id} task={task} columnId={columnId} categories={categories} onDragStart={onDragStart} onToggle={onToggle} onDelete={onDelete} onEdit={onEdit} onChangeCategory={onChangeCategory} onMove={onMove} />
             ))}
           </>
         )}
@@ -686,9 +694,9 @@ function FutureSidebar({ futureTasks, onAddFuture, onDeleteFuture }) {
           <div style={{ flex: 1, overflowY: "auto", padding: "8px 8px" }}>
             {sortedDates.map((date) => {
               const label = new Date(date + "T12:00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
-              return (<div key={date} style={{ marginBottom: 8 }}><div style={{ fontSize: 9, fontWeight: 600, color: "var(--text-muted)", marginBottom: 2 }}>{label}</div>
+              return (<div key={date} style={{ marginBottom: 8 }}><div style={{ fontSize: 11, fontWeight: 600, color: "var(--text-muted)", marginBottom: 3 }}>{label}</div>
                 {grouped[date].map((task) => (<div key={task.id} draggable onDragStart={(e) => { e.dataTransfer.setData("text/plain", JSON.stringify({ taskId: task.id, from: "future", futureText: task.text })); }}
-                  style={{ background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 4, padding: "4px 6px", marginBottom: 2, fontSize: 10, cursor: "grab", display: "flex", justifyContent: "space-between", alignItems: "center" }}
+                  style={{ background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 4, padding: "5px 7px", marginBottom: 3, fontSize: 12, cursor: "grab", display: "flex", justifyContent: "space-between", alignItems: "center" }}
                   onMouseEnter={(e) => { e.currentTarget.style.boxShadow = "0 2px 6px rgba(0,0,0,0.1)"; }} onMouseLeave={(e) => { e.currentTarget.style.boxShadow = "none"; }}>
                   <span style={{ flex: 1, wordBreak: "break-word" }}>{task.text}</span>
                   <button onClick={() => onDeleteFuture(task.id)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-faint)", fontSize: 11, padding: 0, marginLeft: 3, fontWeight: 600, lineHeight: 1 }} onMouseEnter={(e) => (e.target.style.color = "#c44")} onMouseLeave={(e) => (e.target.style.color = "#bbb")}>&times;</button>
@@ -731,6 +739,9 @@ export default function Planner({ data, onSave, onSaveFuture, onSaveNotebooks, o
   const [laterHeight, setLaterHeight] = useState(50);
   const [notesHeight, setNotesHeight] = useState(70);
   const [colWidth, setColWidth] = useState(160);
+  const [laterOpen, setLaterOpen] = useState(true);
+  const [notesOpen, setNotesOpen] = useState(true);
+  const [habitsOpen, setHabitsOpen] = useState(true);
   const notebooks = data.notebooks || [];
   const journal = data.journal || {};
   const contacts = data.contacts || [];
@@ -858,27 +869,43 @@ export default function Planner({ data, onSave, onSaveFuture, onSaveNotebooks, o
       const newTasks = { ...tasks };
       const detectedCat = autoDetectCategory(task.text, categories);
       const newTask = makeTask(task.text, { category: detectedCat });
-      if (beforeTaskId) { const idx = newTasks[toCol].findIndex((t) => t.id === beforeTaskId); newTasks[toCol] = [...newTasks[toCol]]; newTasks[toCol].splice(idx, 0, newTask); }
-      else { newTasks[toCol] = [...newTasks[toCol], newTask]; }
+      if (beforeTaskId) { const toList = [...(newTasks[toCol] || [])]; const idx = toList.findIndex((t) => t.id === beforeTaskId); toList.splice(idx, 0, newTask); newTasks[toCol] = toList; }
+      else { newTasks[toCol] = [...(newTasks[toCol] || []), newTask]; }
       const newFuture = futureTasks.filter((t) => t.id !== taskId);
       onSave({ ...data, tasks: newTasks, futureTasks: newFuture });
       onSaveFuture(newFuture);
       return;
     }
-    const newTasks = { ...tasks };
-    const fromList = [...newTasks[fromCol]];
+    const newTasks = {};
+    // Deep copy all columns
+    Object.keys(tasks).forEach((k) => { newTasks[k] = [...tasks[k]]; });
+    const fromList = newTasks[fromCol];
     const taskIdx = fromList.findIndex((t) => t.id === taskId);
     if (taskIdx === -1) return;
     const [task] = fromList.splice(taskIdx, 1);
-    // Auto-detect category if task has none or is "Other"
     if (!task.category || task.category === "cat_none") {
       task.category = autoDetectCategory(task.text, categories);
     }
-    newTasks[fromCol] = fromList;
-    if (beforeTaskId) { const toList = [...newTasks[toCol]]; const insertIdx = toList.findIndex((t) => t.id === beforeTaskId); toList.splice(insertIdx, 0, task); newTasks[toCol] = toList; }
-    else { newTasks[toCol] = [...newTasks[toCol], task]; }
+    const toList = newTasks[toCol];
+    if (beforeTaskId) {
+      const insertIdx = toList.findIndex((t) => t.id === beforeTaskId);
+      if (insertIdx !== -1) toList.splice(insertIdx, 0, task);
+      else toList.push(task);
+    } else { toList.push(task); }
     update({ tasks: newTasks });
   }, [data, tasks, futureTasks, categories]);
+
+  const moveTask = useCallback((col, taskId, direction) => {
+    const newTasks = {};
+    Object.keys(tasks).forEach((k) => { newTasks[k] = [...tasks[k]]; });
+    const list = newTasks[col];
+    const idx = list.findIndex((t) => t.id === taskId);
+    if (idx === -1) return;
+    const newIdx = idx + direction;
+    if (newIdx < 0 || newIdx >= list.length) return;
+    [list[idx], list[newIdx]] = [list[newIdx], list[idx]];
+    update({ tasks: newTasks });
+  }, [data, tasks]);
 
   const toggleDone = useCallback((col, id) => {
     const task = tasks[col].find((t) => t.id === id);
@@ -960,11 +987,11 @@ export default function Planner({ data, onSave, onSaveFuture, onSaveNotebooks, o
 
       {/* Desktop: left sidebar nav */}
       {!isMobile && (
-        <div style={{ width: 56, minWidth: 56, background: "var(--bg-surface)", borderRight: "1px solid var(--border)", display: "flex", flexDirection: "column", alignItems: "center", padding: "8px 0", gap: 2 }}>
+        <div style={{ width: 68, minWidth: 68, background: "var(--bg-surface)", borderRight: "1px solid var(--border)", display: "flex", flexDirection: "column", alignItems: "center", padding: "8px 0", gap: 2 }}>
           {navItems.map((item) => (
             <button key={item.id} onClick={() => setActiveView(item.id)} title={item.label}
-              style={{ width: 42, height: 42, borderRadius: 8, border: "none", cursor: "pointer", background: activeView === item.id ? "var(--border)" : "transparent", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", fontSize: 16, color: activeView === item.id ? "var(--text)" : "var(--text-muted)", transition: "all 0.15s", gap: 1 }}>
-              <span>{item.icon}</span><span style={{ fontSize: 7, fontWeight: 600, letterSpacing: 0.3 }}>{item.label}</span>
+              style={{ width: 56, height: 48, borderRadius: 8, border: "none", cursor: "pointer", background: activeView === item.id ? "var(--border)" : "transparent", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", fontSize: 18, color: activeView === item.id ? "var(--text)" : "var(--text-muted)", transition: "all 0.15s", gap: 2 }}>
+              <span>{item.icon}</span><span style={{ fontSize: 9, fontWeight: 600, letterSpacing: 0.3 }}>{item.label}</span>
             </button>
           ))}
           <div style={{ flex: 1 }} />
@@ -1003,38 +1030,45 @@ export default function Planner({ data, onSave, onSaveFuture, onSaveNotebooks, o
               <span style={{ fontSize: isMobile ? 13 : 11, color: "var(--text-muted)" }}>{weekDates[0]?.date} , {weekDates[6]?.date}</span>
             </div>
             {!isMobile && (
+              <div style={{ display: "flex", alignItems: "center", borderBottom: "1px solid var(--border)", padding: "0 12px" }}>
+                <button onClick={() => setHabitsOpen(!habitsOpen)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", fontSize: 10, padding: "6px 0", display: "flex", alignItems: "center", gap: 4 }}>
+                  <span style={{ fontSize: 8, transition: "transform 0.2s", transform: habitsOpen ? "rotate(90deg)" : "rotate(0deg)", display: "inline-block" }}>{"\u25B6"}</span>
+                  <span style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, fontSize: 9, letterSpacing: 1, textTransform: "uppercase" }}>Habits</span>
+                </button>
+              </div>
+            )}
+            {!isMobile && habitsOpen && (
               <HabitsTracker dailyHabits={dailyHabits} weeklyHabits={weeklyHabits} onToggleDaily={toggleDaily} onToggleWeekly={toggleWeekly}
                 onAddDaily={addDailyHabit} onAddWeekly={addWeeklyHabit} onDeleteDaily={deleteDaily} onDeleteWeekly={deleteWeekly} onEditDaily={editDaily} onEditWeekly={editWeekly} onReorderDaily={reorderDaily} onReorderWeekly={reorderWeekly} />
             )}
             <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
-              <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+              <div style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column" }}>
                 {(isMobile || layout === "vertical") ? (
-                  <div style={{ flex: 1, overflowY: "auto", padding: isMobile ? "4px 4px" : "4px 8px", display: "flex", flexDirection: "column", gap: 2 }}>
+                  <div style={{ padding: isMobile ? "4px 4px" : "4px 8px", display: "flex", flexDirection: "column", gap: 2 }}>
                     {DAYS.map((day, i) => (
                       <DaySection key={day} dayInfo={weekDates[i]} columnId={day.toLowerCase()} tasks={tasks[day.toLowerCase()]} categories={categories}
-                        onDragStart={() => {}} onDrop={handleDrop} onToggle={toggleDone} onDelete={deleteTask} onEdit={editTask} onAdd={addTask} onChangeCategory={changeCategory} isMobile={isMobile} />
+                        onDragStart={() => {}} onDrop={handleDrop} onToggle={toggleDone} onDelete={deleteTask} onEdit={editTask} onAdd={addTask} onChangeCategory={changeCategory} isMobile={isMobile} onMove={moveTask} />
                     ))}
-                    {/* On mobile, show Later inline at the bottom of the scroll instead of a separate resize section */}
                     {isMobile && (
                       <DaySection dayInfo={null} columnId="later" tasks={tasks.later} categories={categories} onDragStart={() => {}} onDrop={handleDrop}
-                        onToggle={toggleDone} onDelete={deleteTask} onEdit={editTask} onAdd={addTask} onChangeCategory={changeCategory} isMobile={isMobile} />
+                        onToggle={toggleDone} onDelete={deleteTask} onEdit={editTask} onAdd={addTask} onChangeCategory={changeCategory} isMobile={isMobile} onMove={moveTask} />
                     )}
                   </div>
                 ) : (
-                  <div style={{ flex: 1, overflow: "auto", padding: "8px 6px" }}>
+                  <div style={{ overflow: "auto", padding: "8px 6px" }}>
                     <div style={{ display: "flex", gap: 0, minWidth: colWidth * 7 + 30, alignItems: "flex-start" }}>
                       {DAYS.map((day, i) => (
                         <div key={day} style={{ display: "flex" }}>
                           <DayColumn dayInfo={weekDates[i]} columnId={day.toLowerCase()} tasks={tasks[day.toLowerCase()]} categories={categories}
-                            onDragStart={() => {}} onDrop={handleDrop} onToggle={toggleDone} onDelete={deleteTask} onEdit={editTask} onAdd={addTask} onChangeCategory={changeCategory} colWidth={colWidth} />
+                            onDragStart={() => {}} onDrop={handleDrop} onToggle={toggleDone} onDelete={deleteTask} onEdit={editTask} onAdd={addTask} onChangeCategory={changeCategory} colWidth={colWidth} onMove={moveTask} />
                           {i < 6 && (
                             <div onMouseDown={(e) => {
                               e.preventDefault();
                               const startX = e.clientX;
                               const startW = colWidth;
-                              const onMove = (e2) => { setColWidth(Math.max(100, Math.min(400, startW + (e2.clientX - startX) / 7))); };
-                              const onUp = () => { document.removeEventListener("mousemove", onMove); document.removeEventListener("mouseup", onUp); document.body.style.cursor = ""; document.body.style.userSelect = ""; };
-                              document.addEventListener("mousemove", onMove);
+                              const onMoveCol = (e2) => { setColWidth(Math.max(100, Math.min(400, startW + (e2.clientX - startX) / 7))); };
+                              const onUp = () => { document.removeEventListener("mousemove", onMoveCol); document.removeEventListener("mouseup", onUp); document.body.style.cursor = ""; document.body.style.userSelect = ""; };
+                              document.addEventListener("mousemove", onMoveCol);
                               document.addEventListener("mouseup", onUp);
                               document.body.style.cursor = "col-resize";
                               document.body.style.userSelect = "none";
@@ -1047,23 +1081,40 @@ export default function Planner({ data, onSave, onSaveFuture, onSaveNotebooks, o
                     </div>
                   </div>
                 )}
+                {/* Collapsible Later section */}
                 {!isMobile && (
-                  <>
-                    <ResizeHandle currentHeight={laterHeight} minHeight={55} maxHeight={400} onHeightChange={setLaterHeight} />
-                    <div style={{ height: laterHeight, flexShrink: 0, padding: "0px 8px", overflowY: "auto", background: "var(--bg-surface)", borderTop: "1px solid var(--border)" }}>
-                      {layout === "vertical" ? (
-                        <DaySection dayInfo={null} columnId="later" tasks={tasks.later} categories={categories} onDragStart={() => {}} onDrop={handleDrop}
-                          onToggle={toggleDone} onDelete={deleteTask} onEdit={editTask} onAdd={addTask} onChangeCategory={changeCategory} />
-                      ) : (
-                        <DayColumn dayInfo={null} columnId="later" tasks={tasks.later} categories={categories} onDragStart={() => {}} onDrop={handleDrop}
-                          onToggle={toggleDone} onDelete={deleteTask} onEdit={editTask} onAdd={addTask} onChangeCategory={changeCategory} colWidth="100%" />
-                      )}
-                    </div>
-                    <ResizeHandle currentHeight={notesHeight} minHeight={36} maxHeight={300} onHeightChange={setNotesHeight} />
-                    <div style={{ height: notesHeight, flexShrink: 0, background: "var(--bg)", borderTop: "1px solid var(--border)" }}>
-                      <NotesSection notes={notes} onChange={(val) => { update({ notes: val }); onSaveSettings({ categories, layout, notes: val, darkMode }); }} />
-                    </div>
-                  </>
+                  <div style={{ borderTop: "1px solid var(--border)", background: "var(--bg-surface)", flexShrink: 0 }}>
+                    <button onClick={() => setLaterOpen(!laterOpen)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", fontSize: 10, padding: "6px 12px", display: "flex", alignItems: "center", gap: 4, width: "100%", textAlign: "left" }}>
+                      <span style={{ fontSize: 8, transition: "transform 0.2s", transform: laterOpen ? "rotate(90deg)" : "rotate(0deg)", display: "inline-block" }}>{"\u25B6"}</span>
+                      <span style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, fontSize: 9, letterSpacing: 1, textTransform: "uppercase" }}>Later</span>
+                      <span style={{ fontSize: 9, color: "var(--text-faint)" }}>({tasks.later?.length || 0})</span>
+                    </button>
+                    {laterOpen && (
+                      <div style={{ padding: "0px 8px 6px" }}>
+                        {layout === "vertical" ? (
+                          <DaySection dayInfo={null} columnId="later" tasks={tasks.later} categories={categories} onDragStart={() => {}} onDrop={handleDrop}
+                            onToggle={toggleDone} onDelete={deleteTask} onEdit={editTask} onAdd={addTask} onChangeCategory={changeCategory} onMove={moveTask} />
+                        ) : (
+                          <DayColumn dayInfo={null} columnId="later" tasks={tasks.later} categories={categories} onDragStart={() => {}} onDrop={handleDrop}
+                            onToggle={toggleDone} onDelete={deleteTask} onEdit={editTask} onAdd={addTask} onChangeCategory={changeCategory} colWidth="100%" onMove={moveTask} />
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+                {/* Collapsible Notes section */}
+                {!isMobile && (
+                  <div style={{ borderTop: "1px solid var(--border)", flexShrink: 0 }}>
+                    <button onClick={() => setNotesOpen(!notesOpen)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", fontSize: 10, padding: "6px 12px", display: "flex", alignItems: "center", gap: 4, width: "100%", textAlign: "left" }}>
+                      <span style={{ fontSize: 8, transition: "transform 0.2s", transform: notesOpen ? "rotate(90deg)" : "rotate(0deg)", display: "inline-block" }}>{"\u25B6"}</span>
+                      <span style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, fontSize: 9, letterSpacing: 1, textTransform: "uppercase" }}>Quick Notes</span>
+                    </button>
+                    {notesOpen && (
+                      <div style={{ height: 80 }}>
+                        <NotesSection notes={notes} onChange={(val) => { update({ notes: val }); onSaveSettings({ categories, layout, notes: val, darkMode }); }} />
+                      </div>
+                    )}
+                  </div>
                 )}
               </div>
               {!isMobile && <FutureSidebar futureTasks={futureTasks} onAddFuture={addFuture} onDeleteFuture={deleteFuture} />}
