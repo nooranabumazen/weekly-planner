@@ -252,6 +252,27 @@ function RichEditor({ content, onChange, userId }) {
         return;
       }
     }
+    // Fix pasted tables: add visible borders
+    const html = e.clipboardData?.getData("text/html");
+    if (html && html.includes("<table")) {
+      e.preventDefault();
+      const div = document.createElement("div");
+      div.innerHTML = html;
+      div.querySelectorAll("table").forEach((t) => {
+        t.style.borderCollapse = "collapse";
+        t.style.margin = "8px 0";
+        t.style.tableLayout = "auto";
+        t.removeAttribute("width");
+        t.style.width = "";
+      });
+      div.querySelectorAll("td, th").forEach((cell) => {
+        cell.style.border = "1px solid #999";
+        cell.style.padding = "6px 8px";
+        cell.style.minWidth = "40px";
+      });
+      document.execCommand("insertHTML", false, div.innerHTML);
+      handleInput();
+    }
   };
 
   const insertImage = () => {
@@ -304,7 +325,7 @@ function RichEditor({ content, onChange, userId }) {
       `}} />
       <div ref={editorRef} contentEditable onInput={handleInput} onBlur={handleInput} onPaste={handlePaste}
         suppressContentEditableWarning
-        style={{ flex: 1, overflowY: "auto", padding: "10px 12px", fontSize: 13, lineHeight: 1.6, outline: "none", color: "var(--text)", fontFamily: "'DM Sans', sans-serif", minHeight: 100 }} />
+        style={{ flex: 1, overflowY: "auto", padding: "14px 24px", fontSize: 13, lineHeight: 1.6, outline: "none", color: "var(--text)", fontFamily: "'DM Sans', sans-serif", minHeight: 100 }} />
     </div>
   );
 }
