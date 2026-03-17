@@ -352,11 +352,32 @@ function HabitsTracker({ dailyHabits, weeklyHabits, onToggleDaily, onToggleWeekl
     setDragHabit(null);
   };
 
+  // Measure the longest daily habit name to set a fixed column width
+  const nameColWidth = (() => {
+    if (typeof document === "undefined" || dailyHabits.length === 0) return 120;
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d");
+    ctx.font = "12px 'DM Sans', sans-serif";
+    let maxW = 0;
+    for (const h of dailyHabits) {
+      const cnt = Object.values(h.checks).filter(Boolean).length;
+      const text = h.name + " " + cnt + "/7";
+      const w = ctx.measureText(text).width;
+      if (w > maxW) maxW = w;
+    }
+    return Math.ceil(maxW) + 16; // 16px padding buffer
+  })();
+
   return (
     <div ref={containerRef} style={{ borderBottom: "1px solid var(--border)", padding: "10px 12px", display: "flex", overflow: "hidden" }}>
       <div style={{ flex: `0 0 ${splitPct}%`, minWidth: 0, overflow: "hidden", paddingRight: 4 }}>
         <div style={sLabel}>Daily Habits</div>
         <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+          <div style={{ display: "flex", alignItems: "center" }}>
+            <div style={{ width: nameColWidth, flexShrink: 0 }} />
+            {DAYS.map((d) => (<div key={d} style={{ width: 28, textAlign: "center", fontSize: 9, fontWeight: 600, color: "var(--text-muted)", letterSpacing: 0.5, fontFamily: "'JetBrains Mono', monospace", flexShrink: 0 }}>{d.slice(0,2)}</div>))}
+            <div style={{ width: 18, flexShrink: 0 }} />
+          </div>
           {dailyHabits.map((h) => {
             const cnt = Object.values(h.checks).filter(Boolean).length;
             return (
@@ -365,12 +386,12 @@ function HabitsTracker({ dailyHabits, weeklyHabits, onToggleDaily, onToggleWeekl
                 {editingHabit?.id === h.id && editingHabit?.type === "daily" ? (
                   <input ref={editRef} value={editText} onChange={(e) => setEditText(e.target.value)} onBlur={saveEdit}
                     onKeyDown={(e) => { if (e.key === "Enter") saveEdit(); if (e.key === "Escape") setEditingHabit(null); }}
-                    style={{ minWidth: 80, maxWidth: 200, border: "1px solid var(--border)", borderRadius: 3, padding: "1px 4px", fontSize: 12, outline: "none", background: "var(--input-bg)", color: "var(--text)", marginRight: 4 }} />
+                    style={{ width: nameColWidth, flexShrink: 0, border: "1px solid var(--border)", borderRadius: 3, padding: "1px 4px", fontSize: 12, outline: "none", background: "var(--input-bg)", color: "var(--text)", boxSizing: "border-box" }} />
                 ) : (
                   <div onDoubleClick={() => { setEditingHabit({ id: h.id, type: "daily" }); setEditText(h.name); }}
-                    style={{ fontSize: 12, color: "var(--text)", paddingRight: 6, wordBreak: "break-word", lineHeight: 1.3, cursor: "grab", flexShrink: 1, minWidth: 0 }}>{h.name}<span style={{ fontSize: 9, color: "var(--text-faint)", marginLeft: 4 }}>{cnt}/7</span></div>
+                    style={{ width: nameColWidth, flexShrink: 0, fontSize: 12, color: "var(--text)", paddingRight: 6, wordBreak: "break-word", lineHeight: 1.3, cursor: "grab" }}>{h.name}<span style={{ fontSize: 9, color: "var(--text-faint)", marginLeft: 4 }}>{cnt}/7</span></div>
                 )}
-                {DAYS.map((d) => (<div key={d} style={{ width: 22, display: "flex", justifyContent: "center", flexShrink: 0 }}><div onClick={() => onToggleDaily(h.id, d.toLowerCase())} style={chk(h.checks[d.toLowerCase()])}>{h.checks[d.toLowerCase()] && "\u2713"}</div></div>))}
+                {DAYS.map((d) => (<div key={d} style={{ width: 28, display: "flex", justifyContent: "center", flexShrink: 0 }}><div onClick={() => onToggleDaily(h.id, d.toLowerCase())} style={chk(h.checks[d.toLowerCase()])}>{h.checks[d.toLowerCase()] && "\u2713"}</div></div>))}
                 <button onClick={() => onDeleteDaily(h.id)} style={{ width: 18, flexShrink: 0, background: "none", border: "none", cursor: "pointer", color: "var(--text-faint)", fontSize: 13, padding: 0, fontWeight: 600 }} onMouseEnter={(e) => (e.target.style.color = "#c44")} onMouseLeave={(e) => (e.target.style.color = "var(--text-faint)")}>&times;</button>
               </div>);
           })}
