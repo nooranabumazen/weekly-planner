@@ -330,12 +330,13 @@ function RichEditor({ content, onChange, userId }) {
   );
 }
 
-export default function NotebooksPanel({ notebooks, onChange, userId }) {
+export default function NotebooksPanel({ notebooks, onChange, userId, isMobile }) {
   const [activeTab, setActiveTab] = useState(notebooks?.[0]?.id || null);
   const [renaming, setRenaming] = useState(null);
   const [renameText, setRenameText] = useState("");
   const [dragId, setDragId] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [mobileEditing, setMobileEditing] = useState(false);
   const renameRef = useRef(null);
 
   useEffect(() => { if (renaming && renameRef.current) renameRef.current.focus(); }, [renaming]);
@@ -355,13 +356,14 @@ export default function NotebooksPanel({ notebooks, onChange, userId }) {
     const id = "nb" + Date.now();
     onChange([...notebooks, { id, title: "New Note", content: "<p></p>" }]);
     setActiveTab(id);
+    if (isMobile) setMobileEditing(true);
   };
 
   const deleteNotebook = (id) => {
     if (notebooks.length <= 1) return;
     const filtered = notebooks.filter((n) => n.id !== id);
     onChange(filtered);
-    if (activeTab === id) setActiveTab(filtered[0]?.id);
+    if (activeTab === id) { setActiveTab(filtered[0]?.id); if (isMobile) setMobileEditing(false); }
   };
 
   const startRename = (nb) => { setRenaming(nb.id); setRenameText(nb.title); };
@@ -370,7 +372,6 @@ export default function NotebooksPanel({ notebooks, onChange, userId }) {
     setRenaming(null);
   };
 
-  // Drag to reorder
   const handleNoteDragStart = (id) => setDragId(id);
   const handleNoteDrop = (targetId) => {
     if (!dragId || dragId === targetId) { setDragId(null); return; }
@@ -382,6 +383,43 @@ export default function NotebooksPanel({ notebooks, onChange, userId }) {
     onChange(items);
     setDragId(null);
   };
+
+  const selectNote = (id) => { setActiveTab(id); if (isMobile) setMobileEditing(true); };
+
+  // Mobile: show either list or editor
+  if (isMobile) {
+    if (mobileEditing && activeNotebook) {
+      return (
+        <div style={{ display: "flex", flexDirection: "column", flex: 1, overflow: "hidden" }}>
+          <div style={{ padding: "8px 12px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", gap: 8 }}>
+            <button onClick={() => setMobileEditing(false)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--accent)", fontSize: 14, fontWeight: 600, padding: 0 }}>{"\u25C0"} Notes</button>
+            <span style={{ flex: 1, fontSize: 15, fontWeight: 600, color: "var(--text)", textAlign: "center" }}>{activeNotebook.title}</span>
+          </div>
+          <RichEditor key={activeNotebook.id} content={activeNotebook.content} onChange={updateContent} userId={userId} />
+        </div>
+      );
+    }
+    return (
+      <div style={{ display: "flex", flexDirection: "column", flex: 1, overflow: "hidden" }}>
+        <div style={{ padding: "10px 12px", borderBottom: "1px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <span style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, fontSize: 12, color: "var(--text-muted)", letterSpacing: 1.5, textTransform: "uppercase" }}>Notes</span>
+          <button onClick={addNotebook} style={{ background: "none", border: "1px solid var(--border)", borderRadius: 4, cursor: "pointer", color: "var(--text-muted)", fontSize: 18, width: 28, height: 28, display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}>+</button>
+        </div>
+        <div style={{ flex: 1, overflowY: "auto", padding: "4px 0" }}>
+          {notebooks.map((nb) => (
+            <div key={nb.id} onClick={() => selectNote(nb.id)}
+              style={{ padding: "12px 16px", cursor: "pointer", fontSize: 16, borderBottom: "1px solid var(--border-light)", color: "var(--text)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <span>{nb.title}</span>
+              {notebooks.length > 1 && (
+                <button onClick={(e) => { e.stopPropagation(); deleteNotebook(nb.id); }}
+                  style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-faint)", fontSize: 18, padding: "0 4px" }}>&times;</button>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
