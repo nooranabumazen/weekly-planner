@@ -110,12 +110,62 @@ function RichEditor({ content, onChange, userId }) {
   };
 
   const insertTable = () => {
-    const table = `<table style="border-collapse:collapse;width:100%;margin:8px 0;">
-      <tr><td style="border:1px solid #999;padding:6px 8px;min-width:60px;">&nbsp;</td><td style="border:1px solid #999;padding:6px 8px;min-width:60px;">&nbsp;</td><td style="border:1px solid #999;padding:6px 8px;min-width:60px;">&nbsp;</td></tr>
-      <tr><td style="border:1px solid #999;padding:6px 8px;">&nbsp;</td><td style="border:1px solid #999;padding:6px 8px;">&nbsp;</td><td style="border:1px solid #999;padding:6px 8px;">&nbsp;</td></tr>
-      <tr><td style="border:1px solid #999;padding:6px 8px;">&nbsp;</td><td style="border:1px solid #999;padding:6px 8px;">&nbsp;</td><td style="border:1px solid #999;padding:6px 8px;">&nbsp;</td></tr>
+    const tid = "t" + Date.now();
+    const table = `<table data-tid="${tid}" style="border-collapse:collapse;width:100%;margin:8px 0;table-layout:fixed;">
+      <tr><td style="border:1px solid #999;padding:6px 8px;min-width:40px;">&nbsp;</td><td style="border:1px solid #999;padding:6px 8px;min-width:40px;">&nbsp;</td></tr>
+      <tr><td style="border:1px solid #999;padding:6px 8px;">&nbsp;</td><td style="border:1px solid #999;padding:6px 8px;">&nbsp;</td></tr>
     </table><p></p>`;
     exec("insertHTML", table);
+  };
+
+  const addTableRow = () => {
+    const sel = window.getSelection();
+    const td = sel?.anchorNode?.closest ? sel.anchorNode.closest("td") : sel?.anchorNode?.parentElement?.closest("td");
+    const table = td?.closest("table");
+    if (!table) return;
+    const cols = table.rows[0]?.cells.length || 2;
+    const row = table.insertRow(-1);
+    for (let i = 0; i < cols; i++) {
+      const cell = row.insertCell(-1);
+      cell.innerHTML = "&nbsp;";
+      cell.style.cssText = "border:1px solid #999;padding:6px 8px;min-width:40px;";
+    }
+    handleInput();
+  };
+
+  const addTableCol = () => {
+    const sel = window.getSelection();
+    const td = sel?.anchorNode?.closest ? sel.anchorNode.closest("td") : sel?.anchorNode?.parentElement?.closest("td");
+    const table = td?.closest("table");
+    if (!table) return;
+    for (let r = 0; r < table.rows.length; r++) {
+      const cell = table.rows[r].insertCell(-1);
+      cell.innerHTML = "&nbsp;";
+      cell.style.cssText = "border:1px solid #999;padding:6px 8px;min-width:40px;";
+    }
+    handleInput();
+  };
+
+  const removeTableRow = () => {
+    const sel = window.getSelection();
+    const td = sel?.anchorNode?.closest ? sel.anchorNode.closest("td") : sel?.anchorNode?.parentElement?.closest("td");
+    const tr = td?.closest("tr");
+    const table = td?.closest("table");
+    if (!table || !tr) return;
+    if (table.rows.length <= 1) { table.remove(); } else { tr.remove(); }
+    handleInput();
+  };
+
+  const removeTableCol = () => {
+    const sel = window.getSelection();
+    const td = sel?.anchorNode?.closest ? sel.anchorNode.closest("td") : sel?.anchorNode?.parentElement?.closest("td");
+    const table = td?.closest("table");
+    if (!table || !td) return;
+    const colIdx = td.cellIndex;
+    if (table.rows[0].cells.length <= 1) { table.remove(); } else {
+      for (let r = 0; r < table.rows.length; r++) { if (table.rows[r].cells[colIdx]) table.rows[r].deleteCell(colIdx); }
+    }
+    handleInput();
   };
 
   const insertLink = () => {
@@ -215,10 +265,19 @@ function RichEditor({ content, onChange, userId }) {
         <ToolbarButton icon={<span style={{ fontSize: 12 }}>&#128279;</span>} title="Insert link" onClick={insertLink} />
         <ToolbarButton icon={<span style={{ fontSize: 12 }}>&#128444;</span>} title="Insert image" onClick={insertImage} />
         <ToolbarButton icon={<span style={{ fontSize: 10, fontFamily: "monospace" }}>&#9638;</span>} title="Insert table" onClick={insertTable} />
+        <ToolbarButton icon={<span style={{ fontSize: 9, fontFamily: "monospace" }}>+R</span>} title="Add row (click in table first)" onClick={addTableRow} />
+        <ToolbarButton icon={<span style={{ fontSize: 9, fontFamily: "monospace" }}>+C</span>} title="Add column (click in table first)" onClick={addTableCol} />
+        <ToolbarButton icon={<span style={{ fontSize: 9, fontFamily: "monospace", color: "#c44" }}>{"\u2212"}R</span>} title="Remove row" onClick={removeTableRow} />
+        <ToolbarButton icon={<span style={{ fontSize: 9, fontFamily: "monospace", color: "#c44" }}>{"\u2212"}C</span>} title="Remove column" onClick={removeTableCol} />
         <div style={{ width: 1, height: 18, background: "#e0ddd6", margin: "0 3px" }} />
         <ToolbarButton icon={<span style={{ fontSize: 10 }}>&bull; &ndash;</span>} title="Bullet list" onClick={() => exec("insertUnorderedList")} />
         <ToolbarButton icon={<span style={{ fontSize: 10 }}>1. &ndash;</span>} title="Numbered list" onClick={() => exec("insertOrderedList")} />
       </div>
+      <style dangerouslySetInnerHTML={{ __html: `
+        [contenteditable] table { table-layout: auto; }
+        [contenteditable] td { resize: horizontal; overflow: auto; min-width: 40px; }
+        [contenteditable] td:hover { outline: 1px dashed #8B6914; outline-offset: -1px; }
+      `}} />
       <div ref={editorRef} contentEditable onInput={handleInput} onBlur={handleInput} onPaste={handlePaste}
         suppressContentEditableWarning
         style={{ flex: 1, overflowY: "auto", padding: "10px 12px", fontSize: 13, lineHeight: 1.6, outline: "none", color: "var(--text)", fontFamily: "'DM Sans', sans-serif", minHeight: 100 }} />

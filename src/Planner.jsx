@@ -765,6 +765,60 @@ export default function Planner({ data, onSave, onSaveFuture, onSaveNotebooks, o
     onSaveFuture(remainingFuture);
   }, []); // Run once on load
 
+  // Auto-generate birthday reminders from contacts (2 weeks before)
+  useEffect(() => {
+    if (!contacts || contacts.length === 0 || !futureTasks) return;
+    const today = new Date();
+    const twoWeeksOut = new Date(today);
+    twoWeeksOut.setDate(today.getDate() + 14);
+
+    const monthNames = { january: 0, february: 1, march: 2, april: 3, may: 4, june: 5, july: 6, august: 7, september: 8, october: 9, november: 10, december: 11,
+      jan: 0, feb: 1, mar: 2, apr: 3, jun: 5, jul: 6, aug: 7, sep: 8, oct: 9, nov: 10, dec: 11 };
+
+    const parseBirthday = (str) => {
+      if (!str) return null;
+      const s = str.trim().toLowerCase();
+      // Try "Month Day" like "March 15" or "Mar 15"
+      const match = s.match(/^([a-z]+)\s+(\d{1,2})/);
+      if (match) {
+        const m = monthNames[match[1]];
+        if (m !== undefined) return { month: m, day: parseInt(match[2]) };
+      }
+      // Try "DD/MM" or "MM/DD" - assume month/day
+      const slashMatch = s.match(/^(\d{1,2})[\/\-](\d{1,2})/);
+      if (slashMatch) return { month: parseInt(slashMatch[1]) - 1, day: parseInt(slashMatch[2]) };
+      return null;
+    };
+
+    const newReminders = [];
+    for (const c of contacts) {
+      const bd = parseBirthday(c.birthday);
+      if (!bd) continue;
+      // Check this year and next year
+      for (const year of [today.getFullYear(), today.getFullYear() + 1]) {
+        const bdDate = new Date(year, bd.month, bd.day);
+        const reminderDate = new Date(bdDate);
+        reminderDate.setDate(bdDate.getDate() - 14);
+        // If reminder falls within today to 3 months from now, and isn't already in futureTasks
+        const threeMonths = new Date(today);
+        threeMonths.setMonth(today.getMonth() + 3);
+        if (reminderDate >= today && reminderDate <= threeMonths) {
+          const dateStr = reminderDate.toISOString().split("T")[0];
+          const taskText = `\u{1F382} ${c.name}'s birthday (${c.birthday})`;
+          const alreadyExists = futureTasks.some((t) => t.text.includes(c.name) && t.text.includes("birthday"));
+          if (!alreadyExists) {
+            newReminders.push({ id: "bday" + Date.now() + "_" + Math.random().toString(36).slice(2, 5), text: taskText, date: dateStr });
+          }
+        }
+      }
+    }
+    if (newReminders.length > 0) {
+      const updated = [...futureTasks, ...newReminders];
+      update({ futureTasks: updated });
+      onSaveFuture(updated);
+    }
+  }, [contacts?.length]); // Re-run when contacts change
+
   const handleDrop = useCallback((fromCol, toCol, taskId, beforeTaskId) => {
     if (fromCol === "future") {
       const task = futureTasks.find((t) => t.id === taskId);
