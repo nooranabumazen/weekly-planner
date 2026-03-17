@@ -357,11 +357,6 @@ function HabitsTracker({ dailyHabits, weeklyHabits, onToggleDaily, onToggleWeekl
       <div style={{ flex: `0 0 ${splitPct}%`, minWidth: 0, overflow: "hidden", paddingRight: 4 }}>
         <div style={sLabel}>Daily Habits</div>
         <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
-          <div style={{ display: "flex", alignItems: "center" }}>
-            <div style={{ flex: 1, minWidth: 0 }} />
-            {DAYS.map((d) => (<div key={d} style={{ width: 28, textAlign: "center", fontSize: 9, fontWeight: 600, color: "var(--text-muted)", letterSpacing: 0.5, fontFamily: "'JetBrains Mono', monospace", flexShrink: 0 }}>{d.slice(0,2)}</div>))}
-            <div style={{ width: 18, flexShrink: 0 }} />
-          </div>
           {dailyHabits.map((h) => {
             const cnt = Object.values(h.checks).filter(Boolean).length;
             return (
@@ -370,12 +365,12 @@ function HabitsTracker({ dailyHabits, weeklyHabits, onToggleDaily, onToggleWeekl
                 {editingHabit?.id === h.id && editingHabit?.type === "daily" ? (
                   <input ref={editRef} value={editText} onChange={(e) => setEditText(e.target.value)} onBlur={saveEdit}
                     onKeyDown={(e) => { if (e.key === "Enter") saveEdit(); if (e.key === "Escape") setEditingHabit(null); }}
-                    style={{ flex: 1, minWidth: 0, border: "1px solid var(--border)", borderRadius: 3, padding: "1px 4px", fontSize: 12, outline: "none", background: "var(--input-bg)", color: "var(--text)", marginRight: 4 }} />
+                    style={{ minWidth: 80, maxWidth: 200, border: "1px solid var(--border)", borderRadius: 3, padding: "1px 4px", fontSize: 12, outline: "none", background: "var(--input-bg)", color: "var(--text)", marginRight: 4 }} />
                 ) : (
                   <div onDoubleClick={() => { setEditingHabit({ id: h.id, type: "daily" }); setEditText(h.name); }}
-                    style={{ flex: 1, minWidth: 0, fontSize: 12, color: "var(--text)", paddingRight: 4, wordBreak: "break-word", lineHeight: 1.3, cursor: "grab" }}>{h.name}<span style={{ fontSize: 9, color: "var(--text-faint)", marginLeft: 4 }}>{cnt}/7</span></div>
+                    style={{ fontSize: 12, color: "var(--text)", paddingRight: 6, wordBreak: "break-word", lineHeight: 1.3, cursor: "grab", flexShrink: 1, minWidth: 0 }}>{h.name}<span style={{ fontSize: 9, color: "var(--text-faint)", marginLeft: 4 }}>{cnt}/7</span></div>
                 )}
-                {DAYS.map((d) => (<div key={d} style={{ width: 28, display: "flex", justifyContent: "center", flexShrink: 0 }}><div onClick={() => onToggleDaily(h.id, d.toLowerCase())} style={chk(h.checks[d.toLowerCase()])}>{h.checks[d.toLowerCase()] && "\u2713"}</div></div>))}
+                {DAYS.map((d) => (<div key={d} style={{ width: 22, display: "flex", justifyContent: "center", flexShrink: 0 }}><div onClick={() => onToggleDaily(h.id, d.toLowerCase())} style={chk(h.checks[d.toLowerCase()])}>{h.checks[d.toLowerCase()] && "\u2713"}</div></div>))}
                 <button onClick={() => onDeleteDaily(h.id)} style={{ width: 18, flexShrink: 0, background: "none", border: "none", cursor: "pointer", color: "var(--text-faint)", fontSize: 13, padding: 0, fontWeight: 600 }} onMouseEnter={(e) => (e.target.style.color = "#c44")} onMouseLeave={(e) => (e.target.style.color = "var(--text-faint)")}>&times;</button>
               </div>);
           })}
@@ -388,11 +383,11 @@ function HabitsTracker({ dailyHabits, weeklyHabits, onToggleDaily, onToggleWeekl
         <div style={{ width: 3, height: 30, borderRadius: 2, background: "var(--border)" }} />
       </div>
       <div style={{ flex: 1, minWidth: 0, overflow: "hidden", paddingLeft: 4, display: "flex", flexDirection: "column" }}>
-        <div style={sLabel}>Weekly Habits</div>
-        <div style={{ display: "flex", flexDirection: "column", gap: 3, alignItems: "flex-end" }}>
+        <div style={{ ...sLabel, textAlign: "right" }}>Weekly Habits</div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
           {weeklyHabits.map((h) => (
             <div key={h.id} draggable onDragStart={() => setDragHabit({ id: h.id, type: "weekly" })} onDragOver={(e) => e.preventDefault()} onDrop={() => handleWeeklyDrop(h.id)}
-              style={{ display: "flex", alignItems: "center", gap: 6, cursor: "grab", width: "100%" }}>
+              style={{ display: "flex", alignItems: "center", gap: 6, cursor: "grab", justifyContent: "flex-end" }}>
               <div onClick={() => onToggleWeekly(h.id)} style={chk(h.done)}>{h.done && "\u2713"}</div>
               {editingHabit?.id === h.id && editingHabit?.type === "weekly" ? (
                 <input ref={editRef} value={editText} onChange={(e) => setEditText(e.target.value)} onBlur={saveEdit}
@@ -466,14 +461,6 @@ function TaskCard({ task, columnId, categories, onDragStart, onToggle, onDelete,
       )}
       {(hover || showCatPicker) && !editing && (
         <div style={{ display: "flex", gap: 2, flexShrink: 0, alignItems: "center" }}>
-          {onMove && (
-            <>
-              <button onClick={() => onMove(columnId, task.id, -1)} title="Move up"
-                style={{ background: "none", border: "none", cursor: "pointer", fontSize: isMobile ? 14 : 11, padding: "0 1px", lineHeight: 1, color: "var(--text-muted)" }}>{"\u25B2"}</button>
-              <button onClick={() => onMove(columnId, task.id, 1)} title="Move down"
-                style={{ background: "none", border: "none", cursor: "pointer", fontSize: isMobile ? 14 : 11, padding: "0 1px", lineHeight: 1, color: "var(--text-muted)" }}>{"\u25BC"}</button>
-            </>
-          )}
           <button onClick={() => setShowCatPicker(!showCatPicker)} title="Change category"
             style={{ background: "none", border: "none", cursor: "pointer", fontSize: 11, padding: 0, lineHeight: 1, color: "var(--text-muted)" }}>{"\u{1F3A8}"}</button>
           <button onClick={() => onDelete(columnId, task.id)} title="Remove"
@@ -497,10 +484,11 @@ function TaskCard({ task, columnId, categories, onDragStart, onToggle, onDelete,
 function DropZone({ onDrop }) {
   const [over, setOver] = useState(false);
   return (
-    <div onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); setOver(true); }}
+    <div data-dropzone="true" onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); setOver(true); }}
+      onDragEnter={(e) => { e.preventDefault(); e.stopPropagation(); setOver(true); }}
       onDragLeave={(e) => { e.stopPropagation(); setOver(false); }}
       onDrop={(e) => { e.preventDefault(); e.stopPropagation(); setOver(false); onDrop(e); }}
-      style={{ height: over ? 3 : 0, margin: "0", background: over ? "#8B6914" : "transparent", transition: "all 0.1s" }} />
+      style={{ height: over ? 4 : 6, margin: "0", background: over ? "#8B6914" : "transparent", borderRadius: over ? 2 : 0, transition: "background 0.1s" }} />
   );
 }
 
@@ -739,9 +727,12 @@ export default function Planner({ data, onSave, onSaveFuture, onSaveNotebooks, o
   const [laterHeight, setLaterHeight] = useState(50);
   const [notesHeight, setNotesHeight] = useState(70);
   const [colWidth, setColWidth] = useState(160);
-  const [laterOpen, setLaterOpen] = useState(true);
-  const [notesOpen, setNotesOpen] = useState(true);
-  const [habitsOpen, setHabitsOpen] = useState(true);
+  const [laterOpen, setLaterOpenState] = useState(() => { try { return localStorage.getItem("planner_laterOpen") !== "false"; } catch { return true; } });
+  const [notesOpen, setNotesOpenState] = useState(() => { try { return localStorage.getItem("planner_notesOpen") !== "false"; } catch { return true; } });
+  const [habitsOpen, setHabitsOpenState] = useState(() => { try { return localStorage.getItem("planner_habitsOpen") !== "false"; } catch { return true; } });
+  const setLaterOpen = (v) => { setLaterOpenState(v); try { localStorage.setItem("planner_laterOpen", v); } catch {} };
+  const setNotesOpen = (v) => { setNotesOpenState(v); try { localStorage.setItem("planner_notesOpen", v); } catch {} };
+  const setHabitsOpen = (v) => { setHabitsOpenState(v); try { localStorage.setItem("planner_habitsOpen", v); } catch {} };
   const notebooks = data.notebooks || [];
   const journal = data.journal || {};
   const contacts = data.contacts || [];
