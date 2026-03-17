@@ -765,12 +765,11 @@ export default function Planner({ data, onSave, onSaveFuture, onSaveNotebooks, o
     onSaveFuture(remainingFuture);
   }, []); // Run once on load
 
-  // Auto-generate birthday reminders from contacts (2 weeks before)
+  // Auto-generate birthday reminders from contacts (shows up 2 weeks before, dated on actual birthday)
   useEffect(() => {
     if (!contacts || contacts.length === 0 || !futureTasks) return;
     const today = new Date();
-    const twoWeeksOut = new Date(today);
-    twoWeeksOut.setDate(today.getDate() + 14);
+    today.setHours(0, 0, 0, 0);
 
     const monthNames = { january: 0, february: 1, march: 2, april: 3, may: 4, june: 5, july: 6, august: 7, september: 8, october: 9, november: 10, december: 11,
       jan: 0, feb: 1, mar: 2, apr: 3, jun: 5, jul: 6, aug: 7, sep: 8, oct: 9, nov: 10, dec: 11 };
@@ -778,37 +777,39 @@ export default function Planner({ data, onSave, onSaveFuture, onSaveNotebooks, o
     const parseBirthday = (str) => {
       if (!str) return null;
       const s = str.trim().toLowerCase();
-      // Try "Month Day" like "March 15" or "Mar 15"
       const match = s.match(/^([a-z]+)\s+(\d{1,2})/);
       if (match) {
         const m = monthNames[match[1]];
         if (m !== undefined) return { month: m, day: parseInt(match[2]) };
       }
-      // Try "DD/MM" or "MM/DD" - assume month/day
       const slashMatch = s.match(/^(\d{1,2})[\/\-](\d{1,2})/);
       if (slashMatch) return { month: parseInt(slashMatch[1]) - 1, day: parseInt(slashMatch[2]) };
       return null;
     };
 
+    const twoWeeksFromNow = new Date(today);
+    twoWeeksFromNow.setDate(today.getDate() + 14);
+    const threeMonths = new Date(today);
+    threeMonths.setMonth(today.getMonth() + 3);
+
     const newReminders = [];
     for (const c of contacts) {
       const bd = parseBirthday(c.birthday);
       if (!bd) continue;
+      const alreadyExists = futureTasks.some((t) => t.text.includes(c.name) && t.text.includes("birthday"));
+      if (alreadyExists) continue;
       // Check this year and next year
       for (const year of [today.getFullYear(), today.getFullYear() + 1]) {
         const bdDate = new Date(year, bd.month, bd.day);
-        const reminderDate = new Date(bdDate);
-        reminderDate.setDate(bdDate.getDate() - 14);
-        // If reminder falls within today to 3 months from now, and isn't already in futureTasks
-        const threeMonths = new Date(today);
-        threeMonths.setMonth(today.getMonth() + 3);
-        if (reminderDate >= today && reminderDate <= threeMonths) {
-          const dateStr = reminderDate.toISOString().split("T")[0];
+        // Only create if: birthday is in the future, and it's within 2 weeks from now (the reminder window)
+        // but date the task on the actual birthday
+        const twoWeeksBefore = new Date(bdDate);
+        twoWeeksBefore.setDate(bdDate.getDate() - 14);
+        if (twoWeeksBefore <= today && bdDate >= today && bdDate <= threeMonths) {
+          const dateStr = bdDate.toISOString().split("T")[0];
           const taskText = `\u{1F382} ${c.name}'s birthday (${c.birthday})`;
-          const alreadyExists = futureTasks.some((t) => t.text.includes(c.name) && t.text.includes("birthday"));
-          if (!alreadyExists) {
-            newReminders.push({ id: "bday" + Date.now() + "_" + Math.random().toString(36).slice(2, 5), text: taskText, date: dateStr });
-          }
+          newReminders.push({ id: "bday" + Date.now() + "_" + Math.random().toString(36).slice(2, 5), text: taskText, date: dateStr });
+          break; // Only one reminder per contact
         }
       }
     }
