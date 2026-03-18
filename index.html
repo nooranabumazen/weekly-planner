@@ -14,10 +14,39 @@
       * { margin: 0; padding: 0; box-sizing: border-box; }
       body { font-family: 'DM Sans', 'Segoe UI', sans-serif; background: #fdfcf8; color: #333; }
       html, body, #root { height: 100%; }
+      /* Scrollbar: thin, auto-hide, transparent track */
+      ::-webkit-scrollbar { width: 6px; height: 6px; background: transparent; }
+      ::-webkit-scrollbar-track { background: transparent; }
+      ::-webkit-scrollbar-thumb { background: transparent; border-radius: 3px; }
+      *:hover::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.15); }
+      *:hover::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,0.3); }
+      * { scrollbar-width: thin; scrollbar-color: transparent transparent; }
+      *:hover { scrollbar-color: rgba(0,0,0,0.15) transparent; }
+      /* Dark mode scrollbar */
+      .dark-mode ::-webkit-scrollbar-track { background: transparent; }
+      .dark-mode *:hover::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); }
+      .dark-mode *:hover::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.25); }
+      .dark-mode *:hover { scrollbar-color: rgba(255,255,255,0.15) transparent; }
+      /* Table styling: rounded corners, header row */
+      [contenteditable] table { border-collapse: separate; border-spacing: 0; border-radius: 8px; overflow: hidden; border: 1px solid #999; }
+      [contenteditable] table td, [contenteditable] table th { border: 1px solid #999; border-top: none; border-left: none; }
+      [contenteditable] table tr:first-child td, [contenteditable] table tr:first-child th { border-top: none; }
+      [contenteditable] table tr td:first-child, [contenteditable] table tr th:first-child { border-left: none; }
+      [contenteditable] tr:first-child td, [contenteditable] tr:first-child th { background: rgba(128,128,128,0.15); font-weight: 700; }
+      /* Link color */
+      [contenteditable] a { color: #5b8fb9; }
+      .dark-mode [contenteditable] a { color: #7aafe0; }
+      /* Note spacing */
+      [contenteditable] p { margin-bottom: 6px; }
+      [contenteditable] ul, [contenteditable] ol { margin-bottom: 6px; padding-left: 24px; }
       @media (max-width: 640px) {
         [contenteditable] { font-size: 16px !important; line-height: 1.7 !important; }
         table td { font-size: 14px !important; }
         input, textarea { font-size: 16px !important; }
+      }
+      /* Mobile portrait lock */
+      @media (max-width: 640px) and (orientation: landscape) {
+        html { transform: rotate(-90deg); transform-origin: left top; width: 100vh; height: 100vw; overflow-x: hidden; position: absolute; top: 100%; left: 0; }
       }
     </style>
   </head>
