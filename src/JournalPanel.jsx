@@ -138,7 +138,15 @@ function JournalEditor({ content, onChange, userId }) {
         <button onMouseDown={(e) => { e.preventDefault(); exec("underline"); }} style={{ background: "none", border: "none", cursor: "pointer", textDecoration: "underline", fontSize: 13, color: "var(--text)", width: 24, height: 24, borderRadius: 3 }}>U</button>
         <button onMouseDown={(e) => { e.preventDefault(); exec("insertUnorderedList"); }} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 10, color: "var(--text)", width: 24, height: 24, borderRadius: 3 }}>{"\u2022"} {"\u2013"}</button>
       </div>
-      <div ref={editorRef} contentEditable onInput={handleInput} onBlur={handleInput} onPaste={handlePaste} suppressContentEditableWarning
+      <style dangerouslySetInnerHTML={{ __html: `
+        [contenteditable] a { color: #5b8fb9 !important; text-decoration: underline; cursor: pointer; }
+        [contenteditable] p { margin: 4px 0 8px; }
+        [contenteditable] h2 { font-size: 18px; font-weight: 700; margin: 14px 0 8px; color: var(--text); }
+        [contenteditable] hr { border: none; border-top: 1px solid var(--text-faint); margin: 14px 0; }
+      `}} />
+      <div ref={editorRef} contentEditable onInput={handleInput} onBlur={handleInput} onPaste={handlePaste}
+        onClick={(e) => { if (e.target.tagName === "A" && e.target.href) { e.preventDefault(); window.open(e.target.href, "_blank"); } }}
+        suppressContentEditableWarning
         style={{ flex: 1, overflowY: "auto", padding: "14px 24px 14px 48px", fontSize: 13, lineHeight: 1.7, outline: "none", color: "var(--text)", fontFamily: "'DM Sans', sans-serif" }} />
     </div>
   );
