@@ -112,8 +112,8 @@ function RichEditor({ content, onChange, userId }) {
   const insertTable = () => {
     const tid = "t" + Date.now();
     const table = `<table data-tid="${tid}" style="border-collapse:separate;border-spacing:0;margin:8px 0;table-layout:auto;border-radius:8px;overflow:hidden;border:1px solid #999;">
-      <tr><td style="border-bottom:1px solid #999;border-right:1px solid #999;padding:6px 8px;min-width:60px;">&nbsp;</td><td style="border-bottom:1px solid #999;padding:6px 8px;min-width:60px;">&nbsp;</td></tr>
-      <tr><td style="border-right:1px solid #999;padding:6px 8px;min-width:60px;">&nbsp;</td><td style="padding:6px 8px;min-width:60px;">&nbsp;</td></tr>
+      <tr><td style="border-bottom:1px solid #999;border-right:1px solid #999;padding:8px 16px;min-width:150px;">&nbsp;</td><td style="border-bottom:1px solid #999;padding:8px 16px;min-width:150px;">&nbsp;</td></tr>
+      <tr><td style="border-right:1px solid #999;padding:8px 16px;min-width:150px;">&nbsp;</td><td style="padding:8px 16px;min-width:150px;">&nbsp;</td></tr>
     </table><p></p>`;
     exec("insertHTML", table);
   };
@@ -320,10 +320,15 @@ function RichEditor({ content, onChange, userId }) {
         [contenteditable] table { table-layout: auto; }
         [contenteditable] td { resize: horizontal; overflow: auto; min-width: 40px; }
         [contenteditable] td:hover { outline: 1px dashed #8B6914; outline-offset: -1px; }
-        [contenteditable] h2 { font-size: 18px; font-weight: 700; margin: 12px 0 6px; color: var(--text); }
-        [contenteditable] hr { border: none; border-top: 1px solid var(--text-faint); margin: 12px 0; }
+        [contenteditable] h2 { font-size: 18px; font-weight: 700; margin: 14px 0 8px; color: var(--text); }
+        [contenteditable] hr { border: none; border-top: 1px solid var(--text-faint); margin: 14px 0; }
+        [contenteditable] a { color: #5b8fb9 !important; text-decoration: underline; cursor: pointer; }
+        [contenteditable] p { margin: 4px 0 8px; }
+        [contenteditable] ul, [contenteditable] ol { margin: 4px 0 8px; padding-left: 24px; }
+        [contenteditable] li { margin-bottom: 2px; }
       `}} />
       <div ref={editorRef} contentEditable onInput={handleInput} onBlur={handleInput} onPaste={handlePaste}
+        onClick={(e) => { if (e.target.tagName === "A" && e.target.href) { e.preventDefault(); window.open(e.target.href, "_blank"); } }}
         suppressContentEditableWarning
         style={{ flex: 1, overflowY: "auto", padding: "14px 24px 14px 48px", fontSize: 13, lineHeight: 1.6, outline: "none", color: "var(--text)", fontFamily: "'DM Sans', sans-serif", minHeight: 100 }} />
     </div>
