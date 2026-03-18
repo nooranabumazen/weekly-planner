@@ -56,7 +56,7 @@ function ContactCard({ contact, onUpdate, onDelete, expanded, onToggle }) {
           {contact.notes && <div style={{ fontSize: 14, color: "var(--text)", marginTop: 5, lineHeight: 1.5 }}><span style={{ color: "var(--text-muted)", fontWeight: 600 }}>Notes:</span> {contact.notes}</div>}
           <div style={{ display: "flex", gap: 4, marginTop: 8 }}>
             <button onClick={() => { setForm(contact); setEditing(true); }} style={{ background: "none", border: "1px solid var(--border)", borderRadius: 4, padding: "3px 8px", cursor: "pointer", fontSize: 10, color: "var(--text-muted)" }}>Edit</button>
-            <button onClick={onDelete} style={{ background: "none", border: "1px solid var(--border)", borderRadius: 4, padding: "3px 8px", cursor: "pointer", fontSize: 10, color: "var(--text-faint)" }}
+            <button onClick={() => { if (window.confirm("Are you sure you want to delete this contact?")) onDelete(); }} style={{ background: "none", border: "1px solid var(--border)", borderRadius: 4, padding: "3px 8px", cursor: "pointer", fontSize: 10, color: "var(--text-faint)" }}
               onMouseEnter={(e) => { e.target.style.borderColor = "#c44"; e.target.style.color = "#c44"; }}
               onMouseLeave={(e) => { e.target.style.borderColor = "var(--border)"; e.target.style.color = "#ccc"; }}
             >Delete</button>

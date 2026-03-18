@@ -404,11 +404,11 @@ function HabitsTracker({ dailyHabits, weeklyHabits, onToggleDaily, onToggleWeekl
         <div style={{ width: 3, height: 30, borderRadius: 2, background: "var(--border)" }} />
       </div>
       <div style={{ flex: 1, minWidth: 0, overflow: "hidden", paddingLeft: 4, display: "flex", flexDirection: "column" }}>
-        <div style={{ ...sLabel, textAlign: "right" }}>Weekly Habits</div>
+        <div style={sLabel}>Weekly Habits</div>
         <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
           {weeklyHabits.map((h) => (
             <div key={h.id} draggable onDragStart={() => setDragHabit({ id: h.id, type: "weekly" })} onDragOver={(e) => e.preventDefault()} onDrop={() => handleWeeklyDrop(h.id)}
-              style={{ display: "flex", alignItems: "center", gap: 6, cursor: "grab", justifyContent: "flex-end" }}>
+              style={{ display: "flex", alignItems: "center", gap: 6, cursor: "grab" }}>
               <div onClick={() => onToggleWeekly(h.id)} style={chk(h.done)}>{h.done && "\u2713"}</div>
               {editingHabit?.id === h.id && editingHabit?.type === "weekly" ? (
                 <input ref={editRef} value={editText} onChange={(e) => setEditText(e.target.value)} onBlur={saveEdit}
