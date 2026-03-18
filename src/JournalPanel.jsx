@@ -139,7 +139,7 @@ function JournalEditor({ content, onChange, userId }) {
         <button onMouseDown={(e) => { e.preventDefault(); exec("insertUnorderedList"); }} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 10, color: "var(--text)", width: 24, height: 24, borderRadius: 3 }}>{"\u2022"} {"\u2013"}</button>
       </div>
       <div ref={editorRef} contentEditable onInput={handleInput} onBlur={handleInput} onPaste={handlePaste} suppressContentEditableWarning
-        style={{ flex: 1, overflowY: "auto", padding: "14px 24px", fontSize: 13, lineHeight: 1.7, outline: "none", color: "var(--text)", fontFamily: "'DM Sans', sans-serif" }} />
+        style={{ flex: 1, overflowY: "auto", padding: "14px 24px 14px 48px", fontSize: 13, lineHeight: 1.7, outline: "none", color: "var(--text)", fontFamily: "'DM Sans', sans-serif" }} />
     </div>
   );
 }

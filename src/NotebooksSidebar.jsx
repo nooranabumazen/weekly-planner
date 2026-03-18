@@ -111,9 +111,9 @@ function RichEditor({ content, onChange, userId }) {
 
   const insertTable = () => {
     const tid = "t" + Date.now();
-    const table = `<table data-tid="${tid}" style="border-collapse:collapse;margin:8px 0;table-layout:auto;">
-      <tr><td style="border:1px solid #999;padding:6px 8px;min-width:60px;">&nbsp;</td><td style="border:1px solid #999;padding:6px 8px;min-width:60px;">&nbsp;</td></tr>
-      <tr><td style="border:1px solid #999;padding:6px 8px;min-width:60px;">&nbsp;</td><td style="border:1px solid #999;padding:6px 8px;min-width:60px;">&nbsp;</td></tr>
+    const table = `<table data-tid="${tid}" style="border-collapse:separate;border-spacing:0;margin:8px 0;table-layout:auto;border-radius:8px;overflow:hidden;border:1px solid #999;">
+      <tr><td style="border-bottom:1px solid #999;border-right:1px solid #999;padding:6px 8px;min-width:60px;">&nbsp;</td><td style="border-bottom:1px solid #999;padding:6px 8px;min-width:60px;">&nbsp;</td></tr>
+      <tr><td style="border-right:1px solid #999;padding:6px 8px;min-width:60px;">&nbsp;</td><td style="padding:6px 8px;min-width:60px;">&nbsp;</td></tr>
     </table><p></p>`;
     exec("insertHTML", table);
   };
@@ -325,13 +325,17 @@ function RichEditor({ content, onChange, userId }) {
       `}} />
       <div ref={editorRef} contentEditable onInput={handleInput} onBlur={handleInput} onPaste={handlePaste}
         suppressContentEditableWarning
-        style={{ flex: 1, overflowY: "auto", padding: "14px 24px", fontSize: 13, lineHeight: 1.6, outline: "none", color: "var(--text)", fontFamily: "'DM Sans', sans-serif", minHeight: 100 }} />
+        style={{ flex: 1, overflowY: "auto", padding: "14px 24px 14px 48px", fontSize: 13, lineHeight: 1.6, outline: "none", color: "var(--text)", fontFamily: "'DM Sans', sans-serif", minHeight: 100 }} />
     </div>
   );
 }
 
 export default function NotebooksPanel({ notebooks, onChange, userId, isMobile }) {
-  const [activeTab, setActiveTab] = useState(notebooks?.[0]?.id || null);
+  const [activeTab, setActiveTabState] = useState(() => {
+    try { const saved = localStorage.getItem("planner_activeNote"); if (saved && notebooks?.find((n) => n.id === saved)) return saved; } catch {}
+    return notebooks?.[0]?.id || null;
+  });
+  const setActiveTab = (id) => { setActiveTabState(id); try { localStorage.setItem("planner_activeNote", id); } catch {} };
   const [renaming, setRenaming] = useState(null);
   const [renameText, setRenameText] = useState("");
   const [dragId, setDragId] = useState(null);
@@ -360,6 +364,7 @@ export default function NotebooksPanel({ notebooks, onChange, userId, isMobile }
   };
 
   const deleteNotebook = (id) => {
+    if (!window.confirm("Are you sure you want to delete this note?")) return;
     if (notebooks.length <= 1) return;
     const filtered = notebooks.filter((n) => n.id !== id);
     onChange(filtered);
@@ -459,10 +464,10 @@ export default function NotebooksPanel({ notebooks, onChange, userId, isMobile }
               onDoubleClick={() => startRename(nb)}
               style={{
                 padding: "7px 10px", cursor: "pointer", fontSize: 12,
-                background: nb.id === activeTab ? "#fff" : "transparent",
-                color: nb.id === activeTab ? "#444" : "#888",
+                background: nb.id === activeTab ? "var(--bg-card)" : "transparent",
+                color: nb.id === activeTab ? "var(--text)" : "var(--text-muted)",
                 fontWeight: nb.id === activeTab ? 600 : 400,
-                borderLeft: nb.id === activeTab ? "3px solid #8B6914" : "3px solid transparent",
+                borderLeft: nb.id === activeTab ? "3px solid var(--accent)" : "3px solid transparent",
                 display: "flex", justifyContent: "space-between", alignItems: "center",
                 transition: "all 0.1s",
               }}
@@ -471,19 +476,31 @@ export default function NotebooksPanel({ notebooks, onChange, userId, isMobile }
                 <input ref={renameRef} value={renameText} onChange={(e) => setRenameText(e.target.value)}
                   onBlur={finishRename} onKeyDown={(e) => { if (e.key === "Enter") finishRename(); if (e.key === "Escape") setRenaming(null); }}
                   onClick={(e) => e.stopPropagation()}
-                  style={{ border: "none", background: "transparent", font: "inherit", outline: "none", padding: 0, width: "100%", fontSize: 12 }} />
+                  style={{ border: "none", background: "transparent", font: "inherit", outline: "none", padding: 0, width: "100%", fontSize: 12, color: "var(--text)" }} />
               ) : (
                 <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>{nb.title}</span>
               )}
               {notebooks.length > 1 && nb.id === activeTab && (
                 <button onClick={(e) => { e.stopPropagation(); deleteNotebook(nb.id); }}
                   style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-faint)", fontSize: 12, padding: 0, fontWeight: 600, flexShrink: 0, marginLeft: 4 }}
-                  onMouseEnter={(e) => (e.target.style.color = "#c44")} onMouseLeave={(e) => (e.target.style.color = "#ccc")}
+                  onMouseEnter={(e) => (e.target.style.color = "#c44")} onMouseLeave={(e) => (e.target.style.color = "var(--text-faint)")}
                 >&times;</button>
               )}
             </div>
           ))}
         </div>
+        )}
+        {sidebarOpen && (
+          <div style={{ padding: "8px 10px", borderTop: "1px solid var(--border)", flexShrink: 0 }}>
+            <button onClick={addNotebook} title="New note" style={{
+              width: "100%", height: 36, borderRadius: 8, border: "none", cursor: "pointer",
+              background: "var(--accent)", color: "#fff", fontSize: 18, fontWeight: 600,
+              display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+              transition: "opacity 0.15s",
+            }} onMouseEnter={(e) => e.currentTarget.style.opacity = "0.85"} onMouseLeave={(e) => e.currentTarget.style.opacity = "1"}>
+              <span style={{ fontSize: 20, lineHeight: 1 }}>+</span>
+            </button>
+          </div>
         )}
       </div>
 
