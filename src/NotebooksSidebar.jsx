@@ -112,8 +112,8 @@ function RichEditor({ content, onChange, userId }) {
   const insertTable = () => {
     const tid = "t" + Date.now();
     const table = `<table data-tid="${tid}" style="border-collapse:separate;border-spacing:0;margin:8px 0;table-layout:auto;border-radius:8px;overflow:hidden;border:1px solid #999;">
-      <tr><td style="border-bottom:1px solid #999;border-right:1px solid #999;padding:8px 16px;min-width:150px;">&nbsp;</td><td style="border-bottom:1px solid #999;padding:8px 16px;min-width:150px;">&nbsp;</td></tr>
-      <tr><td style="border-right:1px solid #999;padding:8px 16px;min-width:150px;">&nbsp;</td><td style="padding:8px 16px;min-width:150px;">&nbsp;</td></tr>
+      <tr><td style="border-bottom:1px solid #999;border-right:1px solid #999;padding:5px 10px;min-width:120px;">&nbsp;</td><td style="border-bottom:1px solid #999;padding:5px 10px;min-width:120px;">&nbsp;</td></tr>
+      <tr><td style="border-right:1px solid #999;padding:5px 10px;min-width:120px;">&nbsp;</td><td style="padding:5px 10px;min-width:120px;">&nbsp;</td></tr>
     </table><p></p>`;
     exec("insertHTML", table);
   };
