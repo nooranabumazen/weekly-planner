@@ -796,7 +796,14 @@ export default function Planner({ data, onSave, onSaveFuture, onSaveNotebooks, o
     }
   }, [darkMode]);
 
-  const update = (changes) => onSave({ ...data, ...changes });
+  // Keep a ref to the latest data to avoid stale closure in callbacks
+  const dataRef = useRef(data);
+  dataRef.current = data;
+
+  const update = (changes) => {
+    const latest = dataRef.current;
+    onSave({ ...latest, ...changes });
+  };
 
   // Auto-promote upcoming tasks whose dates fall within the current week
   useEffect(() => {
@@ -877,41 +884,48 @@ export default function Planner({ data, onSave, onSaveFuture, onSaveNotebooks, o
   }, [contacts?.length]); // Re-run when contacts change
 
   const handleDrop = useCallback((fromCol, toCol, taskId, beforeTaskId) => {
+    const d = dataRef.current;
+    const currentTasks = d.tasks;
+    const currentFuture = d.futureTasks || [];
+    const currentCats = d.categories || [];
     if (fromCol === "future") {
-      const task = futureTasks.find((t) => t.id === taskId);
+      const task = currentFuture.find((t) => t.id === taskId);
       if (!task) return;
-      const newTasks = { ...tasks };
-      const detectedCat = autoDetectCategory(task.text, categories);
+      const newTasks = {};
+      Object.keys(currentTasks).forEach((k) => { newTasks[k] = [...currentTasks[k]]; });
+      const detectedCat = autoDetectCategory(task.text, currentCats);
       const newTask = makeTask(task.text, { category: detectedCat });
-      if (beforeTaskId) { const toList = [...(newTasks[toCol] || [])]; const idx = toList.findIndex((t) => t.id === beforeTaskId); toList.splice(idx, 0, newTask); newTasks[toCol] = toList; }
+      if (beforeTaskId) { const toList = newTasks[toCol] || []; const idx = toList.findIndex((t) => t.id === beforeTaskId); toList.splice(idx, 0, newTask); newTasks[toCol] = toList; }
       else { newTasks[toCol] = [...(newTasks[toCol] || []), newTask]; }
-      const newFuture = futureTasks.filter((t) => t.id !== taskId);
-      onSave({ ...data, tasks: newTasks, futureTasks: newFuture });
+      const newFuture = currentFuture.filter((t) => t.id !== taskId);
+      onSave({ ...d, tasks: newTasks, futureTasks: newFuture });
       onSaveFuture(newFuture);
       return;
     }
     const newTasks = {};
-    // Deep copy all columns
-    Object.keys(tasks).forEach((k) => { newTasks[k] = [...tasks[k]]; });
+    Object.keys(currentTasks).forEach((k) => { newTasks[k] = [...currentTasks[k]]; });
     const fromList = newTasks[fromCol];
+    if (!fromList) return;
     const taskIdx = fromList.findIndex((t) => t.id === taskId);
     if (taskIdx === -1) return;
     const [task] = fromList.splice(taskIdx, 1);
     if (!task.category || task.category === "cat_none") {
-      task.category = autoDetectCategory(task.text, categories);
+      task.category = autoDetectCategory(task.text, currentCats);
     }
-    const toList = newTasks[toCol];
+    const toList = newTasks[toCol] || [];
     if (beforeTaskId) {
       const insertIdx = toList.findIndex((t) => t.id === beforeTaskId);
       if (insertIdx !== -1) toList.splice(insertIdx, 0, task);
       else toList.push(task);
-    } else { toList.push(task); }
+      newTasks[toCol] = toList;
+    } else { newTasks[toCol] = [...toList, task]; }
     update({ tasks: newTasks });
-  }, [data, tasks, futureTasks, categories]);
+  }, []);
 
   const moveTask = useCallback((col, taskId, direction) => {
+    const currentTasks = dataRef.current.tasks;
     const newTasks = {};
-    Object.keys(tasks).forEach((k) => { newTasks[k] = [...tasks[k]]; });
+    Object.keys(currentTasks).forEach((k) => { newTasks[k] = [...currentTasks[k]]; });
     const list = newTasks[col];
     const idx = list.findIndex((t) => t.id === taskId);
     if (idx === -1) return;
@@ -919,31 +933,36 @@ export default function Planner({ data, onSave, onSaveFuture, onSaveNotebooks, o
     if (newIdx < 0 || newIdx >= list.length) return;
     [list[idx], list[newIdx]] = [list[newIdx], list[idx]];
     update({ tasks: newTasks });
-  }, [data, tasks]);
+  }, []);
 
   const toggleDone = useCallback((col, id) => {
-    const task = tasks[col].find((t) => t.id === id);
+    const d = dataRef.current;
+    const currentTasks = d.tasks;
+    const currentArchive = d.archive || [];
+    const task = currentTasks[col]?.find((t) => t.id === id);
     if (!task) return;
     const nowDone = !task.done;
-    const newTasks = { ...tasks, [col]: tasks[col].map((t) => (t.id === id ? { ...t, done: nowDone } : t)) };
+    const newTasks = {};
+    Object.keys(currentTasks).forEach((k) => { newTasks[k] = [...currentTasks[k]]; });
+    newTasks[col] = newTasks[col].map((t) => (t.id === id ? { ...t, done: nowDone } : t));
     if (nowDone) {
       const dayMap = { mon: 0, tue: 1, wed: 2, thu: 3, fri: 4, sat: 5, sun: 6 };
       const dayIdx = dayMap[col];
       const dateStr = dayIdx !== undefined ? getWeekDates()[dayIdx]?.fullDate : null;
       const entry = { id: "a" + Date.now() + "_" + Math.random().toString(36).slice(2, 6), text: task.text, category: task.category, completedAt: new Date().toISOString(), assignedDay: col, assignedDate: dateStr || "later" };
-      const newArchive = [entry, ...archive].slice(0, 500);
+      const newArchive = [entry, ...currentArchive].slice(0, 500);
       update({ tasks: newTasks, archive: newArchive }); onSaveArchive(newArchive);
     } else {
-      const newArchive = [...archive]; const idx = newArchive.findIndex((a) => a.text === task.text && a.assignedDay === col);
+      const newArchive = [...currentArchive]; const idx = newArchive.findIndex((a) => a.text === task.text && a.assignedDay === col);
       if (idx !== -1) newArchive.splice(idx, 1);
       update({ tasks: newTasks, archive: newArchive }); onSaveArchive(newArchive);
     }
-  }, [data, tasks, archive]);
+  }, []);
 
-  const deleteTask = useCallback((col, id) => { update({ tasks: { ...tasks, [col]: tasks[col].filter((t) => t.id !== id) } }); }, [data, tasks]);
-  const editTask = useCallback((col, id, text) => { update({ tasks: { ...tasks, [col]: tasks[col].map((t) => (t.id === id ? { ...t, text } : t)) } }); }, [data, tasks]);
-  const addTask = useCallback((col, text, catId) => { update({ tasks: { ...tasks, [col]: [...tasks[col], makeTask(text, { category: catId || "cat_none" })] } }); }, [data, tasks]);
-  const changeCategory = useCallback((col, id, catId) => { update({ tasks: { ...tasks, [col]: tasks[col].map((t) => (t.id === id ? { ...t, category: catId } : t)) } }); }, [data, tasks]);
+  const deleteTask = useCallback((col, id) => { const t = dataRef.current.tasks; update({ tasks: { ...t, [col]: t[col].filter((x) => x.id !== id) } }); }, []);
+  const editTask = useCallback((col, id, text) => { const t = dataRef.current.tasks; update({ tasks: { ...t, [col]: t[col].map((x) => (x.id === id ? { ...x, text } : x)) } }); }, []);
+  const addTask = useCallback((col, text, catId) => { const t = dataRef.current.tasks; update({ tasks: { ...t, [col]: [...t[col], makeTask(text, { category: catId || "cat_none" })] } }); }, []);
+  const changeCategory = useCallback((col, id, catId) => { const t = dataRef.current.tasks; update({ tasks: { ...t, [col]: t[col].map((x) => (x.id === id ? { ...x, category: catId } : x)) } }); }, []);
   const toggleDaily = (hid, day) => { const updated = dailyHabits.map((h) => h.id === hid ? { ...h, checks: { ...h.checks, [day]: !h.checks[day] } } : h); update({ dailyHabits: updated }); onSaveDailyHabits(updated); };
   const toggleWeekly = (hid) => { const updated = weeklyHabits.map((h) => h.id === hid ? { ...h, done: !h.done } : h); update({ weeklyHabits: updated }); onSaveWeeklyHabits(updated); };
   const addDailyHabit = (name) => { const updated = [...dailyHabits, { id: "dh" + Date.now(), name, checks: { mon: false, tue: false, wed: false, thu: false, fri: false, sat: false, sun: false } }]; update({ dailyHabits: updated }); onSaveDailyHabits(updated); };

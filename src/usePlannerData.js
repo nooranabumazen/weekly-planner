@@ -93,6 +93,8 @@ export function usePlannerData(userId) {
   const docPath = `users/${userId}/weeks/${weekKey}`;
   const carryForwardDone = useRef(false);
   const pendingSave = useRef(false);
+  const pendingSafetyTimer = useRef(null);
+  const latestTasksRef = useRef(null);
 
   // Check if week has changed (handles midnight rollover)
   useEffect(() => {
@@ -114,10 +116,11 @@ export function usePlannerData(userId) {
       if (pendingSave.current) return;
 
       if (snap.exists()) {
+        const remoteTasks = snap.data().tasks;
+        if (remoteTasks) latestTasksRef.current = remoteTasks;
         setData((prev) => {
-          if (!prev) return { ...defaultData(), ...snap.data() };
-          // Merge: only update tasks from the weekly doc, keep meta docs intact
-          return { ...prev, tasks: snap.data().tasks || prev.tasks };
+          if (!prev) return { ...defaultData(), tasks: remoteTasks || defaultData().tasks };
+          return { ...prev, tasks: remoteTasks || prev.tasks };
         });
         setLoading(false);
       } else {
@@ -165,14 +168,21 @@ export function usePlannerData(userId) {
   // Save weekly data (tasks only) with debounce
   const save = useCallback(
     (newData) => {
+      // Track latest tasks in ref for consistency
+      if (newData.tasks) latestTasksRef.current = newData.tasks;
       setData(newData);
       pendingSave.current = true;
+      // Safety: reset pendingSave after 5 seconds no matter what
+      if (pendingSafetyTimer.current) clearTimeout(pendingSafetyTimer.current);
+      pendingSafetyTimer.current = setTimeout(() => { pendingSave.current = false; }, 5000);
       if (saveTimeout.current) clearTimeout(saveTimeout.current);
       saveTimeout.current = setTimeout(() => {
-        // Only save tasks to the weekly doc
-        setDoc(doc(db, docPath), { tasks: newData.tasks }).then(() => {
+        // Use the latest tasks from ref to ensure we save the most recent state
+        const tasksToSave = latestTasksRef.current || newData.tasks;
+        setDoc(doc(db, docPath), { tasks: tasksToSave }).then(() => {
           pendingSave.current = false;
-        }).catch((err) => { console.error(err); pendingSave.current = false; });
+          if (pendingSafetyTimer.current) clearTimeout(pendingSafetyTimer.current);
+        }).catch((err) => { console.error("Save error:", err); pendingSave.current = false; });
       }, 500);
     },
     [docPath]
