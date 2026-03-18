@@ -318,8 +318,8 @@ function RichEditor({ content, onChange, userId }) {
       </div>
       <style dangerouslySetInnerHTML={{ __html: `
         [contenteditable] table { table-layout: auto; }
-        [contenteditable] td { resize: horizontal; overflow: auto; min-width: 40px; }
-        [contenteditable] td:hover { outline: 1px dashed #8B6914; outline-offset: -1px; }
+        [contenteditable] td, [contenteditable] th { resize: horizontal; overflow: auto; min-width: 40px; padding: 4px 8px !important; }
+        [contenteditable] td:hover, [contenteditable] th:hover { outline: 1px dashed #8B6914; outline-offset: -1px; }
         [contenteditable] h2 { font-size: 18px; font-weight: 700; margin: 14px 0 8px; color: var(--text); }
         [contenteditable] hr { border: none; border-top: 1px solid var(--text-faint); margin: 14px 0; }
         [contenteditable] a { color: #5b8fb9 !important; text-decoration: underline; cursor: pointer; }
