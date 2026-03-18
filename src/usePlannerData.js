@@ -92,28 +92,55 @@ export function usePlannerData(userId) {
   const [weekKey, setWeekKey] = useState(getWeekKey);
   const docPath = `users/${userId}/weeks/${weekKey}`;
   const carryForwardDone = useRef(false);
-  const pendingSave = useRef(false);
-  const pendingSafetyTimer = useRef(null);
   const latestTasksRef = useRef(null);
+  const dirtyRef = useRef(false); // true when local changes haven't been saved to Firestore yet
+  const lastSaveTime = useRef(0);
+  const savingRef = useRef(false);
+
+  // Force save: writes immediately, no debounce
+  const forceSave = useCallback(() => {
+    if (!dirtyRef.current || !latestTasksRef.current) return;
+    if (saveTimeout.current) clearTimeout(saveTimeout.current);
+    dirtyRef.current = false;
+    savingRef.current = true;
+    lastSaveTime.current = Date.now();
+    setDoc(doc(db, `users/${userId}/weeks/${getWeekKey()}`), { tasks: latestTasksRef.current })
+      .then(() => { savingRef.current = false; })
+      .catch((err) => { console.error("Save error:", err); savingRef.current = false; });
+  }, [userId]);
+
+  // Save on page hide / tab switch / close
+  useEffect(() => {
+    const handleVisibility = () => { if (document.visibilityState === "hidden") forceSave(); };
+    const handleBeforeUnload = () => forceSave();
+    document.addEventListener("visibilitychange", handleVisibility);
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibility);
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+    };
+  }, [forceSave]);
 
   // Check if week has changed (handles midnight rollover)
   useEffect(() => {
     const interval = setInterval(() => {
       const currentKey = getWeekKey();
       if (currentKey !== weekKey) {
+        // Force save current week before switching
+        forceSave();
         carryForwardDone.current = false;
         setWeekKey(currentKey);
       }
-    }, 30000); // Check every 30 seconds
+    }, 30000);
     return () => clearInterval(interval);
-  }, [weekKey]);
+  }, [weekKey, forceSave]);
 
   // Listen for weekly tasks data
   useEffect(() => {
     if (!userId) return;
     const unsub = onSnapshot(doc(db, docPath), async (snap) => {
-      // Skip remote updates while a local save is pending to prevent clobbering
-      if (pendingSave.current) return;
+      // NEVER overwrite local dirty state with remote data
+      if (dirtyRef.current || savingRef.current) return;
 
       if (snap.exists()) {
         const remoteTasks = snap.data().tasks;
@@ -168,22 +195,19 @@ export function usePlannerData(userId) {
   // Save weekly data (tasks only) with debounce
   const save = useCallback(
     (newData) => {
-      // Track latest tasks in ref for consistency
       if (newData.tasks) latestTasksRef.current = newData.tasks;
       setData(newData);
-      pendingSave.current = true;
-      // Safety: reset pendingSave after 5 seconds no matter what
-      if (pendingSafetyTimer.current) clearTimeout(pendingSafetyTimer.current);
-      pendingSafetyTimer.current = setTimeout(() => { pendingSave.current = false; }, 5000);
+      dirtyRef.current = true;
       if (saveTimeout.current) clearTimeout(saveTimeout.current);
       saveTimeout.current = setTimeout(() => {
-        // Use the latest tasks from ref to ensure we save the most recent state
         const tasksToSave = latestTasksRef.current || newData.tasks;
+        dirtyRef.current = false;
+        savingRef.current = true;
+        lastSaveTime.current = Date.now();
         setDoc(doc(db, docPath), { tasks: tasksToSave }).then(() => {
-          pendingSave.current = false;
-          if (pendingSafetyTimer.current) clearTimeout(pendingSafetyTimer.current);
-        }).catch((err) => { console.error("Save error:", err); pendingSave.current = false; });
-      }, 500);
+          savingRef.current = false;
+        }).catch((err) => { console.error("Save error:", err); savingRef.current = false; dirtyRef.current = true; });
+      }, 300);
     },
     [docPath]
   );
