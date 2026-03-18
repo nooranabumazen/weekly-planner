@@ -88,6 +88,15 @@ function ColorPicker({ colors, onSelect, buttonIcon, title }) {
 function RichEditor({ content, onChange, userId }) {
   const editorRef = useRef(null);
   const isInternalChange = useRef(false);
+  const [ctxMenu, setCtxMenu] = useState(null); // { x, y, td, table }
+
+  // Close context menu on click outside
+  useEffect(() => {
+    if (!ctxMenu) return;
+    const close = () => setCtxMenu(null);
+    document.addEventListener("mousedown", close);
+    return () => document.removeEventListener("mousedown", close);
+  }, [ctxMenu]);
 
   useEffect(() => {
     if (editorRef.current && !isInternalChange.current) {
@@ -137,9 +146,14 @@ function RichEditor({ content, onChange, userId }) {
     exec("insertHTML", '<hr style="border:none;border-top:1px solid #999;margin:12px 0;">');
   };
 
-  const addTableRow = () => {
+  const findTableCell = (optTd) => {
+    if (optTd) return optTd;
     const sel = window.getSelection();
-    const td = sel?.anchorNode?.closest ? sel.anchorNode.closest("td") : sel?.anchorNode?.parentElement?.closest("td");
+    return sel?.anchorNode?.closest ? sel.anchorNode.closest("td,th") : sel?.anchorNode?.parentElement?.closest("td,th");
+  };
+
+  const addTableRow = (optTd) => {
+    const td = findTableCell(optTd);
     const table = td?.closest("table");
     if (!table) return;
     const cols = table.rows[0]?.cells.length || 2;
@@ -147,27 +161,25 @@ function RichEditor({ content, onChange, userId }) {
     for (let i = 0; i < cols; i++) {
       const cell = row.insertCell(-1);
       cell.innerHTML = "&nbsp;";
-      cell.style.cssText = "border:1px solid #999;padding:6px 8px;min-width:40px;";
+      cell.style.cssText = "border:1px solid #999;padding:4px 8px;min-width:40px;";
     }
     handleInput();
   };
 
-  const addTableCol = () => {
-    const sel = window.getSelection();
-    const td = sel?.anchorNode?.closest ? sel.anchorNode.closest("td") : sel?.anchorNode?.parentElement?.closest("td");
+  const addTableCol = (optTd) => {
+    const td = findTableCell(optTd);
     const table = td?.closest("table");
     if (!table) return;
     for (let r = 0; r < table.rows.length; r++) {
       const cell = table.rows[r].insertCell(-1);
       cell.innerHTML = "&nbsp;";
-      cell.style.cssText = "border:1px solid #999;padding:6px 8px;min-width:40px;";
+      cell.style.cssText = "border:1px solid #999;padding:4px 8px;min-width:40px;";
     }
     handleInput();
   };
 
-  const removeTableRow = () => {
-    const sel = window.getSelection();
-    const td = sel?.anchorNode?.closest ? sel.anchorNode.closest("td") : sel?.anchorNode?.parentElement?.closest("td");
+  const removeTableRow = (optTd) => {
+    const td = findTableCell(optTd);
     const tr = td?.closest("tr");
     const table = td?.closest("table");
     if (!table || !tr) return;
@@ -175,9 +187,8 @@ function RichEditor({ content, onChange, userId }) {
     handleInput();
   };
 
-  const removeTableCol = () => {
-    const sel = window.getSelection();
-    const td = sel?.anchorNode?.closest ? sel.anchorNode.closest("td") : sel?.anchorNode?.parentElement?.closest("td");
+  const removeTableCol = (optTd) => {
+    const td = findTableCell(optTd);
     const table = td?.closest("table");
     if (!table || !td) return;
     const colIdx = td.cellIndex;
@@ -185,6 +196,14 @@ function RichEditor({ content, onChange, userId }) {
       for (let r = 0; r < table.rows.length; r++) { if (table.rows[r].cells[colIdx]) table.rows[r].deleteCell(colIdx); }
     }
     handleInput();
+  };
+
+  const handleContextMenu = (e) => {
+    const td = e.target.closest ? e.target.closest("td,th") : null;
+    if (td && td.closest("table")) {
+      e.preventDefault();
+      setCtxMenu({ x: e.clientX, y: e.clientY, td });
+    }
   };
 
   const insertLink = () => {
@@ -329,8 +348,32 @@ function RichEditor({ content, onChange, userId }) {
       `}} />
       <div ref={editorRef} contentEditable onInput={handleInput} onBlur={handleInput} onPaste={handlePaste}
         onClick={(e) => { if (e.target.tagName === "A" && e.target.href) { e.preventDefault(); window.open(e.target.href, "_blank"); } }}
+        onContextMenu={handleContextMenu}
         suppressContentEditableWarning
-        style={{ flex: 1, overflowY: "auto", padding: "14px 24px 14px 48px", fontSize: 13, lineHeight: 1.6, outline: "none", color: "var(--text)", fontFamily: "'DM Sans', sans-serif", minHeight: 100 }} />
+        style={{ flex: 1, overflowY: "auto", padding: "14px 24px 14px 48px", fontSize: 13, lineHeight: 1.6, outline: "none", color: "var(--text)", fontFamily: "'DM Sans', sans-serif", minHeight: 100, position: "relative" }} />
+      {ctxMenu && (
+        <div style={{
+          position: "fixed", left: ctxMenu.x, top: ctxMenu.y, zIndex: 1000,
+          background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 6,
+          boxShadow: "0 4px 16px rgba(0,0,0,0.18)", padding: "4px 0", minWidth: 160,
+        }}>
+          {[
+            { label: "Add row below", action: () => addTableRow(ctxMenu.td) },
+            { label: "Add column right", action: () => addTableCol(ctxMenu.td) },
+            { label: "Delete row", action: () => removeTableRow(ctxMenu.td), danger: true },
+            { label: "Delete column", action: () => removeTableCol(ctxMenu.td), danger: true },
+          ].map((item, i) => (
+            <div key={i} onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); item.action(); setCtxMenu(null); }}
+              style={{
+                padding: "6px 14px", cursor: "pointer", fontSize: 12,
+                color: item.danger ? "#c44" : "var(--text)",
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.background = "var(--bg-hover)"}
+              onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}
+            >{item.label}</div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
