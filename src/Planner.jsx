@@ -735,7 +735,7 @@ function FutureSidebar({ futureTasks, onAddFuture, onDeleteFuture }) {
 }
 
 /* ─── Main Planner ─── */
-export default function Planner({ data, onSave, onSaveFuture, onSaveNotebooks, onSaveJournal, onSaveContacts, onSaveArchive, onSaveDailyHabits, onSaveWeeklyHabits, onSaveSettings, onLogout, userEmail, userId }) {
+export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSaveNotebooks, onSaveJournal, onSaveContacts, onSaveArchive, onSaveDailyHabits, onSaveWeeklyHabits, onSaveSettings, onLogout, userEmail, userId }) {
   const isMobile = useIsMobile();
   const weekDates = getWeekDates();
   const { tasks, futureTasks, dailyHabits, weeklyHabits, notes } = data;
@@ -824,7 +824,7 @@ export default function Planner({ data, onSave, onSaveFuture, onSaveNotebooks, o
     }
 
     const remainingFuture = futureTasks.filter((t) => !weekDateMap[t.date]);
-    onSave({ ...data, tasks: newTasks, futureTasks: remainingFuture });
+    onSaveQuiet({ ...data, tasks: newTasks, futureTasks: remainingFuture });
     onSaveFuture(remainingFuture);
   }, []); // Run once on load
 
