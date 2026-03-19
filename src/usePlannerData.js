@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { doc, onSnapshot, setDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { db } from './firebase';
 
 const DAYS = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"];
@@ -64,11 +64,10 @@ const DEFAULT_WEEKLY_HABITS = [
   { id: "wh3", name: "Call family", done: false },
 ];
 
+const emptyTasks = () => ({ mon: [], tue: [], wed: [], thu: [], fri: [], sat: [], sun: [], later: [] });
+
 const defaultData = () => ({
-  tasks: {
-    mon: [], tue: [], wed: [], thu: [], fri: [], sat: [], sun: [],
-    later: [],
-  },
+  tasks: emptyTasks(),
   futureTasks: [],
   dailyHabits: DEFAULT_DAILY_HABITS,
   weeklyHabits: DEFAULT_WEEKLY_HABITS,
@@ -85,282 +84,167 @@ function getPrevWeekKey() {
   return prevMonday.toISOString().split("T")[0];
 }
 
+async function readDoc(path) {
+  try {
+    const snap = await getDoc(doc(db, path));
+    return snap.exists() ? snap.data() : null;
+  } catch (err) {
+    console.error("Read error:", path, err);
+    return null;
+  }
+}
+
+function writeDoc(path, data) {
+  setDoc(doc(db, path), data).catch((err) => console.error("Write error:", path, err));
+}
+
 export function usePlannerData(userId) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
-  const saveTimeout = useRef(null);
-  const [weekKey, setWeekKey] = useState(getWeekKey);
-  const docPath = `users/${userId}/weeks/${weekKey}`;
-  const carryForwardDone = useRef(false);
   const latestTasksRef = useRef(null);
-  const initialLoadDone = useRef(false);
-  const userHasEdited = useRef(false); // only true after user makes a manual change
+  const weekKeyRef = useRef(getWeekKey());
+  const saveTimer = useRef(null);
 
-  // Force save: writes immediately with timestamp
-  const forceSave = useCallback(() => {
-    if (!userHasEdited.current || !latestTasksRef.current) return;
-    if (saveTimeout.current) clearTimeout(saveTimeout.current);
-    userHasEdited.current = false;
-    const saveData = { tasks: latestTasksRef.current, _lastModified: Date.now() };
-    setDoc(doc(db, `users/${userId}/weeks/${getWeekKey()}`), saveData).catch(console.error);
-  }, [userId]);
-
-  // Save on page hide / tab switch / close
-  useEffect(() => {
-    const handleVisibility = () => { if (document.visibilityState === "hidden") forceSave(); };
-    const handleBeforeUnload = () => forceSave();
-    document.addEventListener("visibilitychange", handleVisibility);
-    window.addEventListener("beforeunload", handleBeforeUnload);
-    return () => {
-      document.removeEventListener("visibilitychange", handleVisibility);
-      window.removeEventListener("beforeunload", handleBeforeUnload);
-    };
-  }, [forceSave]);
-
-  // Check if week has changed (handles midnight rollover)
-  useEffect(() => {
-    const interval = setInterval(() => {
-      const currentKey = getWeekKey();
-      if (currentKey !== weekKey) {
-        forceSave();
-        carryForwardDone.current = false;
-        initialLoadDone.current = false;
-        userHasEdited.current = false;
-        setWeekKey(currentKey);
-      }
-    }, 30000);
-    return () => clearInterval(interval);
-  }, [weekKey, forceSave]);
-
-  // Listen for weekly tasks data
+  // ─── Load all data once on mount ───
   useEffect(() => {
     if (!userId) return;
-    initialLoadDone.current = false;
-    const unsub = onSnapshot(doc(db, docPath), async (snap) => {
-      if (snap.exists()) {
-        const remoteData = snap.data();
-        const remoteTasks = remoteData.tasks;
-        const remoteTimestamp = remoteData._lastModified || 0;
+    let cancelled = false;
 
-        // Always accept the FIRST snapshot (initial load from Firestore)
-        if (!initialLoadDone.current) {
-          initialLoadDone.current = true;
-          if (remoteTasks) latestTasksRef.current = remoteTasks;
-          setData((prev) => {
-            if (!prev) return { ...defaultData(), tasks: remoteTasks || defaultData().tasks };
-            return { ...prev, tasks: remoteTasks || prev.tasks };
-          });
-          setLoading(false);
-          return;
-        }
+    async function loadAll() {
+      const wk = getWeekKey();
+      weekKeyRef.current = wk;
+      const weekPath = `users/${userId}/weeks/${wk}`;
+      const m = (name) => `users/${userId}/meta/${name}`;
 
-        // After initial load: only accept remote if user hasn't made local edits
-        if (userHasEdited.current) return;
+      const [weekDoc, futureDoc, notebooksDoc, journalDoc, contactsDoc, archiveDoc, dailyDoc, weeklyDoc, settingsDoc] = await Promise.all([
+        readDoc(weekPath), readDoc(m("futureTasks")), readDoc(m("notebooks")), readDoc(m("journal")),
+        readDoc(m("contacts")), readDoc(m("archive")), readDoc(m("dailyHabits")), readDoc(m("weeklyHabits")), readDoc(m("settings")),
+      ]);
 
-        // Accept remote update (from another device)
-        if (remoteTasks) latestTasksRef.current = remoteTasks;
-        setData((prev) => prev ? { ...prev, tasks: remoteTasks || prev.tasks } : prev);
+      if (cancelled) return;
+
+      let tasks;
+      if (weekDoc && weekDoc.tasks) {
+        tasks = weekDoc.tasks;
       } else {
-        // New week: carry forward incomplete tasks
-        if (!carryForwardDone.current) {
-          carryForwardDone.current = true;
-          const prevWeekKey = getPrevWeekKey();
-          const prevDocPath = `users/${userId}/weeks/${prevWeekKey}`;
-          try {
-            const { getDoc: getDocOnce } = await import('firebase/firestore');
-            const prevSnap = await getDocOnce(doc(db, prevDocPath));
-            if (prevSnap.exists()) {
-              const prevData = prevSnap.data();
-              const prevTasks = prevData.tasks || {};
-              const carryOver = [];
-              const dayKeys = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
-              for (const dayKey of dayKeys) {
-                for (const task of (prevTasks[dayKey] || [])) {
-                  if (!task.done) {
-                    carryOver.push({ ...task, id: "t" + Date.now() + "_" + Math.random().toString(36).slice(2, 6) });
-                  }
-                }
-              }
-              const weekData = {
-                tasks: { mon: carryOver, tue: [], wed: [], thu: [], fri: [], sat: [], sun: [], later: prevTasks.later || [] },
-              };
-              setDoc(doc(db, docPath), weekData);
-              setData((prev) => ({ ...(prev || defaultData()), ...weekData }));
-              setLoading(false);
-              return;
-            }
-          } catch (err) {
-            console.error("Error carrying forward tasks:", err);
-          }
+        const prevDoc = await readDoc(`users/${userId}/weeks/${getPrevWeekKey()}`);
+        if (prevDoc && prevDoc.tasks) {
+          const pt = prevDoc.tasks;
+          const carry = [];
+          ["mon","tue","wed","thu","fri","sat","sun"].forEach((d) => {
+            (pt[d] || []).forEach((t) => { if (!t.done) carry.push({ ...t, id: "t" + Date.now() + "_" + Math.random().toString(36).slice(2,6) }); });
+          });
+          tasks = { mon: carry, tue: [], wed: [], thu: [], fri: [], sat: [], sun: [], later: pt.later || [] };
+        } else {
+          tasks = emptyTasks();
         }
-        const weekData = { tasks: { mon: [], tue: [], wed: [], thu: [], fri: [], sat: [], sun: [], later: [] } };
-        setDoc(doc(db, docPath), weekData);
-        setData((prev) => ({ ...(prev || defaultData()), ...weekData }));
+        writeDoc(weekPath, { tasks, _lastModified: Date.now() });
+      }
+
+      const futureTasks = futureDoc?.items || [];
+      const defaultNB = [{ id: "nb1", title: "Books to Read", content: "<p></p>" }, { id: "nb2", title: "Cool Ideas", content: "<p></p>" }, { id: "nb3", title: "Things to Cook", content: "<p></p>" }];
+      const notebooks = notebooksDoc?.items || defaultNB;
+      const journal = journalDoc?.entries || {};
+      const contacts = contactsDoc?.items || [];
+      const archive = archiveDoc?.items || [];
+      const dailyHabits = dailyDoc?.items || DEFAULT_DAILY_HABITS;
+      const weeklyHabits = weeklyDoc?.items || DEFAULT_WEEKLY_HABITS;
+      const settings = settingsDoc || { categories: DEFAULT_CATEGORIES, layout: "vertical", notes: "", darkMode: false };
+
+      if (!notebooksDoc) writeDoc(m("notebooks"), { items: notebooks });
+      if (!journalDoc) writeDoc(m("journal"), { entries: journal });
+      if (!contactsDoc) writeDoc(m("contacts"), { items: contacts });
+      if (!archiveDoc) writeDoc(m("archive"), { items: archive });
+      if (!dailyDoc) writeDoc(m("dailyHabits"), { items: dailyHabits });
+      if (!weeklyDoc) writeDoc(m("weeklyHabits"), { items: weeklyHabits });
+      if (!settingsDoc) writeDoc(m("settings"), settings);
+
+      latestTasksRef.current = tasks;
+
+      if (!cancelled) {
+        setData({ tasks, futureTasks, notebooks, journal, contacts, archive, dailyHabits, weeklyHabits,
+          categories: settings.categories, layout: settings.layout, notes: settings.notes, darkMode: settings.darkMode });
         setLoading(false);
       }
-    });
-    return unsub;
-  }, [userId, docPath]);
+    }
 
-  // Save weekly data (tasks only) with debounce
-  const save = useCallback(
-    (newData) => {
-      if (newData.tasks) latestTasksRef.current = newData.tasks;
-      setData(newData);
-      userHasEdited.current = true;
-      if (saveTimeout.current) clearTimeout(saveTimeout.current);
-      saveTimeout.current = setTimeout(() => {
-        const tasksToSave = latestTasksRef.current || newData.tasks;
-        userHasEdited.current = false;
-        const saveData = { tasks: tasksToSave, _lastModified: Date.now() };
-        setDoc(doc(db, docPath), saveData).then(() => {
-          // After save completes, we're clean. Remote updates from other devices are welcome.
-        }).catch((err) => { console.error("Save error:", err); userHasEdited.current = true; });
-      }, 300);
-    },
-    [docPath]
-  );
-
-  // ─── Shared meta documents (persist across weeks) ───
-
-  // Future tasks
-  const saveFuture = useCallback(
-    (futureTasks) => { setDoc(doc(db, `users/${userId}/meta/futureTasks`), { items: futureTasks }).catch(console.error); },
-    [userId]
-  );
-  useEffect(() => {
-    if (!userId) return;
-    const unsub = onSnapshot(doc(db, `users/${userId}/meta/futureTasks`), (snap) => {
-      if (snap.exists()) setData((prev) => prev ? { ...prev, futureTasks: snap.data().items } : prev);
-    });
-    return unsub;
+    loadAll();
+    return () => { cancelled = true; };
   }, [userId]);
 
-  // Notebooks
-  const saveNotebooks = useCallback(
-    (notebooks) => { setDoc(doc(db, `users/${userId}/meta/notebooks`), { items: notebooks }).catch(console.error); },
-    [userId]
-  );
+  // ─── Reload tasks when page becomes visible (switching back from another app/tab) ───
   useEffect(() => {
     if (!userId) return;
-    const unsub = onSnapshot(doc(db, `users/${userId}/meta/notebooks`), (snap) => {
-      if (snap.exists()) {
-        setData((prev) => prev ? { ...prev, notebooks: snap.data().items } : prev);
-      } else {
-        const defaults = [
-          { id: "nb1", title: "Books to Read", content: "<p>Add your reading list here...</p>" },
-          { id: "nb2", title: "Cool Ideas", content: "<p>Capture interesting ideas...</p>" },
-          { id: "nb3", title: "Things to Cook", content: "<p>Recipes and meal ideas...</p>" },
-        ];
-        setDoc(doc(db, `users/${userId}/meta/notebooks`), { items: defaults });
-        setData((prev) => prev ? { ...prev, notebooks: defaults } : prev);
+    const onVisible = async () => {
+      if (document.visibilityState !== "visible") return;
+      const wk = getWeekKey();
+      if (wk !== weekKeyRef.current) { window.location.reload(); return; }
+      const weekDoc = await readDoc(`users/${userId}/weeks/${wk}`);
+      if (weekDoc?.tasks) {
+        latestTasksRef.current = weekDoc.tasks;
+        setData((prev) => prev ? { ...prev, tasks: weekDoc.tasks } : prev);
       }
-    });
-    return unsub;
+      // Also reload meta docs
+      const [futureDoc, archiveDoc, dailyDoc, weeklyDoc] = await Promise.all([
+        readDoc(`users/${userId}/meta/futureTasks`), readDoc(`users/${userId}/meta/archive`),
+        readDoc(`users/${userId}/meta/dailyHabits`), readDoc(`users/${userId}/meta/weeklyHabits`),
+      ]);
+      setData((prev) => {
+        if (!prev) return prev;
+        return { ...prev,
+          futureTasks: futureDoc?.items || prev.futureTasks,
+          archive: archiveDoc?.items || prev.archive,
+          dailyHabits: dailyDoc?.items || prev.dailyHabits,
+          weeklyHabits: weeklyDoc?.items || prev.weeklyHabits,
+        };
+      });
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
   }, [userId]);
 
-  // Journal
-  const saveJournal = useCallback(
-    (journal) => { setDoc(doc(db, `users/${userId}/meta/journal`), { entries: journal }).catch(console.error); },
-    [userId]
-  );
-  useEffect(() => {
-    if (!userId) return;
-    const unsub = onSnapshot(doc(db, `users/${userId}/meta/journal`), (snap) => {
-      if (snap.exists()) setData((prev) => prev ? { ...prev, journal: snap.data().entries } : prev);
-      else { setDoc(doc(db, `users/${userId}/meta/journal`), { entries: {} }); setData((prev) => prev ? { ...prev, journal: {} } : prev); }
-    });
-    return unsub;
+  // ─── Save tasks with short debounce ───
+  const save = useCallback((newData) => {
+    if (newData.tasks) latestTasksRef.current = newData.tasks;
+    setData(newData);
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(() => {
+      const tasks = latestTasksRef.current;
+      if (tasks) writeDoc(`users/${userId}/weeks/${weekKeyRef.current}`, { tasks, _lastModified: Date.now() });
+    }, 250);
   }, [userId]);
 
-  // Contacts
-  const saveContacts = useCallback(
-    (contacts) => { setDoc(doc(db, `users/${userId}/meta/contacts`), { items: contacts }).catch(console.error); },
-    [userId]
-  );
-  useEffect(() => {
-    if (!userId) return;
-    const unsub = onSnapshot(doc(db, `users/${userId}/meta/contacts`), (snap) => {
-      if (snap.exists()) setData((prev) => prev ? { ...prev, contacts: snap.data().items } : prev);
-      else { setDoc(doc(db, `users/${userId}/meta/contacts`), { items: [] }); setData((prev) => prev ? { ...prev, contacts: [] } : prev); }
-    });
-    return unsub;
+  const saveQuiet = useCallback((newData) => {
+    if (newData.tasks) latestTasksRef.current = newData.tasks;
+    setData(newData);
+    const tasks = newData.tasks || latestTasksRef.current;
+    if (tasks) writeDoc(`users/${userId}/weeks/${weekKeyRef.current}`, { tasks, _lastModified: Date.now() });
   }, [userId]);
 
-  // Archive
-  const saveArchive = useCallback(
-    (archive) => { setDoc(doc(db, `users/${userId}/meta/archive`), { items: archive }).catch(console.error); },
-    [userId]
-  );
+  // ─── Flush pending save on page hide ───
   useEffect(() => {
-    if (!userId) return;
-    const unsub = onSnapshot(doc(db, `users/${userId}/meta/archive`), (snap) => {
-      if (snap.exists()) setData((prev) => prev ? { ...prev, archive: snap.data().items } : prev);
-      else { setDoc(doc(db, `users/${userId}/meta/archive`), { items: [] }); setData((prev) => prev ? { ...prev, archive: [] } : prev); }
-    });
-    return unsub;
-  }, [userId]);
-
-  // Daily habits (shared, persist across weeks)
-  const saveDailyHabits = useCallback(
-    (habits) => { setDoc(doc(db, `users/${userId}/meta/dailyHabits`), { items: habits }).catch(console.error); },
-    [userId]
-  );
-  useEffect(() => {
-    if (!userId) return;
-    const unsub = onSnapshot(doc(db, `users/${userId}/meta/dailyHabits`), (snap) => {
-      if (snap.exists()) setData((prev) => prev ? { ...prev, dailyHabits: snap.data().items } : prev);
-      else { setDoc(doc(db, `users/${userId}/meta/dailyHabits`), { items: DEFAULT_DAILY_HABITS }); setData((prev) => prev ? { ...prev, dailyHabits: DEFAULT_DAILY_HABITS } : prev); }
-    });
-    return unsub;
-  }, [userId]);
-
-  // Weekly habits (shared, persist across weeks)
-  const saveWeeklyHabits = useCallback(
-    (habits) => { setDoc(doc(db, `users/${userId}/meta/weeklyHabits`), { items: habits }).catch(console.error); },
-    [userId]
-  );
-  useEffect(() => {
-    if (!userId) return;
-    const unsub = onSnapshot(doc(db, `users/${userId}/meta/weeklyHabits`), (snap) => {
-      if (snap.exists()) setData((prev) => prev ? { ...prev, weeklyHabits: snap.data().items } : prev);
-      else { setDoc(doc(db, `users/${userId}/meta/weeklyHabits`), { items: DEFAULT_WEEKLY_HABITS }); setData((prev) => prev ? { ...prev, weeklyHabits: DEFAULT_WEEKLY_HABITS } : prev); }
-    });
-    return unsub;
-  }, [userId]);
-
-  // Settings (categories, layout, notes - shared)
-  const saveSettings = useCallback(
-    (settings) => { setDoc(doc(db, `users/${userId}/meta/settings`), settings).catch(console.error); },
-    [userId]
-  );
-  useEffect(() => {
-    if (!userId) return;
-    const unsub = onSnapshot(doc(db, `users/${userId}/meta/settings`), (snap) => {
-      if (snap.exists()) {
-        const s = snap.data();
-        setData((prev) => prev ? { ...prev, categories: s.categories, layout: s.layout, notes: s.notes, darkMode: s.darkMode } : prev);
-      } else {
-        const defaults = { categories: DEFAULT_CATEGORIES, layout: "vertical", notes: "", darkMode: false };
-        setDoc(doc(db, `users/${userId}/meta/settings`), defaults);
-        setData((prev) => prev ? { ...prev, ...defaults } : prev);
+    const flush = () => {
+      if (saveTimer.current) {
+        clearTimeout(saveTimer.current);
+        saveTimer.current = null;
+        if (latestTasksRef.current) writeDoc(`users/${userId}/weeks/${weekKeyRef.current}`, { tasks: latestTasksRef.current, _lastModified: Date.now() });
       }
-    });
-    return unsub;
+    };
+    const onHide = () => { if (document.visibilityState === "hidden") flush(); };
+    document.addEventListener("visibilitychange", onHide);
+    window.addEventListener("beforeunload", flush);
+    return () => { document.removeEventListener("visibilitychange", onHide); window.removeEventListener("beforeunload", flush); };
   }, [userId]);
 
-  // Quiet save: for auto-effects (auto-promote, birthday). Does NOT mark as user-edited.
-  const saveQuiet = useCallback(
-    (newData) => {
-      if (newData.tasks) latestTasksRef.current = newData.tasks;
-      setData(newData);
-      const tasksToSave = newData.tasks || latestTasksRef.current;
-      if (tasksToSave) {
-        setDoc(doc(db, docPath), { tasks: tasksToSave, _lastModified: Date.now() }).catch(console.error);
-      }
-    },
-    [docPath]
-  );
+  // ─── Meta saves (immediate, no debounce) ───
+  const saveFuture = useCallback((items) => { setData((p) => p ? { ...p, futureTasks: items } : p); writeDoc(`users/${userId}/meta/futureTasks`, { items }); }, [userId]);
+  const saveNotebooks = useCallback((items) => { setData((p) => p ? { ...p, notebooks: items } : p); writeDoc(`users/${userId}/meta/notebooks`, { items }); }, [userId]);
+  const saveJournal = useCallback((entries) => { setData((p) => p ? { ...p, journal: entries } : p); writeDoc(`users/${userId}/meta/journal`, { entries }); }, [userId]);
+  const saveContacts = useCallback((items) => { setData((p) => p ? { ...p, contacts: items } : p); writeDoc(`users/${userId}/meta/contacts`, { items }); }, [userId]);
+  const saveArchive = useCallback((items) => { setData((p) => p ? { ...p, archive: items } : p); writeDoc(`users/${userId}/meta/archive`, { items }); }, [userId]);
+  const saveDailyHabits = useCallback((items) => { setData((p) => p ? { ...p, dailyHabits: items } : p); writeDoc(`users/${userId}/meta/dailyHabits`, { items }); }, [userId]);
+  const saveWeeklyHabits = useCallback((items) => { setData((p) => p ? { ...p, weeklyHabits: items } : p); writeDoc(`users/${userId}/meta/weeklyHabits`, { items }); }, [userId]);
+  const saveSettings = useCallback((s) => { setData((p) => p ? { ...p, categories: s.categories, layout: s.layout, notes: s.notes, darkMode: s.darkMode } : p); writeDoc(`users/${userId}/meta/settings`, s); }, [userId]);
 
   return { data, loading, save, saveQuiet, saveFuture, saveNotebooks, saveJournal, saveContacts, saveArchive, saveDailyHabits, saveWeeklyHabits, saveSettings };
 }
