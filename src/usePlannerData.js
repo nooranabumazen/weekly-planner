@@ -93,20 +93,16 @@ export function usePlannerData(userId) {
   const docPath = `users/${userId}/weeks/${weekKey}`;
   const carryForwardDone = useRef(false);
   const latestTasksRef = useRef(null);
-  const dirtyRef = useRef(false); // true when local changes haven't been saved to Firestore yet
-  const lastSaveTime = useRef(0);
-  const savingRef = useRef(false);
+  const initialLoadDone = useRef(false);
+  const userHasEdited = useRef(false); // only true after user makes a manual change
 
-  // Force save: writes immediately, no debounce
+  // Force save: writes immediately with timestamp
   const forceSave = useCallback(() => {
-    if (!dirtyRef.current || !latestTasksRef.current) return;
+    if (!userHasEdited.current || !latestTasksRef.current) return;
     if (saveTimeout.current) clearTimeout(saveTimeout.current);
-    dirtyRef.current = false;
-    savingRef.current = true;
-    lastSaveTime.current = Date.now();
-    setDoc(doc(db, `users/${userId}/weeks/${getWeekKey()}`), { tasks: latestTasksRef.current })
-      .then(() => { savingRef.current = false; })
-      .catch((err) => { console.error("Save error:", err); savingRef.current = false; });
+    userHasEdited.current = false;
+    const saveData = { tasks: latestTasksRef.current, _lastModified: Date.now() };
+    setDoc(doc(db, `users/${userId}/weeks/${getWeekKey()}`), saveData).catch(console.error);
   }, [userId]);
 
   // Save on page hide / tab switch / close
@@ -126,9 +122,10 @@ export function usePlannerData(userId) {
     const interval = setInterval(() => {
       const currentKey = getWeekKey();
       if (currentKey !== weekKey) {
-        // Force save current week before switching
         forceSave();
         carryForwardDone.current = false;
+        initialLoadDone.current = false;
+        userHasEdited.current = false;
         setWeekKey(currentKey);
       }
     }, 30000);
@@ -138,18 +135,31 @@ export function usePlannerData(userId) {
   // Listen for weekly tasks data
   useEffect(() => {
     if (!userId) return;
+    initialLoadDone.current = false;
     const unsub = onSnapshot(doc(db, docPath), async (snap) => {
-      // NEVER overwrite local dirty state with remote data
-      if (dirtyRef.current || savingRef.current) return;
-
       if (snap.exists()) {
-        const remoteTasks = snap.data().tasks;
+        const remoteData = snap.data();
+        const remoteTasks = remoteData.tasks;
+        const remoteTimestamp = remoteData._lastModified || 0;
+
+        // Always accept the FIRST snapshot (initial load from Firestore)
+        if (!initialLoadDone.current) {
+          initialLoadDone.current = true;
+          if (remoteTasks) latestTasksRef.current = remoteTasks;
+          setData((prev) => {
+            if (!prev) return { ...defaultData(), tasks: remoteTasks || defaultData().tasks };
+            return { ...prev, tasks: remoteTasks || prev.tasks };
+          });
+          setLoading(false);
+          return;
+        }
+
+        // After initial load: only accept remote if user hasn't made local edits
+        if (userHasEdited.current) return;
+
+        // Accept remote update (from another device)
         if (remoteTasks) latestTasksRef.current = remoteTasks;
-        setData((prev) => {
-          if (!prev) return { ...defaultData(), tasks: remoteTasks || defaultData().tasks };
-          return { ...prev, tasks: remoteTasks || prev.tasks };
-        });
-        setLoading(false);
+        setData((prev) => prev ? { ...prev, tasks: remoteTasks || prev.tasks } : prev);
       } else {
         // New week: carry forward incomplete tasks
         if (!carryForwardDone.current) {
@@ -197,16 +207,15 @@ export function usePlannerData(userId) {
     (newData) => {
       if (newData.tasks) latestTasksRef.current = newData.tasks;
       setData(newData);
-      dirtyRef.current = true;
+      userHasEdited.current = true;
       if (saveTimeout.current) clearTimeout(saveTimeout.current);
       saveTimeout.current = setTimeout(() => {
         const tasksToSave = latestTasksRef.current || newData.tasks;
-        dirtyRef.current = false;
-        savingRef.current = true;
-        lastSaveTime.current = Date.now();
-        setDoc(doc(db, docPath), { tasks: tasksToSave }).then(() => {
-          savingRef.current = false;
-        }).catch((err) => { console.error("Save error:", err); savingRef.current = false; dirtyRef.current = true; });
+        userHasEdited.current = false;
+        const saveData = { tasks: tasksToSave, _lastModified: Date.now() };
+        setDoc(doc(db, docPath), saveData).then(() => {
+          // After save completes, we're clean. Remote updates from other devices are welcome.
+        }).catch((err) => { console.error("Save error:", err); userHasEdited.current = true; });
       }, 300);
     },
     [docPath]
@@ -340,7 +349,20 @@ export function usePlannerData(userId) {
     return unsub;
   }, [userId]);
 
-  return { data, loading, save, saveFuture, saveNotebooks, saveJournal, saveContacts, saveArchive, saveDailyHabits, saveWeeklyHabits, saveSettings };
+  // Quiet save: for auto-effects (auto-promote, birthday). Does NOT mark as user-edited.
+  const saveQuiet = useCallback(
+    (newData) => {
+      if (newData.tasks) latestTasksRef.current = newData.tasks;
+      setData(newData);
+      const tasksToSave = newData.tasks || latestTasksRef.current;
+      if (tasksToSave) {
+        setDoc(doc(db, docPath), { tasks: tasksToSave, _lastModified: Date.now() }).catch(console.error);
+      }
+    },
+    [docPath]
+  );
+
+  return { data, loading, save, saveQuiet, saveFuture, saveNotebooks, saveJournal, saveContacts, saveArchive, saveDailyHabits, saveWeeklyHabits, saveSettings };
 }
 
 export const DEFAULT_CATEGORIES = [

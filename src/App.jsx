@@ -5,7 +5,7 @@ import Planner from './Planner';
 
 export default function App() {
   const { user, loading: authLoading, login, signup, logout } = useAuth();
-  const { data, loading: dataLoading, save, saveFuture, saveNotebooks, saveJournal, saveContacts, saveArchive, saveDailyHabits, saveWeeklyHabits, saveSettings } = usePlannerData(user?.uid);
+  const { data, loading: dataLoading, save, saveQuiet, saveFuture, saveNotebooks, saveJournal, saveContacts, saveArchive, saveDailyHabits, saveWeeklyHabits, saveSettings } = usePlannerData(user?.uid);
 
   if (authLoading) {
     return (
@@ -39,6 +39,7 @@ export default function App() {
     <Planner
       data={data}
       onSave={save}
+      onSaveQuiet={saveQuiet}
       onSaveFuture={saveFuture}
       onSaveNotebooks={saveNotebooks}
       onSaveJournal={saveJournal}
