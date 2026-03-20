@@ -9,12 +9,19 @@ export function makeTask(text, opts = {}) {
   return { id: "t" + Date.now() + "_" + ++_id, text, done: false, ...opts };
 }
 
+export function formatLocalDate(date) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
 function getWeekKey() {
   const today = new Date();
   const day = today.getDay();
   const monday = new Date(today);
   monday.setDate(today.getDate() - ((day + 6) % 7));
-  return monday.toISOString().split("T")[0];
+  return formatLocalDate(monday);
 }
 
 export function getWeekDates() {
@@ -28,7 +35,7 @@ export function getWeekDates() {
     return {
       label,
       date: d.toLocaleDateString("en-US", { month: "short", day: "numeric" }),
-      fullDate: d.toISOString().split("T")[0],
+      fullDate: formatLocalDate(d),
       isToday: d.toDateString() === today.toDateString(),
     };
   });
@@ -46,7 +53,7 @@ export function getUpcomingDates() {
     dates.push({
       label: d.toLocaleDateString("en-US", { weekday: "short" }).toUpperCase(),
       date: d.toLocaleDateString("en-US", { month: "short", day: "numeric" }),
-      fullDate: d.toISOString().split("T")[0],
+      fullDate: formatLocalDate(d),
     });
   }
   return dates;
@@ -81,7 +88,7 @@ function getPrevWeekKey() {
   monday.setDate(today.getDate() - ((day + 6) % 7));
   const prevMonday = new Date(monday);
   prevMonday.setDate(monday.getDate() - 7);
-  return prevMonday.toISOString().split("T")[0];
+  return formatLocalDate(prevMonday);
 }
 
 async function readDoc(path) {

@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from "react";
-import { makeTask, getWeekDates, getUpcomingDates, DEFAULT_CATEGORIES } from "./usePlannerData";
+import { makeTask, getWeekDates, getUpcomingDates, DEFAULT_CATEGORIES, formatLocalDate } from "./usePlannerData";
 import NotebooksPanel from "./NotebooksSidebar";
 import JournalPanel from "./JournalPanel";
 import ContactsPanel from "./ContactsPanel";
@@ -869,7 +869,7 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
         const twoWeeksBefore = new Date(bdDate);
         twoWeeksBefore.setDate(bdDate.getDate() - 14);
         if (twoWeeksBefore <= today && bdDate >= today && bdDate <= threeMonths) {
-          const dateStr = bdDate.toISOString().split("T")[0];
+          const dateStr = formatLocalDate(bdDate);
           const taskText = `\u{1F382} ${c.name}'s birthday (${c.birthday})`;
           newReminders.push({ id: "bday" + Date.now() + "_" + Math.random().toString(36).slice(2, 5), text: taskText, date: dateStr });
           break; // Only one reminder per contact
