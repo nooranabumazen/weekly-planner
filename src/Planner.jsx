@@ -37,14 +37,35 @@ const CATEGORY_KEYWORDS = {
   cat_events: ["event", "party", "birthday", "dinner party", "gathering", "celebration", "concert", "show", "festival", "conference", "workshop"],
   cat_volunteering: ["volunteer", "red raccoon", "bike rescue", "house of friendship", "community", "donate", "fundraise", "advocacy"],
   cat_gardening: ["garden", "plant", "seed", "water", "prune", "harvest", "compost", "soil", "flower", "weed", "transplant", "mulch", "jerash"],
+  cat_selfcare: ["shower", "tweeze", "brush", "hair", "nails", "exercise", "shave"],
 };
 
 function autoDetectCategory(text, categories) {
   const lower = text.toLowerCase();
+
+  // "Self care" is a built-in keyword list, but users may have their own
+  // category id/name. This maps self-care keywords onto the category whose
+  // name matches "self care" (or "selfcare").
+  const selfCareCategory = categories.find((c) => {
+    const n = (c?.name || "").toLowerCase();
+    return (
+      c?.id === "cat_selfcare" ||
+      /\bself\s*care\b/.test(n) ||
+      n.includes("selfcare") ||
+      n.includes("self care")
+    );
+  });
+  const selfCareCategoryId = selfCareCategory?.id || null;
+
   for (const [catId, keywords] of Object.entries(CATEGORY_KEYWORDS)) {
-    if (categories.find((c) => c.id === catId)) {
+    // Built-in keyword lists only apply if the matching category exists.
+    // For self-care, we allow a custom category id as long as the name matches.
+    const hasCategory =
+      catId === "cat_selfcare" ? !!selfCareCategoryId : !!categories.find((c) => c.id === catId);
+
+    if (hasCategory) {
       for (const kw of keywords) {
-        if (lower.includes(kw)) return catId;
+        if (lower.includes(kw)) return catId === "cat_selfcare" ? selfCareCategoryId : catId;
       }
     }
   }
