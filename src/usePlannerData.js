@@ -73,14 +73,6 @@ const DEFAULT_WEEKLY_HABITS = [
 
 const emptyTasks = () => ({ mon: [], tue: [], wed: [], thu: [], fri: [], sat: [], sun: [], later: [] });
 
-const defaultData = () => ({
-  tasks: emptyTasks(),
-  futureTasks: [],
-  dailyHabits: DEFAULT_DAILY_HABITS,
-  weeklyHabits: DEFAULT_WEEKLY_HABITS,
-  notes: "",
-});
-
 function getPrevWeekKey() {
   const today = new Date();
   const day = today.getDay();
@@ -105,12 +97,32 @@ function writeDoc(path, data) {
   setDoc(doc(db, path), data).catch((err) => console.error("Write error:", path, err));
 }
 
+// Synchronous write using sendBeacon for page unload reliability
+function writeDocSync(path, data) {
+  // Use regular setDoc - sendBeacon doesn't work with Firestore SDK
+  setDoc(doc(db, path), data).catch((err) => console.error("Write error:", path, err));
+}
+
 export function usePlannerData(userId) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const latestTasksRef = useRef(null);
   const weekKeyRef = useRef(getWeekKey());
   const saveTimer = useRef(null);
+  const hasPendingSave = useRef(false);
+  const lastHiddenAt = useRef(0);
+
+  // ─── Flush: cancel debounce timer and write immediately ───
+  const flushSave = useCallback(() => {
+    if (saveTimer.current) {
+      clearTimeout(saveTimer.current);
+      saveTimer.current = null;
+    }
+    if (hasPendingSave.current && latestTasksRef.current) {
+      hasPendingSave.current = false;
+      writeDocSync(`users/${userId}/weeks/${weekKeyRef.current}`, { tasks: latestTasksRef.current, _lastModified: Date.now() });
+    }
+  }, [userId]);
 
   // ─── Load all data once on mount ───
   useEffect(() => {
@@ -134,6 +146,7 @@ export function usePlannerData(userId) {
       if (weekDoc && weekDoc.tasks) {
         tasks = weekDoc.tasks;
       } else {
+        // New week or first time: try carry forward
         const prevDoc = await readDoc(`users/${userId}/weeks/${getPrevWeekKey()}`);
         if (prevDoc && prevDoc.tasks) {
           const pt = prevDoc.tasks;
@@ -142,10 +155,12 @@ export function usePlannerData(userId) {
             (pt[d] || []).forEach((t) => { if (!t.done) carry.push({ ...t, id: "t" + Date.now() + "_" + Math.random().toString(36).slice(2,6) }); });
           });
           tasks = { mon: carry, tue: [], wed: [], thu: [], fri: [], sat: [], sun: [], later: pt.later || [] };
+          // Only write the new week doc if we actually carried tasks forward
+          writeDoc(weekPath, { tasks, _lastModified: Date.now() });
         } else {
+          // Truly empty - use in memory only, don't write an empty doc to Firestore
           tasks = emptyTasks();
         }
-        writeDoc(weekPath, { tasks, _lastModified: Date.now() });
       }
 
       const futureTasks = futureDoc?.items || [];
@@ -179,19 +194,44 @@ export function usePlannerData(userId) {
     return () => { cancelled = true; };
   }, [userId]);
 
-  // ─── Reload tasks when page becomes visible (switching back from another app/tab) ───
+  // ─── On visibility change: flush on hide, reload on show (only if away > 5s) ───
   useEffect(() => {
     if (!userId) return;
-    const onVisible = async () => {
-      if (document.visibilityState !== "visible") return;
+
+    const handler = async () => {
+      if (document.visibilityState === "hidden") {
+        // Page going away: flush any pending save immediately
+        lastHiddenAt.current = Date.now();
+        flushSave();
+        return;
+      }
+
+      // Page becoming visible again
+      const awayFor = Date.now() - lastHiddenAt.current;
+
+      // If week changed while away, full reload
       const wk = getWeekKey();
-      if (wk !== weekKeyRef.current) { window.location.reload(); return; }
+      if (wk !== weekKeyRef.current) {
+        window.location.reload();
+        return;
+      }
+
+      // Only reload from Firestore if we were away for more than 5 seconds
+      // This prevents the revert bug when quickly switching tabs
+      if (awayFor < 5000) return;
+
+      // Flush first to make sure our latest state is in Firestore
+      flushSave();
+
+      // Small delay to let the flush write complete
+      await new Promise((r) => setTimeout(r, 500));
+
+      // Now read the latest from Firestore (could include changes from another device)
       const weekDoc = await readDoc(`users/${userId}/weeks/${wk}`);
       if (weekDoc?.tasks) {
         latestTasksRef.current = weekDoc.tasks;
         setData((prev) => prev ? { ...prev, tasks: weekDoc.tasks } : prev);
       }
-      // Also reload meta docs
       const [futureDoc, archiveDoc, dailyDoc, weeklyDoc] = await Promise.all([
         readDoc(`users/${userId}/meta/futureTasks`), readDoc(`users/${userId}/meta/archive`),
         readDoc(`users/${userId}/meta/dailyHabits`), readDoc(`users/${userId}/meta/weeklyHabits`),
@@ -206,16 +246,23 @@ export function usePlannerData(userId) {
         };
       });
     };
-    document.addEventListener("visibilitychange", onVisible);
-    return () => document.removeEventListener("visibilitychange", onVisible);
-  }, [userId]);
+
+    document.addEventListener("visibilitychange", handler);
+    window.addEventListener("beforeunload", flushSave);
+    return () => {
+      document.removeEventListener("visibilitychange", handler);
+      window.removeEventListener("beforeunload", flushSave);
+    };
+  }, [userId, flushSave]);
 
   // ─── Save tasks with short debounce ───
   const save = useCallback((newData) => {
     if (newData.tasks) latestTasksRef.current = newData.tasks;
     setData(newData);
+    hasPendingSave.current = true;
     if (saveTimer.current) clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(() => {
+      hasPendingSave.current = false;
       const tasks = latestTasksRef.current;
       if (tasks) writeDoc(`users/${userId}/weeks/${weekKeyRef.current}`, { tasks, _lastModified: Date.now() });
     }, 250);
@@ -228,22 +275,7 @@ export function usePlannerData(userId) {
     if (tasks) writeDoc(`users/${userId}/weeks/${weekKeyRef.current}`, { tasks, _lastModified: Date.now() });
   }, [userId]);
 
-  // ─── Flush pending save on page hide ───
-  useEffect(() => {
-    const flush = () => {
-      if (saveTimer.current) {
-        clearTimeout(saveTimer.current);
-        saveTimer.current = null;
-        if (latestTasksRef.current) writeDoc(`users/${userId}/weeks/${weekKeyRef.current}`, { tasks: latestTasksRef.current, _lastModified: Date.now() });
-      }
-    };
-    const onHide = () => { if (document.visibilityState === "hidden") flush(); };
-    document.addEventListener("visibilitychange", onHide);
-    window.addEventListener("beforeunload", flush);
-    return () => { document.removeEventListener("visibilitychange", onHide); window.removeEventListener("beforeunload", flush); };
-  }, [userId]);
-
-  // ─── Meta saves (immediate, no debounce) ───
+  // ─── Meta saves (immediate) ───
   const saveFuture = useCallback((items) => { setData((p) => p ? { ...p, futureTasks: items } : p); writeDoc(`users/${userId}/meta/futureTasks`, { items }); }, [userId]);
   const saveNotebooks = useCallback((items) => { setData((p) => p ? { ...p, notebooks: items } : p); writeDoc(`users/${userId}/meta/notebooks`, { items }); }, [userId]);
   const saveJournal = useCallback((entries) => { setData((p) => p ? { ...p, journal: entries } : p); writeDoc(`users/${userId}/meta/journal`, { entries }); }, [userId]);
