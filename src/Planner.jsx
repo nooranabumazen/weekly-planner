@@ -427,6 +427,7 @@ function HabitsTracker({ dailyHabits, weeklyHabits, onToggleDaily, onToggleWeekl
       <div style={{ flex: 1, minWidth: 0, overflow: "hidden", paddingLeft: 4, display: "flex", flexDirection: "column" }}>
         <div style={sLabel}>Weekly Habits</div>
         <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+          <div style={{ height: 14 }} /> {/* Spacer to align with daily habits day header row */}
           {weeklyHabits.map((h) => (
             <div key={h.id} draggable onDragStart={() => setDragHabit({ id: h.id, type: "weekly" })} onDragOver={(e) => e.preventDefault()} onDrop={() => handleWeeklyDrop(h.id)}
               style={{ display: "flex", alignItems: "center", gap: 6, cursor: "grab" }}>
@@ -699,13 +700,17 @@ function DayColumn({ dayInfo, columnId, tasks, categories, onDragStart, onDrop, 
 }
 
 /* ─── Future Sidebar ─── */
-function FutureSidebar({ futureTasks, onAddFuture, onDeleteFuture }) {
+function FutureSidebar({ futureTasks, onAddFuture, onDeleteFuture, onEditFuture }) {
   const [adding, setAdding] = useState(false);
   const [open, setOpen] = useState(true);
   const [newText, setNewText] = useState("");
   const [newDate, setNewDate] = useState("");
+  const [editingId, setEditingId] = useState(null);
+  const [editText, setEditText] = useState("");
   const addRef = useRef(null);
+  const editRef = useRef(null);
   useEffect(() => { if (adding && addRef.current) addRef.current.focus(); }, [adding]);
+  useEffect(() => { if (editingId && editRef.current) editRef.current.focus(); }, [editingId]);
   const grouped = {};
   futureTasks.forEach((t) => { if (!grouped[t.date]) grouped[t.date] = []; grouped[t.date].push(t); });
   const sortedDates = Object.keys(grouped).sort();
@@ -728,7 +733,15 @@ function FutureSidebar({ futureTasks, onAddFuture, onDeleteFuture }) {
                 {grouped[date].map((task) => (<div key={task.id} draggable onDragStart={(e) => { e.dataTransfer.setData("text/plain", JSON.stringify({ taskId: task.id, from: "future", futureText: task.text })); }}
                   style={{ background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 4, padding: "5px 7px", marginBottom: 3, fontSize: 12, cursor: "grab", display: "flex", justifyContent: "space-between", alignItems: "center" }}
                   onMouseEnter={(e) => { e.currentTarget.style.boxShadow = "0 2px 6px rgba(0,0,0,0.1)"; }} onMouseLeave={(e) => { e.currentTarget.style.boxShadow = "none"; }}>
-                  <span style={{ flex: 1, wordBreak: "break-word" }}>{task.text}</span>
+                  {editingId === task.id ? (
+                    <input ref={editRef} value={editText} onChange={(e) => setEditText(e.target.value)}
+                      onBlur={() => { if (editText.trim()) onEditFuture(task.id, editText.trim()); setEditingId(null); }}
+                      onKeyDown={(e) => { if (e.key === "Enter") { if (editText.trim()) onEditFuture(task.id, editText.trim()); setEditingId(null); } if (e.key === "Escape") setEditingId(null); }}
+                      onClick={(e) => e.stopPropagation()}
+                      style={{ flex: 1, border: "1px solid var(--border)", borderRadius: 3, padding: "1px 4px", fontSize: 12, outline: "none", background: "var(--input-bg)", color: "var(--text)", boxSizing: "border-box" }} />
+                  ) : (
+                    <span onDoubleClick={() => { setEditingId(task.id); setEditText(task.text); }} style={{ flex: 1, wordBreak: "break-word", cursor: "text" }}>{task.text}</span>
+                  )}
                   <button onClick={() => onDeleteFuture(task.id)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-faint)", fontSize: 11, padding: 0, marginLeft: 3, fontWeight: 600, lineHeight: 1 }} onMouseEnter={(e) => (e.target.style.color = "#c44")} onMouseLeave={(e) => (e.target.style.color = "#bbb")}>&times;</button>
                 </div>))}</div>);
             })}
@@ -1066,6 +1079,7 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
   const reorderWeekly = (items) => { update({ weeklyHabits: items }); onSaveWeeklyHabits(items); };
   const addFuture = (text, date) => { const nf = [...futureTasks, { id: "f" + Date.now(), text, date }]; update({ futureTasks: nf }); onSaveFuture(nf); };
   const deleteFuture = (id) => { const nf = futureTasks.filter((t) => t.id !== id); update({ futureTasks: nf }); onSaveFuture(nf); };
+  const editFuture = (id, text) => { const nf = futureTasks.map((t) => t.id === id ? { ...t, text } : t); update({ futureTasks: nf }); onSaveFuture(nf); };
   const updateNotebooks = (nbs) => { update({ notebooks: nbs }); onSaveNotebooks(nbs); };
   const updateJournal = (j) => { update({ journal: j }); onSaveJournal(j); };
   const updateContacts = (c) => { update({ contacts: c }); onSaveContacts(c); };
@@ -1266,7 +1280,7 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
                   </div>
                 )}
               </div>
-              {!isMobile && <FutureSidebar futureTasks={futureTasks} onAddFuture={addFuture} onDeleteFuture={deleteFuture} />}
+              {!isMobile && <FutureSidebar futureTasks={futureTasks} onAddFuture={addFuture} onDeleteFuture={deleteFuture} onEditFuture={editFuture} />}
             </div>
           </div>
         )}
@@ -1404,12 +1418,17 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
                 const completedLabel = new Date(entry.completedAt).toLocaleDateString("en-US", { month: "short", day: "numeric" });
                 const catColor = getCatColor(categories, entry.category);
                 return (
-                  <div key={entry.id} style={{ background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 5, padding: "6px 8px", marginBottom: 4, fontSize: isMobile ? 14 : 11, borderLeft: `3px solid ${catColor}` }}>
-                    <div style={{ color: "var(--text)", fontWeight: 500 }}>{entry.text}</div>
-                    <div style={{ fontSize: isMobile ? 11 : 9, color: "var(--text-muted)", marginTop: 3 }}>
-                      {entry.category && <span style={{ background: catColor, padding: "1px 4px", borderRadius: 2, marginRight: 4, color: "var(--text)", fontSize: 8 }}>{getCatName(categories, entry.category)}</span>}
-                      Assigned: {dateLabel} &middot; Done: {completedLabel}
+                  <div key={entry.id} style={{ background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 5, padding: "6px 8px", marginBottom: 4, fontSize: isMobile ? 14 : 11, borderLeft: `3px solid ${catColor}`, display: "flex", alignItems: "flex-start", gap: 6 }}>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ color: "var(--text)", fontWeight: 500 }}>{entry.text}</div>
+                      <div style={{ fontSize: isMobile ? 11 : 9, color: "var(--text-muted)", marginTop: 3 }}>
+                        {entry.category && <span style={{ background: catColor, padding: "1px 4px", borderRadius: 2, marginRight: 4, color: "var(--text)", fontSize: 8 }}>{getCatName(categories, entry.category)}</span>}
+                        Assigned: {dateLabel} &middot; Done: {completedLabel}
+                      </div>
                     </div>
+                    <button onClick={() => { const newArchive = archive.filter((a) => a.id !== entry.id); update({ archive: newArchive }); onSaveArchive(newArchive); }}
+                      style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-faint)", fontSize: 14, padding: "0 2px", lineHeight: 1, fontWeight: 600, flexShrink: 0 }}
+                      onMouseEnter={(e) => (e.target.style.color = "#c44")} onMouseLeave={(e) => (e.target.style.color = "var(--text-faint)")}>&times;</button>
                   </div>
                 );
               })}
