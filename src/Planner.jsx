@@ -966,23 +966,93 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
     const newTasks = {};
     Object.keys(currentTasks).forEach((k) => { newTasks[k] = [...currentTasks[k]]; });
     newTasks[col] = newTasks[col].map((t) => (t.id === id ? { ...t, done: nowDone } : t));
+    const laterLenBefore = currentTasks?.later?.length || 0;
     if (nowDone) {
       const dayMap = { mon: 0, tue: 1, wed: 2, thu: 3, fri: 4, sat: 5, sun: 6 };
       const dayIdx = dayMap[col];
       const dateStr = dayIdx !== undefined ? getWeekDates()[dayIdx]?.fullDate : null;
       const entry = { id: "a" + Date.now() + "_" + Math.random().toString(36).slice(2, 6), text: task.text, category: task.category, completedAt: new Date().toISOString(), assignedDay: col, assignedDate: dateStr || "later" };
       const newArchive = [entry, ...currentArchive].slice(0, 500);
+      // #region agent log toggleDone -> nowDone
+      fetch("http://127.0.0.1:7349/ingest/33b1731a-45e3-48ae-9ad6-aa14cf816181", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "12cfe4" },
+        body: JSON.stringify({
+          sessionId: "12cfe4",
+          runId: "sync_debug_pre",
+          hypothesisId: "H2_state_overwrite",
+          location: "Planner.jsx:toggleDone(nowDone)",
+          message: "User toggled a task done; about to write tasks + archive",
+          data: {
+            taskId: id,
+            col,
+            nowDone,
+            laterLenBefore,
+            laterLenAfter: newTasks?.later?.length || 0,
+            archiveLenBefore: currentArchive.length,
+            archiveLenAfter: newArchive.length,
+          },
+          timestamp: Date.now(),
+        }),
+      }).catch(() => {});
+      // #endregion
       update({ tasks: newTasks, archive: newArchive }); onSaveArchive(newArchive);
     } else {
       const newArchive = [...currentArchive]; const idx = newArchive.findIndex((a) => a.text === task.text && a.assignedDay === col);
       if (idx !== -1) newArchive.splice(idx, 1);
+      // #region agent log toggleDone -> nowUndone
+      fetch("http://127.0.0.1:7349/ingest/33b1731a-45e3-48ae-9ad6-aa14cf816181", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "12cfe4" },
+        body: JSON.stringify({
+          sessionId: "12cfe4",
+          runId: "sync_debug_pre",
+          hypothesisId: "H2_state_overwrite",
+          location: "Planner.jsx:toggleDone(nowUndone)",
+          message: "User toggled a task undone; about to write tasks + archive",
+          data: {
+            taskId: id,
+            col,
+            nowDone,
+            laterLenBefore,
+            laterLenAfter: newTasks?.later?.length || 0,
+            archiveLenBefore: currentArchive.length,
+            archiveLenAfter: newArchive.length,
+          },
+          timestamp: Date.now(),
+        }),
+      }).catch(() => {});
+      // #endregion
       update({ tasks: newTasks, archive: newArchive }); onSaveArchive(newArchive);
     }
   }, []);
 
   const deleteTask = useCallback((col, id) => { const t = dataRef.current.tasks; update({ tasks: { ...t, [col]: t[col].filter((x) => x.id !== id) } }); }, []);
   const editTask = useCallback((col, id, text) => { const t = dataRef.current.tasks; update({ tasks: { ...t, [col]: t[col].map((x) => (x.id === id ? { ...x, text } : x)) } }); }, []);
-  const addTask = useCallback((col, text, catId) => { const t = dataRef.current.tasks; update({ tasks: { ...t, [col]: [...t[col], makeTask(text, { category: catId || "cat_none" })] } }); }, []);
+  const addTask = useCallback((col, text, catId) => {
+    const t = dataRef.current.tasks;
+    const task = makeTask(text, { category: catId || "cat_none" });
+    const laterLenBefore = t?.later?.length || 0;
+    const nextList = [...t[col], task];
+    // #region agent log addTask to later
+    if (col === "later") {
+      fetch("http://127.0.0.1:7349/ingest/33b1731a-45e3-48ae-9ad6-aa14cf816181", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "12cfe4" },
+        body: JSON.stringify({
+          sessionId: "12cfe4",
+          runId: "sync_debug_pre",
+          hypothesisId: "H2_state_overwrite",
+          location: "Planner.jsx:addTask(later)",
+          message: "User added a task to Later; about to write week tasks",
+          data: { taskId: task.id, laterLenBefore, laterLenAfter: (laterLenBefore + 1), col },
+          timestamp: Date.now(),
+        }),
+      }).catch(() => {});
+    }
+    // #endregion
+    update({ tasks: { ...t, [col]: nextList } });
+  }, []);
   const changeCategory = useCallback((col, id, catId) => { const t = dataRef.current.tasks; update({ tasks: { ...t, [col]: t[col].map((x) => (x.id === id ? { ...x, category: catId } : x)) } }); }, []);
   const toggleDaily = (hid, day) => { const updated = dailyHabits.map((h) => h.id === hid ? { ...h, checks: { ...h.checks, [day]: !h.checks[day] } } : h); update({ dailyHabits: updated }); onSaveDailyHabits(updated); };
   const toggleWeekly = (hid) => { const updated = weeklyHabits.map((h) => h.id === hid ? { ...h, done: !h.done } : h); update({ weeklyHabits: updated }); onSaveWeeklyHabits(updated); };
