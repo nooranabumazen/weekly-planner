@@ -57,16 +57,18 @@ function autoDetectCategory(text, categories) {
   });
   const selfCareCategoryId = selfCareCategory?.id || null;
 
-  for (const [catId, keywords] of Object.entries(CATEGORY_KEYWORDS)) {
-    // Built-in keyword lists only apply if the matching category exists.
-    // For self-care, we allow a custom category id as long as the name matches.
-    const hasCategory =
-      catId === "cat_selfcare" ? !!selfCareCategoryId : !!categories.find((c) => c.id === catId);
+  // Check each category: use stored keywords if present, fall back to built-in defaults
+  for (const cat of categories) {
+    if (cat.id === "cat_none") continue;
+    const storedKw = cat.keywords && cat.keywords.length > 0 ? cat.keywords : null;
+    const builtinKw = CATEGORY_KEYWORDS[cat.id] || null;
+    // For selfcare, also check if this category matches by name
+    const isSelfCare = cat.id === "cat_selfcare" || (selfCareCategoryId && cat.id === selfCareCategoryId);
+    const selfCareKw = isSelfCare ? CATEGORY_KEYWORDS.cat_selfcare : null;
 
-    if (hasCategory) {
-      for (const kw of keywords) {
-        if (lower.includes(kw)) return catId === "cat_selfcare" ? selfCareCategoryId : catId;
-      }
+    const keywords = storedKw || builtinKw || selfCareKw || [];
+    for (const kw of keywords) {
+      if (kw && lower.includes(kw.toLowerCase())) return cat.id;
     }
   }
   // Check custom categories by name match
@@ -113,6 +115,8 @@ function CategoryManager({ categories, onChange, layout, onLayoutChange, darkMod
   const [editingId, setEditingId] = useState(null);
   const [editName, setEditName] = useState("");
   const [editColor, setEditColor] = useState("");
+  const [editKeywords, setEditKeywords] = useState("");
+  const [newKeywords, setNewKeywords] = useState("");
   const addRef = useRef(null);
   const editRef = useRef(null);
   useEffect(() => { if (adding && addRef.current) addRef.current.focus(); }, [adding]);
@@ -131,15 +135,17 @@ function CategoryManager({ categories, onChange, layout, onLayoutChange, darkMod
 
   const addCat = () => {
     if (newName.trim()) {
-      onChange([...categories, { id: "cat_" + Date.now(), name: newName.trim(), color: newColor }]);
-      setNewName(""); setNewColor("#B7D5E8");
+      const kw = newKeywords.split(",").map((k) => k.trim().toLowerCase()).filter(Boolean);
+      onChange([...categories, { id: "cat_" + Date.now(), name: newName.trim(), color: newColor, keywords: kw }]);
+      setNewName(""); setNewColor("#B7D5E8"); setNewKeywords("");
     }
     setAdding(false);
   };
 
   const saveEdit = () => {
     if (editName.trim()) {
-      onChange(categories.map((c) => c.id === editingId ? { ...c, name: editName.trim(), color: editColor } : c));
+      const kw = editKeywords.split(",").map((k) => k.trim().toLowerCase()).filter(Boolean);
+      onChange(categories.map((c) => c.id === editingId ? { ...c, name: editName.trim(), color: editColor, keywords: kw } : c));
     }
     setEditingId(null);
   };
@@ -223,7 +229,13 @@ function CategoryManager({ categories, onChange, layout, onLayoutChange, darkMod
                   <div style={{ width: 28, height: 28, borderRadius: 6, background: editColor, flexShrink: 0, border: "1.5px solid rgba(0,0,0,0.1)" }} />
                   <input ref={editRef} value={editName} onChange={(e) => setEditName(e.target.value)}
                     onKeyDown={(e) => { if (e.key === "Enter") saveEdit(); if (e.key === "Escape") setEditingId(null); }}
-                    style={{ flex: 1, border: "1px solid var(--border)", borderRadius: 4, padding: "5px 8px", fontSize: 13, outline: "none" }} />
+                    style={{ flex: 1, border: "1px solid var(--border)", borderRadius: 4, padding: "5px 8px", fontSize: 13, outline: "none", background: "var(--bg-card)", color: "var(--text)" }} />
+                </div>
+                <div style={{ marginBottom: 4 }}>
+                  <div style={{ fontSize: 9, color: "var(--text-muted)", marginBottom: 2, fontFamily: "'JetBrains Mono', monospace", textTransform: "uppercase", letterSpacing: 0.5 }}>Auto-detect keywords (comma separated)</div>
+                  <input value={editKeywords} onChange={(e) => setEditKeywords(e.target.value)}
+                    placeholder="e.g. clean, vacuum, mop, dust"
+                    style={{ width: "100%", border: "1px solid var(--border)", borderRadius: 4, padding: "5px 8px", fontSize: 12, outline: "none", background: "var(--bg-card)", color: "var(--text)", boxSizing: "border-box" }} />
                 </div>
                 <ColorGrid selected={editColor} onPick={setEditColor} />
                 <div style={{ display: "flex", gap: 4, marginTop: 6 }}>
@@ -234,8 +246,15 @@ function CategoryManager({ categories, onChange, layout, onLayoutChange, darkMod
             ) : (
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                 <div style={{ width: 28, height: 28, borderRadius: 6, background: cat.color, flexShrink: 0, border: "1px solid rgba(0,0,0,0.08)" }} />
-                <span style={{ flex: 1, fontSize: 14, color: "var(--text)" }}>{cat.name}</span>
-                <button onClick={() => { setEditingId(cat.id); setEditName(cat.name); setEditColor(cat.color); }}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <span style={{ fontSize: 14, color: "var(--text)" }}>{cat.name}</span>
+                  {(cat.keywords?.length > 0 || CATEGORY_KEYWORDS[cat.id]) && (
+                    <div style={{ fontSize: 9, color: "var(--text-faint)", marginTop: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {(cat.keywords || CATEGORY_KEYWORDS[cat.id] || []).join(", ")}
+                    </div>
+                  )}
+                </div>
+                <button onClick={() => { setEditingId(cat.id); setEditName(cat.name); setEditColor(cat.color); setEditKeywords((cat.keywords || CATEGORY_KEYWORDS[cat.id] || []).join(", ")); }}
                   style={{ background: "none", border: "1px solid var(--border)", borderRadius: 4, padding: "3px 8px", cursor: "pointer", fontSize: 10, color: "var(--text-muted)" }}>Edit</button>
                 {cat.id !== "cat_none" && (
                   <button onClick={() => deleteCat(cat.id)}
@@ -255,7 +274,13 @@ function CategoryManager({ categories, onChange, layout, onLayoutChange, darkMod
               <div style={{ width: 28, height: 28, borderRadius: 6, background: newColor, flexShrink: 0, border: "1.5px solid rgba(0,0,0,0.1)" }} />
               <input ref={addRef} value={newName} onChange={(e) => setNewName(e.target.value)}
                 onKeyDown={(e) => { if (e.key === "Enter") addCat(); if (e.key === "Escape") setAdding(false); }}
-                placeholder="Category name..." style={{ flex: 1, border: "1px solid var(--border)", borderRadius: 4, padding: "5px 8px", fontSize: 13, outline: "none" }} />
+                placeholder="Category name..." style={{ flex: 1, border: "1px solid var(--border)", borderRadius: 4, padding: "5px 8px", fontSize: 13, outline: "none", background: "var(--bg-card)", color: "var(--text)" }} />
+            </div>
+            <div style={{ marginBottom: 4 }}>
+              <div style={{ fontSize: 9, color: "var(--text-muted)", marginBottom: 2, fontFamily: "'JetBrains Mono', monospace", textTransform: "uppercase", letterSpacing: 0.5 }}>Auto-detect keywords (comma separated)</div>
+              <input value={newKeywords} onChange={(e) => setNewKeywords(e.target.value)}
+                placeholder="e.g. cook, bake, recipe, meal"
+                style={{ width: "100%", border: "1px solid var(--border)", borderRadius: 4, padding: "5px 8px", fontSize: 12, outline: "none", background: "var(--bg-card)", color: "var(--text)", boxSizing: "border-box" }} />
             </div>
             <ColorGrid selected={newColor} onPick={setNewColor} />
             <div style={{ display: "flex", gap: 4, marginTop: 6 }}>
@@ -615,11 +640,14 @@ function NotesSection({ notes, onChange }) {
 }
 
 /* ─── Task Card ─── */
-function TaskCard({ task, columnId, categories, onDragStart, onToggle, onDelete, onEdit, onChangeCategory, isMobile, onMove }) {
+function TaskCard({ task, columnId, categories, onDragStart, onToggle, onDelete, onEdit, onChangeCategory, isMobile, onMove, onSetRecurring }) {
   const [editing, setEditing] = useState(false);
   const [editText, setEditText] = useState(task.text);
   const [hover, setHover] = useState(false);
   const [showCatPicker, setShowCatPicker] = useState(false);
+  const [ctxMenu, setCtxMenu] = useState(null);
+  const [repeatMenu, setRepeatMenu] = useState(false);
+  const [repeatDate, setRepeatDate] = useState("");
   const inputRef = useRef(null);
   const pickerRef = useRef(null);
   useEffect(() => { if (editing && inputRef.current) inputRef.current.focus(); }, [editing]);
@@ -629,13 +657,25 @@ function TaskCard({ task, columnId, categories, onDragStart, onToggle, onDelete,
     document.addEventListener("mousedown", close);
     return () => document.removeEventListener("mousedown", close);
   }, [showCatPicker]);
+  useEffect(() => {
+    if (!ctxMenu) return;
+    const close = () => { setCtxMenu(null); setRepeatMenu(false); setRepeatDate(""); };
+    document.addEventListener("mousedown", close);
+    return () => document.removeEventListener("mousedown", close);
+  }, [ctxMenu]);
   const save = () => { if (editText.trim()) onEdit(columnId, task.id, editText.trim()); setEditing(false); };
   const catColor = getCatColor(categories, task.category);
+
+  const handleContextMenu = (e) => {
+    e.preventDefault();
+    setCtxMenu({ x: e.clientX, y: e.clientY });
+  };
 
   return (
     <div draggable={!editing}
       onDragStart={(e) => { e.dataTransfer.setData("text/plain", JSON.stringify({ taskId: task.id, from: columnId })); e.dataTransfer.effectAllowed = "move"; onDragStart(); }}
       onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}
+      onContextMenu={handleContextMenu}
       style={{
         display: "flex", alignItems: "center", gap: isMobile ? 10 : 8, padding: isMobile ? "8px 12px" : "3px 10px",
         borderLeft: `4px solid ${catColor}`,
@@ -652,7 +692,10 @@ function TaskCard({ task, columnId, categories, onDragStart, onToggle, onDelete,
           style={{ flex: 1, border: "none", background: "transparent", font: "inherit", outline: "none", padding: 0, fontSize: 13 }} />
       ) : (
         <span onDoubleClick={() => { setEditing(true); setEditText(task.text); }}
-          style={{ flex: 1, textDecoration: task.done ? "line-through" : "none", cursor: "pointer", color: task.done ? "var(--text-muted)" : "var(--text)" }}>{task.text}</span>
+          style={{ flex: 1, textDecoration: task.done ? "line-through" : "none", cursor: "pointer", color: task.done ? "var(--text-muted)" : "var(--text)" }}>
+          {task.text}
+          {task.recurring && <span title={`Repeats ${task.recurring.type === "weeks" ? task.recurring.count + " weeks" : "until " + task.recurring.until}`} style={{ fontSize: 9, marginLeft: 4, color: "var(--text-faint)" }}>{"\uD83D\uDD01"}</span>}
+        </span>
       )}
       {(hover || showCatPicker) && !editing && (
         <div style={{ display: "flex", gap: 2, flexShrink: 0, alignItems: "center" }}>
@@ -669,6 +712,55 @@ function TaskCard({ task, columnId, categories, onDragStart, onToggle, onDelete,
               title={cat.name}
               style={{ width: 18, height: 18, borderRadius: 3, background: cat.color, cursor: "pointer", border: task.category === cat.id ? "2px solid #555" : "1.5px solid rgba(0,0,0,0.1)" }} />
           ))}
+        </div>
+      )}
+      {/* Right-click context menu */}
+      {ctxMenu && (
+        <div onMouseDown={(e) => e.stopPropagation()} style={{
+          position: "fixed", left: ctxMenu.x, top: ctxMenu.y, zIndex: 1000,
+          background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 6,
+          boxShadow: "0 4px 16px rgba(0,0,0,0.18)", padding: "4px 0", minWidth: 170,
+        }}>
+          <div onMouseDown={(e) => { e.preventDefault(); setEditing(true); setEditText(task.text); setCtxMenu(null); }}
+            style={{ padding: "6px 14px", cursor: "pointer", fontSize: 12, color: "var(--text)" }}
+            onMouseEnter={(e) => e.currentTarget.style.background = "var(--bg-hover)"} onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}>
+            Edit
+          </div>
+          <div onMouseDown={(e) => { e.preventDefault(); setRepeatMenu(!repeatMenu); }}
+            style={{ padding: "6px 14px", cursor: "pointer", fontSize: 12, color: "var(--text)", display: "flex", justifyContent: "space-between" }}
+            onMouseEnter={(e) => e.currentTarget.style.background = "var(--bg-hover)"} onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}>
+            <span>{task.recurring ? "Change repeat" : "Repeat"}</span><span style={{ fontSize: 10, color: "var(--text-faint)" }}>{"\u25B6"}</span>
+          </div>
+          {repeatMenu && (
+            <div style={{ padding: "4px 14px 8px", borderTop: "1px solid var(--border)" }}>
+              <div style={{ fontSize: 9, color: "var(--text-muted)", fontWeight: 600, marginBottom: 4, fontFamily: "'JetBrains Mono', monospace", textTransform: "uppercase", letterSpacing: 0.5 }}>Repeat on {columnId === "later" ? "later" : columnId.toUpperCase()}</div>
+              {[2, 4, 8, 12].map((n) => (
+                <div key={n} onMouseDown={(e) => { e.preventDefault(); onSetRecurring(columnId, task.id, { type: "weeks", count: n, day: columnId }); setCtxMenu(null); }}
+                  style={{ padding: "3px 0", cursor: "pointer", fontSize: 11, color: "var(--text)" }}
+                  onMouseEnter={(e) => e.currentTarget.style.color = "var(--accent)"} onMouseLeave={(e) => e.currentTarget.style.color = "var(--text)"}>
+                  For {n} weeks
+                </div>
+              ))}
+              <div style={{ marginTop: 4, display: "flex", gap: 4, alignItems: "center" }}>
+                <span style={{ fontSize: 10, color: "var(--text-muted)" }}>Until:</span>
+                <input type="date" value={repeatDate} onChange={(e) => setRepeatDate(e.target.value)} onMouseDown={(e) => e.stopPropagation()}
+                  style={{ flex: 1, border: "1px solid var(--border)", borderRadius: 3, padding: "2px 4px", fontSize: 10, background: "var(--bg-card)", color: "var(--text)", outline: "none" }} />
+                {repeatDate && <button onMouseDown={(e) => { e.preventDefault(); onSetRecurring(columnId, task.id, { type: "until", until: repeatDate, day: columnId }); setCtxMenu(null); }}
+                  style={{ background: "var(--accent)", color: "#fff", border: "none", borderRadius: 3, padding: "2px 6px", fontSize: 9, cursor: "pointer", fontWeight: 600 }}>Set</button>}
+              </div>
+              {task.recurring && (
+                <div onMouseDown={(e) => { e.preventDefault(); onSetRecurring(columnId, task.id, null); setCtxMenu(null); }}
+                  style={{ padding: "4px 0 0", cursor: "pointer", fontSize: 10, color: "#c44" }}>
+                  Remove repeat
+                </div>
+              )}
+            </div>
+          )}
+          <div onMouseDown={(e) => { e.preventDefault(); onDelete(columnId, task.id); setCtxMenu(null); }}
+            style={{ padding: "6px 14px", cursor: "pointer", fontSize: 12, color: "#c44" }}
+            onMouseEnter={(e) => e.currentTarget.style.background = "var(--bg-hover)"} onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}>
+            Delete
+          </div>
         </div>
       )}
     </div>
@@ -688,7 +780,7 @@ function DropZone({ onDrop }) {
 }
 
 /* ─── Day Section ─── */
-function DaySection({ dayInfo, columnId, tasks, categories, onDragStart, onDrop, onToggle, onDelete, onEdit, onAdd, onChangeCategory, isMobile, onMove }) {
+function DaySection({ dayInfo, columnId, tasks, categories, onDragStart, onDrop, onToggle, onDelete, onEdit, onAdd, onChangeCategory, isMobile, onMove, onSetRecurring }) {
   const [dragOver, setDragOver] = useState(false);
   const [adding, setAdding] = useState(false);
   const [newText, setNewText] = useState("");
@@ -740,12 +832,12 @@ function DaySection({ dayInfo, columnId, tasks, categories, onDragStart, onDrop,
         {incompleteTasks.map((task, idx) => (
           <div key={task.id}>
             <DropZone onDrop={(e) => handleDropAtIndex(e, task.id)} />
-            <TaskCard task={task} columnId={columnId} categories={categories} onDragStart={onDragStart} onToggle={onToggle} onDelete={onDelete} onEdit={onEdit} onChangeCategory={onChangeCategory} isMobile={isMobile} onMove={onMove} />
+            <TaskCard task={task} columnId={columnId} categories={categories} onDragStart={onDragStart} onToggle={onToggle} onDelete={onDelete} onEdit={onEdit} onChangeCategory={onChangeCategory} isMobile={isMobile} onMove={onMove} onSetRecurring={onSetRecurring} />
           </div>
         ))}
         <DropZone onDrop={(e) => handleDropAtIndex(e, null)} />
         {doneTasks.length > 0 && doneTasks.map((task) => (
-          <TaskCard key={task.id} task={task} columnId={columnId} categories={categories} onDragStart={onDragStart} onToggle={onToggle} onDelete={onDelete} onEdit={onEdit} onChangeCategory={onChangeCategory} isMobile={isMobile} onMove={onMove} />
+          <TaskCard key={task.id} task={task} columnId={columnId} categories={categories} onDragStart={onDragStart} onToggle={onToggle} onDelete={onDelete} onEdit={onEdit} onChangeCategory={onChangeCategory} isMobile={isMobile} onMove={onMove} onSetRecurring={onSetRecurring} />
         ))}
       </div>
 
@@ -774,7 +866,7 @@ function DaySection({ dayInfo, columnId, tasks, categories, onDragStart, onDrop,
 }
 
 /* ─── Day Column (horizontal layout) ─── */
-function DayColumn({ dayInfo, columnId, tasks, categories, onDragStart, onDrop, onToggle, onDelete, onEdit, onAdd, onChangeCategory, colWidth, onMove }) {
+function DayColumn({ dayInfo, columnId, tasks, categories, onDragStart, onDrop, onToggle, onDelete, onEdit, onAdd, onChangeCategory, colWidth, onMove, onSetRecurring }) {
   const [dragOver, setDragOver] = useState(false);
   const [adding, setAdding] = useState(false);
   const [newText, setNewText] = useState("");
@@ -816,7 +908,7 @@ function DayColumn({ dayInfo, columnId, tasks, categories, onDragStart, onDrop, 
         {incompleteTasks.map((task, idx) => (
           <div key={task.id}>
             <DropZone onDrop={(e) => handleDropAtIndex(e, task.id)} />
-            <TaskCard task={task} columnId={columnId} categories={categories} onDragStart={onDragStart} onToggle={onToggle} onDelete={onDelete} onEdit={onEdit} onChangeCategory={onChangeCategory} onMove={onMove} />
+            <TaskCard task={task} columnId={columnId} categories={categories} onDragStart={onDragStart} onToggle={onToggle} onDelete={onDelete} onEdit={onEdit} onChangeCategory={onChangeCategory} onMove={onMove} onSetRecurring={onSetRecurring} />
           </div>
         ))}
         <DropZone onDrop={(e) => handleDropAtIndex(e, null)} />
@@ -826,7 +918,7 @@ function DayColumn({ dayInfo, columnId, tasks, categories, onDragStart, onDrop, 
               <span style={{ background: isToday ? "rgba(180,140,80,0.06)" : "var(--bg)", padding: "0 3px", position: "relative", top: -5 }}>done</span>
             </div>
             {doneTasks.map((task) => (
-              <TaskCard key={task.id} task={task} columnId={columnId} categories={categories} onDragStart={onDragStart} onToggle={onToggle} onDelete={onDelete} onEdit={onEdit} onChangeCategory={onChangeCategory} onMove={onMove} />
+              <TaskCard key={task.id} task={task} columnId={columnId} categories={categories} onDragStart={onDragStart} onToggle={onToggle} onDelete={onDelete} onEdit={onEdit} onChangeCategory={onChangeCategory} onMove={onMove} onSetRecurring={onSetRecurring} />
             ))}
           </>
         )}
@@ -1219,6 +1311,11 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
     update({ tasks: { ...t, [col]: nextList } });
   }, []);
   const changeCategory = useCallback((col, id, catId) => { const t = dataRef.current.tasks; update({ tasks: { ...t, [col]: t[col].map((x) => (x.id === id ? { ...x, category: catId } : x)) } }); }, []);
+  const setRecurring = useCallback((col, id, rule) => {
+    const t = dataRef.current.tasks;
+    const newTasks = { ...t, [col]: t[col].map((x) => x.id === id ? { ...x, recurring: rule || undefined } : x) };
+    update({ tasks: newTasks });
+  }, []);
   const toggleDaily = (hid, day) => { const updated = dailyHabits.map((h) => h.id === hid ? { ...h, checks: { ...h.checks, [day]: !h.checks[day] } } : h); update({ dailyHabits: updated }); onSaveDailyHabits(updated); };
   const toggleWeekly = (hid) => { const updated = weeklyHabits.map((h) => h.id === hid ? { ...h, done: !h.done } : h); update({ weeklyHabits: updated }); onSaveWeeklyHabits(updated); };
   const addDailyHabit = (name) => { const updated = [...dailyHabits, { id: "dh" + Date.now(), name, checks: { mon: false, tue: false, wed: false, thu: false, fri: false, sat: false, sun: false } }]; update({ dailyHabits: updated }); onSaveDailyHabits(updated); };
@@ -1337,11 +1434,11 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
                   <div style={{ padding: isMobile ? "4px 4px" : "4px 8px", display: "flex", flexDirection: "column", gap: 2 }}>
                     {DAYS.map((day, i) => (
                       <DaySection key={day} dayInfo={weekDates[i]} columnId={day.toLowerCase()} tasks={tasks[day.toLowerCase()]} categories={categories}
-                        onDragStart={() => {}} onDrop={handleDrop} onToggle={toggleDone} onDelete={deleteTask} onEdit={editTask} onAdd={addTask} onChangeCategory={changeCategory} isMobile={isMobile} onMove={moveTask} />
+                        onDragStart={() => {}} onDrop={handleDrop} onToggle={toggleDone} onDelete={deleteTask} onEdit={editTask} onAdd={addTask} onChangeCategory={changeCategory} isMobile={isMobile} onMove={moveTask} onSetRecurring={setRecurring} />
                     ))}
                     {isMobile && (
                       <DaySection dayInfo={null} columnId="later" tasks={tasks.later} categories={categories} onDragStart={() => {}} onDrop={handleDrop}
-                        onToggle={toggleDone} onDelete={deleteTask} onEdit={editTask} onAdd={addTask} onChangeCategory={changeCategory} isMobile={isMobile} onMove={moveTask} />
+                        onToggle={toggleDone} onDelete={deleteTask} onEdit={editTask} onAdd={addTask} onChangeCategory={changeCategory} isMobile={isMobile} onMove={moveTask} onSetRecurring={setRecurring} />
                     )}
                     {/* Mobile upcoming section */}
                     {isMobile && futureTasks.length > 0 && (() => {
@@ -1375,7 +1472,7 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
                       {DAYS.map((day, i) => (
                         <div key={day} style={{ display: "flex" }}>
                           <DayColumn dayInfo={weekDates[i]} columnId={day.toLowerCase()} tasks={tasks[day.toLowerCase()]} categories={categories}
-                            onDragStart={() => {}} onDrop={handleDrop} onToggle={toggleDone} onDelete={deleteTask} onEdit={editTask} onAdd={addTask} onChangeCategory={changeCategory} colWidth={colWidth} onMove={moveTask} />
+                            onDragStart={() => {}} onDrop={handleDrop} onToggle={toggleDone} onDelete={deleteTask} onEdit={editTask} onAdd={addTask} onChangeCategory={changeCategory} colWidth={colWidth} onMove={moveTask} onSetRecurring={setRecurring} />
                           {i < 6 && (
                             <div onMouseDown={(e) => {
                               e.preventDefault();
@@ -1408,10 +1505,10 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
                       <div style={{ padding: "0px 8px 6px" }}>
                         {layout === "vertical" ? (
                           <DaySection dayInfo={null} columnId="later" tasks={tasks.later} categories={categories} onDragStart={() => {}} onDrop={handleDrop}
-                            onToggle={toggleDone} onDelete={deleteTask} onEdit={editTask} onAdd={addTask} onChangeCategory={changeCategory} onMove={moveTask} />
+                            onToggle={toggleDone} onDelete={deleteTask} onEdit={editTask} onAdd={addTask} onChangeCategory={changeCategory} onMove={moveTask} onSetRecurring={setRecurring} />
                         ) : (
                           <DayColumn dayInfo={null} columnId="later" tasks={tasks.later} categories={categories} onDragStart={() => {}} onDrop={handleDrop}
-                            onToggle={toggleDone} onDelete={deleteTask} onEdit={editTask} onAdd={addTask} onChangeCategory={changeCategory} colWidth="100%" onMove={moveTask} />
+                            onToggle={toggleDone} onDelete={deleteTask} onEdit={editTask} onAdd={addTask} onChangeCategory={changeCategory} colWidth="100%" onMove={moveTask} onSetRecurring={setRecurring} />
                         )}
                       </div>
                     )}
