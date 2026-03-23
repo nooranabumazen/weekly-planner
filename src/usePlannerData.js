@@ -143,9 +143,11 @@ export function usePlannerData(userId) {
       if (cancelled) return;
 
       let tasks;
+      let isNewWeek = false;
       if (weekDoc && weekDoc.tasks) {
         tasks = weekDoc.tasks;
       } else {
+        isNewWeek = true;
         // New week or first time: try carry forward
         const prevDoc = await readDoc(`users/${userId}/weeks/${getPrevWeekKey()}`);
         if (prevDoc && prevDoc.tasks) {
@@ -169,9 +171,29 @@ export function usePlannerData(userId) {
       const journal = journalDoc?.entries || {};
       const contacts = contactsDoc?.items || [];
       const archive = archiveDoc?.items || [];
-      const dailyHabits = dailyDoc?.items || DEFAULT_DAILY_HABITS;
-      const weeklyHabits = weeklyDoc?.items || DEFAULT_WEEKLY_HABITS;
+      let dailyHabits = dailyDoc?.items || DEFAULT_DAILY_HABITS;
+      let weeklyHabits = weeklyDoc?.items || DEFAULT_WEEKLY_HABITS;
+      const dailyWeekKey = dailyDoc?._weekKey || null;
+      const weeklyWeekKey = weeklyDoc?._weekKey || null;
+
+      // Reset habit checks if we're in a new week
+      if (dailyWeekKey !== wk) {
+        dailyHabits = dailyHabits.map((h) => ({ ...h, checks: { mon: false, tue: false, wed: false, thu: false, fri: false, sat: false, sun: false } }));
+        writeDoc(m("dailyHabits"), { items: dailyHabits, _weekKey: wk });
+      }
+      if (weeklyWeekKey !== wk) {
+        weeklyHabits = weeklyHabits.map((h) => ({ ...h, done: false }));
+        writeDoc(m("weeklyHabits"), { items: weeklyHabits, _weekKey: wk });
+      }
       const settings = settingsDoc || { categories: DEFAULT_CATEGORIES, layout: "vertical", notes: "", darkMode: false };
+
+      // Reset habit checks on new week
+      if (isNewWeek) {
+        dailyHabits = dailyHabits.map((h) => ({ ...h, checks: { mon: false, tue: false, wed: false, thu: false, fri: false, sat: false, sun: false } }));
+        weeklyHabits = weeklyHabits.map((h) => ({ ...h, done: false }));
+        writeDoc(m("dailyHabits"), { items: dailyHabits });
+        writeDoc(m("weeklyHabits"), { items: weeklyHabits });
+      }
 
       if (!notebooksDoc) writeDoc(m("notebooks"), { items: notebooks });
       if (!journalDoc) writeDoc(m("journal"), { entries: journal });
@@ -281,8 +303,8 @@ export function usePlannerData(userId) {
   const saveJournal = useCallback((entries) => { setData((p) => p ? { ...p, journal: entries } : p); writeDoc(`users/${userId}/meta/journal`, { entries }); }, [userId]);
   const saveContacts = useCallback((items) => { setData((p) => p ? { ...p, contacts: items } : p); writeDoc(`users/${userId}/meta/contacts`, { items }); }, [userId]);
   const saveArchive = useCallback((items) => { setData((p) => p ? { ...p, archive: items } : p); writeDoc(`users/${userId}/meta/archive`, { items }); }, [userId]);
-  const saveDailyHabits = useCallback((items) => { setData((p) => p ? { ...p, dailyHabits: items } : p); writeDoc(`users/${userId}/meta/dailyHabits`, { items }); }, [userId]);
-  const saveWeeklyHabits = useCallback((items) => { setData((p) => p ? { ...p, weeklyHabits: items } : p); writeDoc(`users/${userId}/meta/weeklyHabits`, { items }); }, [userId]);
+  const saveDailyHabits = useCallback((items) => { setData((p) => p ? { ...p, dailyHabits: items } : p); writeDoc(`users/${userId}/meta/dailyHabits`, { items, _weekKey: weekKeyRef.current }); }, [userId]);
+  const saveWeeklyHabits = useCallback((items) => { setData((p) => p ? { ...p, weeklyHabits: items } : p); writeDoc(`users/${userId}/meta/weeklyHabits`, { items, _weekKey: weekKeyRef.current }); }, [userId]);
   const saveSettings = useCallback((s) => { setData((p) => p ? { ...p, categories: s.categories, layout: s.layout, notes: s.notes, darkMode: s.darkMode } : p); writeDoc(`users/${userId}/meta/settings`, s); }, [userId]);
 
   return { data, loading, save, saveQuiet, saveFuture, saveNotebooks, saveJournal, saveContacts, saveArchive, saveDailyHabits, saveWeeklyHabits, saveSettings };

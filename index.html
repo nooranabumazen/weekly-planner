@@ -37,13 +37,18 @@
       /* Note spacing */
       [contenteditable] p { margin-bottom: 6px; }
       [contenteditable] ul, [contenteditable] ol { margin-bottom: 6px; padding-left: 24px; }
+      /* Dark mode: text selection should be legible */
+      .dark-mode ::selection { background: #5b8fb9; color: #fff; }
+      .dark-mode ::-moz-selection { background: #5b8fb9; color: #fff; }
+      .dark-mode input, .dark-mode textarea, .dark-mode select { color: #d8dae0 !important; }
+      .dark-mode input::placeholder, .dark-mode textarea::placeholder { color: #555b6e !important; }
       @media (max-width: 640px) {
         [contenteditable] { font-size: 16px !important; line-height: 1.7 !important; }
         table td { font-size: 14px !important; }
         input, textarea { font-size: 16px !important; }
       }
-      /* Mobile portrait lock */
-      @media (max-width: 900px) and (orientation: landscape) {
+      /* Mobile portrait lock - triggers when screen is wider than tall and short */
+      @media (orientation: landscape) and (max-height: 500px) {
         #root { display: none !important; }
         body::after {
           content: "Please rotate your device to portrait mode";

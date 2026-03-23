@@ -454,10 +454,9 @@ function HabitsTracker({ dailyHabits, weeklyHabits, onToggleDaily, onToggleWeekl
 /* ─── Notes ─── */
 function NotesSection({ notes, onChange }) {
   return (
-    <div style={{ padding: "6px 12px", display: "flex", flexDirection: "column", height: "100%", boxSizing: "border-box" }}>
-      <div style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, fontSize: 10, color: "var(--text-muted)", letterSpacing: 1.5, textTransform: "uppercase", marginBottom: 4, flexShrink: 0 }}>Notes</div>
+    <div style={{ padding: "6px 12px", boxSizing: "border-box" }}>
       <textarea value={notes} onChange={(e) => onChange(e.target.value)} placeholder="Jot things down here..."
-        style={{ width: "100%", flex: 1, border: "1px solid var(--border)", borderRadius: 6, padding: "6px 10px", fontSize: 12, lineHeight: 1.5, outline: "none", background: "var(--input-bg)", color: "var(--text)", fontFamily: "'DM Sans', sans-serif", resize: "none", boxSizing: "border-box" }} />
+        style={{ width: "100%", minHeight: 60, border: "1px solid var(--border)", borderRadius: 6, padding: "6px 10px", fontSize: 12, lineHeight: 1.5, outline: "none", background: "var(--input-bg)", color: "var(--text)", fontFamily: "'DM Sans', sans-serif", resize: "vertical", boxSizing: "border-box" }} />
     </div>
   );
 }
@@ -1265,18 +1264,11 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
                     )}
                   </div>
                 )}
-                {/* Collapsible Notes section */}
+                {/* Quick Notes - inline in scroll */}
                 {!isMobile && (
-                  <div style={{ borderTop: "1px solid var(--border)", flexShrink: 0 }}>
-                    <button onClick={() => setNotesOpen(!notesOpen)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", fontSize: 10, padding: "6px 12px", display: "flex", alignItems: "center", gap: 4, width: "100%", textAlign: "left" }}>
-                      <span style={{ fontSize: 8, transition: "transform 0.2s", transform: notesOpen ? "rotate(90deg)" : "rotate(0deg)", display: "inline-block" }}>{"\u25B6"}</span>
-                      <span style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, fontSize: 9, letterSpacing: 1, textTransform: "uppercase" }}>Quick Notes</span>
-                    </button>
-                    {notesOpen && (
-                      <div style={{ height: 80 }}>
-                        <NotesSection notes={notes} onChange={(val) => { update({ notes: val }); onSaveSettings({ categories, layout, notes: val, darkMode }); }} />
-                      </div>
-                    )}
+                  <div style={{ padding: "6px 12px 12px", borderTop: "1px solid var(--border)" }}>
+                    <textarea value={notes} onChange={(e) => { const val = e.target.value; update({ notes: val }); onSaveSettings({ categories, layout, notes: val, darkMode }); }} placeholder="Quick notes..."
+                      style={{ width: "100%", minHeight: 50, border: "1px solid var(--border)", borderRadius: 6, padding: "6px 10px", fontSize: 12, lineHeight: 1.5, outline: "none", background: "var(--input-bg)", color: "var(--text)", fontFamily: "'DM Sans', sans-serif", resize: "vertical", boxSizing: "border-box" }} />
                   </div>
                 )}
               </div>
