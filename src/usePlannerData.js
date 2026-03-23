@@ -148,19 +148,79 @@ export function usePlannerData(userId) {
         tasks = weekDoc.tasks;
       } else {
         isNewWeek = true;
-        // New week or first time: try carry forward
         const prevDoc = await readDoc(`users/${userId}/weeks/${getPrevWeekKey()}`);
         if (prevDoc && prevDoc.tasks) {
           const pt = prevDoc.tasks;
           const carry = [];
-          ["mon","tue","wed","thu","fri","sat","sun"].forEach((d) => {
-            (pt[d] || []).forEach((t) => { if (!t.done) carry.push({ ...t, id: "t" + Date.now() + "_" + Math.random().toString(36).slice(2,6) }); });
+          const dayKeys = ["mon","tue","wed","thu","fri","sat","sun"];
+
+          // Carry forward incomplete non-done tasks + generate recurring tasks
+          dayKeys.forEach((d) => {
+            (pt[d] || []).forEach((t) => {
+              if (!t.done) {
+                carry.push({ ...t, id: "t" + Date.now() + "_" + Math.random().toString(36).slice(2,6) });
+              }
+              // If task has a recurring rule, generate a new copy for this week
+              if (t.recurring) {
+                const rule = t.recurring;
+                let shouldRepeat = false;
+                let newRule = null;
+                if (rule.type === "weeks" && rule.count > 1) {
+                  shouldRepeat = true;
+                  newRule = { ...rule, count: rule.count - 1 };
+                } else if (rule.type === "until" && rule.until >= wk) {
+                  shouldRepeat = true;
+                  newRule = rule;
+                }
+                if (shouldRepeat) {
+                  const day = rule.day || d;
+                  const newTask = { id: "t" + Date.now() + "_" + Math.random().toString(36).slice(2,6), text: t.text, done: false, category: t.category || "cat_none", recurring: newRule };
+                  // Check if already carried forward (avoid duplicate)
+                  if (!carry.some((c) => c.text === t.text && !c.done)) {
+                    if (dayKeys.includes(day)) {
+                      // Will be placed in the right day below
+                      carry.push({ ...newTask, _targetDay: day });
+                    } else {
+                      carry.push(newTask);
+                    }
+                  } else {
+                    // Update recurring rule on the carried-forward copy
+                    const existing = carry.find((c) => c.text === t.text && !c.done);
+                    if (existing) existing.recurring = newRule;
+                  }
+                }
+              }
+            });
           });
-          tasks = { mon: carry, tue: [], wed: [], thu: [], fri: [], sat: [], sun: [], later: pt.later || [] };
-          // Only write the new week doc if we actually carried tasks forward
+
+          // Sort carry items into their target days
+          const newTasks = { mon: [], tue: [], wed: [], thu: [], fri: [], sat: [], sun: [], later: pt.later || [] };
+          carry.forEach((t) => {
+            if (t._targetDay && dayKeys.includes(t._targetDay)) {
+              const { _targetDay, ...clean } = t;
+              newTasks[_targetDay].push(clean);
+            } else {
+              newTasks.mon.push(t); // default: incomplete tasks go to Monday
+            }
+          });
+
+          // Also handle recurring in later
+          (pt.later || []).forEach((t) => {
+            if (t.recurring) {
+              const rule = t.recurring;
+              let shouldRepeat = false;
+              let newRule = null;
+              if (rule.type === "weeks" && rule.count > 1) { shouldRepeat = true; newRule = { ...rule, count: rule.count - 1 }; }
+              else if (rule.type === "until" && rule.until >= wk) { shouldRepeat = true; newRule = rule; }
+              if (shouldRepeat && !newTasks.later.some((c) => c.text === t.text)) {
+                newTasks.later.push({ id: "t" + Date.now() + "_" + Math.random().toString(36).slice(2,6), text: t.text, done: false, category: t.category || "cat_none", recurring: newRule });
+              }
+            }
+          });
+
+          tasks = newTasks;
           writeDoc(weekPath, { tasks, _lastModified: Date.now() });
         } else {
-          // Truly empty - use in memory only, don't write an empty doc to Firestore
           tasks = emptyTasks();
         }
       }
