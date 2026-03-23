@@ -459,38 +459,35 @@ function HabitsTracker({ dailyHabits, weeklyHabits, habitHistory, onToggleDaily,
       </div>
       {showStats && (() => {
         const weeks = Object.keys(habitHistory).sort().reverse();
-        const curDailyTotal = dailyHabits.length * 7;
-        const curDailyDone = dailyHabits.reduce((s, h) => s + Object.values(h.checks).filter(Boolean).length, 0);
-        const curWeeklyTotal = weeklyHabits.length;
-        const curWeeklyDone = weeklyHabits.filter((h) => h.done).length;
+        const dayKeys = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
+        const dayLabels = ["M", "T", "W", "T", "F", "S", "S"];
 
-        const prevWeek = weeks[0];
-        const prev = prevWeek ? habitHistory[prevWeek] : null;
-        const prevDailyDone = prev?.daily ? prev.daily.reduce((s, h) => s + Object.values(h.checks || {}).filter(Boolean).length, 0) : 0;
-        const prevDailyTotal = prev?.daily ? prev.daily.length * 7 : 0;
-        const prevWeeklyDone = prev?.weekly ? prev.weekly.filter((h) => h.done).length : 0;
-        const prevWeeklyTotal = prev?.weekly ? prev.weekly.length : 0;
-
-        const recentWeeks = weeks.slice(0, 4);
-        let totalDailyChecks = 0, totalDailyPossible = 0, totalWeeklyDone30 = 0, totalWeeklyPossible30 = 0;
-        recentWeeks.forEach((wk) => {
-          const w = habitHistory[wk];
-          if (w?.daily) { totalDailyChecks += w.daily.reduce((s, h) => s + Object.values(h.checks || {}).filter(Boolean).length, 0); totalDailyPossible += w.daily.length * 7; }
-          if (w?.weekly) { totalWeeklyDone30 += w.weekly.filter((h) => h.done).length; totalWeeklyPossible30 += w.weekly.length; }
+        // Per-day completion for current week (momentum circles)
+        const dailyByDay = dayKeys.map((d) => {
+          const done = dailyHabits.filter((h) => h.checks[d]).length;
+          return { day: d, done, total: dailyHabits.length };
         });
 
-        const pct = (done, total) => total > 0 ? Math.round(done / total * 100) : 0;
-        const bar = (done, total, color) => (
-          <div style={{ flex: 1, height: 5, background: "var(--border)", borderRadius: 3, overflow: "hidden" }}>
-            <div style={{ width: `${pct(done, total)}%`, height: "100%", background: color, borderRadius: 3, transition: "width 0.3s" }} />
-          </div>
-        );
+        // Figure out "today" index
+        const todayIdx = (() => { const d = new Date().getDay(); return (d + 6) % 7; })();
 
+        // Previous week per-day (from history)
+        const prevWeek = weeks[0];
+        const prev = prevWeek ? habitHistory[prevWeek] : null;
+        const prevTotal = prev?.daily ? prev.daily.reduce((s, h) => s + Object.values(h.checks || {}).filter(Boolean).length, 0) : 0;
+        const prevPossible = prev?.daily ? prev.daily.length * 7 : 0;
+        const curTotal = dailyHabits.reduce((s, h) => s + Object.values(h.checks).filter(Boolean).length, 0);
+        const curPossible = dailyHabits.length * 7;
+        // Pace: are we on track to beat last week?
+        const daysElapsed = todayIdx + 1;
+        const curPace = daysElapsed > 0 ? Math.round(curTotal / daysElapsed * 7) : 0;
+
+        // Per-habit streaks (consecutive weeks with 5+/7)
         const dailyStreaks = dailyHabits.map((h) => {
           let streak = 0;
           const curChecks = Object.values(h.checks).filter(Boolean).length;
           if (curChecks >= 5) streak++;
-          else return { name: h.name, streak: curChecks >= 5 ? 1 : 0 };
+          else return { name: h.name, streak: 0, curChecks, improved: 0 };
           for (const wk of weeks) {
             const wData = habitHistory[wk]?.daily;
             if (!wData) break;
@@ -498,44 +495,108 @@ function HabitsTracker({ dailyHabits, weeklyHabits, habitHistory, onToggleDaily,
             if (match && Object.values(match.checks || {}).filter(Boolean).length >= 5) streak++;
             else break;
           }
-          return { name: h.name, streak };
+          return { name: h.name, streak, curChecks, improved: 0 };
         });
 
+        // Most improved: compare current checks to last week
+        if (prev?.daily) {
+          dailyStreaks.forEach((s) => {
+            const habit = dailyHabits.find((h) => h.name === s.name);
+            if (!habit) return;
+            const curC = Object.values(habit.checks).filter(Boolean).length;
+            const prevH = prev.daily.find((hh) => hh.id === habit.id || hh.name === habit.name);
+            const prevC = prevH ? Object.values(prevH.checks || {}).filter(Boolean).length : 0;
+            s.improved = curC - prevC;
+          });
+        }
+
+        // Perfect weeks (7/7)
+        const perfectThisWeek = dailyHabits.filter((h) => Object.values(h.checks).filter(Boolean).length === 7);
+
+        // Longest active streak
+        const longestStreak = dailyStreaks.reduce((best, s) => s.streak > best.streak ? s : best, { name: "", streak: 0 });
+
+        // Most improved
+        const mostImproved = dailyStreaks.reduce((best, s) => s.improved > best.improved ? s : best, { name: "", improved: 0 });
+
+        // Close to milestone (streak of 3, 5, 8)
+        const nearMilestone = dailyStreaks.filter((s) => s.streak > 0 && [2, 4, 7].includes(s.streak));
+
+        // Circle component for momentum
+        const circle = (pct, isFuture, isToday) => {
+          const size = 22;
+          const r = 9;
+          const circ = 2 * Math.PI * r;
+          const offset = circ * (1 - pct);
+          const color = pct >= 0.8 ? "#6a9955" : pct >= 0.5 ? "#c9a227" : pct > 0 ? "#c47a20" : "var(--border)";
+          return (
+            <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+              <circle cx={size/2} cy={size/2} r={r} fill="none" stroke={isFuture ? "var(--bg-hover)" : "var(--border)"} strokeWidth={2.5} />
+              {!isFuture && pct > 0 && <circle cx={size/2} cy={size/2} r={r} fill="none" stroke={color} strokeWidth={2.5}
+                strokeDasharray={circ} strokeDashoffset={offset} strokeLinecap="round" transform={`rotate(-90 ${size/2} ${size/2})`} />}
+              {isToday && <circle cx={size/2} cy={size/2} r={1.5} fill="var(--accent)" />}
+            </svg>
+          );
+        };
+
+        const spotlights = [];
+        if (longestStreak.streak >= 2) spotlights.push({ icon: "\uD83D\uDD25", text: `Longest streak: ${longestStreak.name} (${longestStreak.streak}w)` });
+        if (mostImproved.improved >= 2) spotlights.push({ icon: "\uD83D\uDCC8", text: `Most improved: ${mostImproved.name} (+${mostImproved.improved} days)` });
+        perfectThisWeek.forEach((h) => spotlights.push({ icon: "\u2B50", text: `Perfect week: ${h.name} (7/7)` }));
+        nearMilestone.forEach((s) => {
+          const next = s.streak < 3 ? 3 : s.streak < 5 ? 5 : 8;
+          spotlights.push({ icon: "\uD83C\uDFAF", text: `${s.name} is ${next - s.streak}w from a ${next}-week streak!` });
+        });
+
+        // Pace message
+        let paceMsg = "";
+        if (prev && daysElapsed >= 2) {
+          if (curPace > prevTotal) paceMsg = `On pace to beat last week (projected ${curPace} vs ${prevTotal})`;
+          else if (curTotal >= prevTotal) paceMsg = "Already passed last week's total!";
+        }
+
         return (
-          <div style={{ padding: "4px 12px 6px", display: "flex", gap: 16, alignItems: "flex-start" }}>
-            {/* Progress bars */}
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ display: "flex", gap: 6, alignItems: "center", marginBottom: 4 }}>
-                <span style={{ fontSize: 9, color: "var(--text-muted)", fontWeight: 600, whiteSpace: "nowrap" }}>This week</span>
-                {bar(curDailyDone + curWeeklyDone, curDailyTotal + curWeeklyTotal, "#6a9955")}
-                <span style={{ fontSize: 9, color: "var(--text-muted)", minWidth: 28 }}>{pct(curDailyDone + curWeeklyDone, curDailyTotal + curWeeklyTotal)}%</span>
+          <div style={{ padding: "6px 12px 4px" }}>
+            {/* Weekly momentum: day circles */}
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 4, marginBottom: spotlights.length > 0 || paceMsg ? 8 : 0 }}>
+              {dayKeys.map((d, i) => {
+                const dd = dailyByDay[i];
+                const pct = dd.total > 0 ? dd.done / dd.total : 0;
+                const isFuture = i > todayIdx;
+                const isToday = i === todayIdx;
+                return (
+                  <div key={d} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 1 }}>
+                    <span style={{ fontSize: 8, color: isToday ? "var(--accent)" : "var(--text-faint)", fontWeight: isToday ? 700 : 400, fontFamily: "'JetBrains Mono', monospace" }}>{dayLabels[i]}</span>
+                    {circle(pct, isFuture, isToday)}
+                    {!isFuture && <span style={{ fontSize: 7, color: pct >= 0.8 ? "#6a9955" : "var(--text-faint)" }}>{dd.done}/{dd.total}</span>}
+                  </div>
+                );
+              })}
+              {/* Weekly habits summary dot */}
+              <div style={{ marginLeft: 8, display: "flex", flexDirection: "column", alignItems: "center", gap: 1 }}>
+                <span style={{ fontSize: 8, color: "var(--text-faint)", fontFamily: "'JetBrains Mono', monospace" }}>WK</span>
+                {(() => {
+                  const wd = weeklyHabits.filter((h) => h.done).length;
+                  const wt = weeklyHabits.length;
+                  const pct = wt > 0 ? wd / wt : 0;
+                  return circle(pct, false, false);
+                })()}
+                <span style={{ fontSize: 7, color: "var(--text-faint)" }}>{weeklyHabits.filter((h) => h.done).length}/{weeklyHabits.length}</span>
               </div>
-              {prev && (
-                <div style={{ display: "flex", gap: 6, alignItems: "center", marginBottom: 4 }}>
-                  <span style={{ fontSize: 9, color: "var(--text-muted)", fontWeight: 600, whiteSpace: "nowrap" }}>Last week</span>
-                  {bar(prevDailyDone + prevWeeklyDone, prevDailyTotal + prevWeeklyTotal, "#5b8fb9")}
-                  <span style={{ fontSize: 9, color: "var(--text-muted)", minWidth: 28 }}>{pct(prevDailyDone + prevWeeklyDone, prevDailyTotal + prevWeeklyTotal)}%</span>
-                </div>
-              )}
-              {recentWeeks.length > 0 && (
-                <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                  <span style={{ fontSize: 9, color: "var(--text-muted)", fontWeight: 600, whiteSpace: "nowrap" }}>4wk avg</span>
-                  {bar(totalDailyChecks + totalWeeklyDone30, totalDailyPossible + totalWeeklyPossible30, "var(--accent)")}
-                  <span style={{ fontSize: 9, color: "var(--text-muted)", minWidth: 28 }}>{pct(totalDailyChecks + totalWeeklyDone30, totalDailyPossible + totalWeeklyPossible30)}%</span>
-                </div>
-              )}
             </div>
-            {/* Daily habit streaks only */}
-            {dailyStreaks.some((s) => s.streak > 0) && (
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 3, maxWidth: 300 }}>
-                {dailyStreaks.filter((s) => s.streak > 0).map((s) => (
-                  <span key={s.name} style={{ fontSize: 9, padding: "1px 6px", borderRadius: 3, background: "rgba(106,153,85,0.12)", color: "#6a9955", fontWeight: 600 }}>
-                    {s.name} {s.streak}w{s.streak >= 3 ? " \uD83D\uDD25" : ""}
+            {/* Pace message */}
+            {paceMsg && <div style={{ textAlign: "center", fontSize: 9, color: "#6a9955", fontWeight: 600, marginBottom: 4 }}>{paceMsg}</div>}
+            {/* Best streaks spotlight */}
+            {spotlights.length > 0 && (
+              <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: 4 }}>
+                {spotlights.map((s, i) => (
+                  <span key={i} style={{ fontSize: 9, padding: "2px 8px", borderRadius: 4, background: "var(--bg-surface)", color: "var(--text-muted)", fontWeight: 500 }}>
+                    {s.icon} {s.text}
                   </span>
                 ))}
               </div>
             )}
-            {weeks.length === 0 && <div style={{ fontSize: 9, color: "var(--text-faint)" }}>History starts after your first full week</div>}
+            {weeks.length === 0 && !paceMsg && spotlights.length === 0 && <div style={{ textAlign: "center", fontSize: 9, color: "var(--text-faint)" }}>Streak history starts after your first full week</div>}
           </div>
         );
       })()}
