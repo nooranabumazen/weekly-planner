@@ -317,7 +317,7 @@ function RichEditor({ content, onChange, userId }) {
         <ToolbarButton icon={<s>S</s>} title="Strikethrough" onClick={() => exec("strikeThrough")} />
         <ToolbarButton icon={<span style={{ fontSize: 12, fontWeight: 700 }}>H</span>} title="Toggle heading" onClick={insertHeader} />
         <div style={{ width: 1, height: 18, background: "var(--border)", margin: "0 3px" }} />
-        <ColorPicker colors={HIGHLIGHT_COLORS} onSelect={(c) => exec("hiliteColor", c)}
+        <ColorPicker colors={HIGHLIGHT_COLORS} onSelect={(c) => { exec("hiliteColor", c); if (c !== "transparent") exec("foreColor", "#1a1a1a"); }}
           buttonIcon={<span style={{ background: "#fff3a8", padding: "0 3px", borderRadius: 2, fontSize: 11, fontWeight: 600 }}>H</span>} title="Highlight" />
         <ColorPicker colors={TEXT_COLORS} onSelect={(c) => exec("foreColor", c)}
           buttonIcon={<span style={{ fontSize: 12, fontWeight: 700 }}>A<span style={{ display: "block", height: 2, background: "#c44040", borderRadius: 1, marginTop: -2 }} /></span>} title="Text color" />
