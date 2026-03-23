@@ -1264,11 +1264,20 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
                     )}
                   </div>
                 )}
-                {/* Quick Notes - inline in scroll */}
+                {/* Collapsible Quick Notes */}
                 {!isMobile && (
-                  <div style={{ padding: "6px 12px 12px", borderTop: "1px solid var(--border)" }}>
-                    <textarea value={notes} onChange={(e) => { const val = e.target.value; update({ notes: val }); onSaveSettings({ categories, layout, notes: val, darkMode }); }} placeholder="Quick notes..."
-                      style={{ width: "100%", minHeight: 50, border: "1px solid var(--border)", borderRadius: 6, padding: "6px 10px", fontSize: 12, lineHeight: 1.5, outline: "none", background: "var(--input-bg)", color: "var(--text)", fontFamily: "'DM Sans', sans-serif", resize: "vertical", boxSizing: "border-box" }} />
+                  <div style={{ borderTop: "1px solid var(--border)" }}>
+                    <button onClick={() => setNotesOpen(!notesOpen)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", fontSize: 10, padding: "6px 12px", display: "flex", alignItems: "center", gap: 4, width: "100%", textAlign: "left" }}>
+                      <span style={{ fontSize: 8, transition: "transform 0.2s", transform: notesOpen ? "rotate(90deg)" : "rotate(0deg)", display: "inline-block" }}>{"\u25B6"}</span>
+                      <span style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, fontSize: 9, letterSpacing: 1, textTransform: "uppercase" }}>Quick Notes</span>
+                    </button>
+                    {notesOpen && (
+                      <div style={{ padding: "0 12px 12px" }}>
+                        <textarea value={notes} onChange={(e) => { const val = e.target.value; update({ notes: val }); onSaveSettings({ categories, layout, notes: val, darkMode }); }} placeholder="Quick notes..."
+                          style={{ width: "100%", minHeight: 50, border: "1px solid var(--border)", borderRadius: 6, padding: "6px 10px", fontSize: 12, lineHeight: 1.5, outline: "none", background: "var(--input-bg)", color: "var(--text)", fontFamily: "'DM Sans', sans-serif", resize: "none", boxSizing: "border-box", overflow: "hidden", height: "auto" }}
+                          ref={(el) => { if (el) { el.style.height = "auto"; el.style.height = Math.max(50, el.scrollHeight) + "px"; } }} />
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
