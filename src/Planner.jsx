@@ -311,7 +311,7 @@ function ResizeHandle({ currentHeight, minHeight, maxHeight, onHeightChange }) {
 }
 
 /* ─── Habits Tracker ─── */
-function HabitsTracker({ dailyHabits, weeklyHabits, onToggleDaily, onToggleWeekly, onAddDaily, onAddWeekly, onDeleteDaily, onDeleteWeekly, onEditDaily, onEditWeekly, onReorderDaily, onReorderWeekly }) {
+function HabitsTracker({ dailyHabits, weeklyHabits, habitHistory, onToggleDaily, onToggleWeekly, onAddDaily, onAddWeekly, onDeleteDaily, onDeleteWeekly, onEditDaily, onEditWeekly, onReorderDaily, onReorderWeekly }) {
   const [addingDaily, setAddingDaily] = useState(false);
   const [addingWeekly, setAddingWeekly] = useState(false);
   const [newDaily, setNewDaily] = useState("");
@@ -320,6 +320,7 @@ function HabitsTracker({ dailyHabits, weeklyHabits, onToggleDaily, onToggleWeekl
   const [editText, setEditText] = useState("");
   const [splitPct, setSplitPct] = useState(55);
   const [dragHabit, setDragHabit] = useState(null);
+  const [showStats, setShowStats] = useState(false);
   const dailyRef = useRef(null);
   const weeklyRef = useRef(null);
   const editRef = useRef(null);
@@ -446,6 +447,131 @@ function HabitsTracker({ dailyHabits, weeklyHabits, onToggleDaily, onToggleWeekl
           {addingWeekly ? (<input ref={weeklyRef} value={newWeekly} onChange={(e) => setNewWeekly(e.target.value)} onBlur={addWH} onKeyDown={(e) => { if (e.key === "Enter") addWH(); if (e.key === "Escape") setAddingWeekly(false); }} placeholder="Habit name..." style={{ border: "1px solid var(--border)", borderRadius: 4, padding: "3px 6px", fontSize: 11, outline: "none", background: "var(--input-bg)", color: "var(--text)" }} />
           ) : (<button onClick={() => setAddingWeekly(true)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-faint)", fontSize: 11, padding: "2px 0", textAlign: "left" }} onMouseEnter={(e) => (e.target.style.color = "var(--text-muted)")} onMouseLeave={(e) => (e.target.style.color = "var(--text-faint)")}>+ Add weekly habit</button>)}
         </div>
+        {/* Stats toggle */}
+        <button onClick={() => setShowStats(!showStats)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-faint)", fontSize: 9, padding: "6px 0 0", fontFamily: "'JetBrains Mono', monospace", letterSpacing: 0.5 }}
+          onMouseEnter={(e) => e.target.style.color = "var(--text-muted)"} onMouseLeave={(e) => e.target.style.color = "var(--text-faint)"}>
+          {showStats ? "\u25BC" : "\u25B6"} Streaks
+        </button>
+        {showStats && (() => {
+          const weeks = Object.keys(habitHistory).sort().reverse();
+          // Current week stats
+          const curDailyTotal = dailyHabits.length * 7;
+          const curDailyDone = dailyHabits.reduce((s, h) => s + Object.values(h.checks).filter(Boolean).length, 0);
+          const curWeeklyTotal = weeklyHabits.length;
+          const curWeeklyDone = weeklyHabits.filter((h) => h.done).length;
+
+          // Previous week stats
+          const prevWeek = weeks[0];
+          const prev = prevWeek ? habitHistory[prevWeek] : null;
+          const prevDailyDone = prev?.daily ? prev.daily.reduce((s, h) => s + Object.values(h.checks || {}).filter(Boolean).length, 0) : 0;
+          const prevDailyTotal = prev?.daily ? prev.daily.length * 7 : 0;
+          const prevWeeklyDone = prev?.weekly ? prev.weekly.filter((h) => h.done).length : 0;
+          const prevWeeklyTotal = prev?.weekly ? prev.weekly.length : 0;
+
+          // 30-day / ~4 weeks average
+          const recentWeeks = weeks.slice(0, 4);
+          let totalDailyChecks = 0, totalDailyPossible = 0, totalWeeklyDone30 = 0, totalWeeklyPossible30 = 0;
+          recentWeeks.forEach((wk) => {
+            const w = habitHistory[wk];
+            if (w?.daily) { totalDailyChecks += w.daily.reduce((s, h) => s + Object.values(h.checks || {}).filter(Boolean).length, 0); totalDailyPossible += w.daily.length * 7; }
+            if (w?.weekly) { totalWeeklyDone30 += w.weekly.filter((h) => h.done).length; totalWeeklyPossible30 += w.weekly.length; }
+          });
+
+          const pct = (done, total) => total > 0 ? Math.round(done / total * 100) : 0;
+          const bar = (done, total, color) => (
+            <div style={{ flex: 1, height: 6, background: "var(--border)", borderRadius: 3, overflow: "hidden" }}>
+              <div style={{ width: `${pct(done, total)}%`, height: "100%", background: color, borderRadius: 3, transition: "width 0.3s" }} />
+            </div>
+          );
+
+          // Per-habit streaks (consecutive weeks with at least 5/7 daily checks or weekly done)
+          const dailyStreaks = dailyHabits.map((h) => {
+            let streak = 0;
+            // Check current week first
+            const curChecks = Object.values(h.checks).filter(Boolean).length;
+            if (curChecks >= 5) streak++;
+            else return { name: h.name, streak: curChecks >= 5 ? 1 : 0 };
+            // Then check history
+            for (const wk of weeks) {
+              const wData = habitHistory[wk]?.daily;
+              if (!wData) break;
+              const match = wData.find((hh) => hh.id === h.id || hh.name === h.name);
+              if (match && Object.values(match.checks || {}).filter(Boolean).length >= 5) streak++;
+              else break;
+            }
+            return { name: h.name, streak };
+          });
+
+          const weeklyStreaks = weeklyHabits.map((h) => {
+            let streak = 0;
+            if (h.done) streak++;
+            else return { name: h.name, streak: 0 };
+            for (const wk of weeks) {
+              const wData = habitHistory[wk]?.weekly;
+              if (!wData) break;
+              const match = wData.find((hh) => hh.id === h.id || hh.name === h.name);
+              if (match?.done) streak++;
+              else break;
+            }
+            return { name: h.name, streak };
+          });
+
+          const statBox = { background: "var(--bg-surface)", borderRadius: 6, padding: "6px 10px", textAlign: "center", flex: 1 };
+          const statNum = { fontSize: 16, fontWeight: 700, color: "var(--accent)" };
+          const statLabel = { fontSize: 8, color: "var(--text-muted)", fontFamily: "'JetBrains Mono', monospace", textTransform: "uppercase", letterSpacing: 0.5 };
+
+          return (
+            <div style={{ marginTop: 6, padding: "8px 0 0" }}>
+              {/* Overview bars */}
+              <div style={{ display: "flex", gap: 16, marginBottom: 8 }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 9, color: "var(--text-muted)", marginBottom: 3, fontWeight: 600 }}>This week: {curDailyDone}/{curDailyTotal} daily, {curWeeklyDone}/{curWeeklyTotal} weekly</div>
+                  <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                    {bar(curDailyDone, curDailyTotal, "#6a9955")}
+                    <span style={{ fontSize: 9, color: "var(--text-muted)", minWidth: 28 }}>{pct(curDailyDone, curDailyTotal)}%</span>
+                  </div>
+                </div>
+                {prev && (
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 9, color: "var(--text-muted)", marginBottom: 3, fontWeight: 600 }}>Last week: {prevDailyDone}/{prevDailyTotal} daily, {prevWeeklyDone}/{prevWeeklyTotal} weekly</div>
+                    <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                      {bar(prevDailyDone, prevDailyTotal, "#5b8fb9")}
+                      <span style={{ fontSize: 9, color: "var(--text-muted)", minWidth: 28 }}>{pct(prevDailyDone, prevDailyTotal)}%</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+              {recentWeeks.length > 0 && (
+                <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
+                  <div style={statBox}>
+                    <div style={statNum}>{pct(totalDailyChecks, totalDailyPossible)}%</div>
+                    <div style={statLabel}>Daily avg (4wk)</div>
+                  </div>
+                  <div style={statBox}>
+                    <div style={statNum}>{pct(totalWeeklyDone30, totalWeeklyPossible30)}%</div>
+                    <div style={statLabel}>Weekly avg (4wk)</div>
+                  </div>
+                </div>
+              )}
+              {/* Per-habit streaks */}
+              {(dailyStreaks.some((s) => s.streak > 0) || weeklyStreaks.some((s) => s.streak > 0)) && (
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
+                  {dailyStreaks.filter((s) => s.streak > 0).map((s) => (
+                    <span key={s.name} style={{ fontSize: 9, padding: "2px 6px", borderRadius: 4, background: "rgba(106,153,85,0.15)", color: "#6a9955", fontWeight: 600 }}>
+                      {s.name}: {s.streak}w {s.streak >= 3 ? "\uD83D\uDD25" : "\u2713"}
+                    </span>
+                  ))}
+                  {weeklyStreaks.filter((s) => s.streak > 0).map((s) => (
+                    <span key={s.name} style={{ fontSize: 9, padding: "2px 6px", borderRadius: 4, background: "rgba(91,143,185,0.15)", color: "#5b8fb9", fontWeight: 600 }}>
+                      {s.name}: {s.streak}w {s.streak >= 3 ? "\uD83D\uDD25" : "\u2713"}
+                    </span>
+                  ))}
+                </div>
+              )}
+              {weeks.length === 0 && <div style={{ fontSize: 9, color: "var(--text-faint)" }}>History will appear after your first full week</div>}
+            </div>
+          );
+        })()}
       </div>
     </div>
   );
@@ -771,7 +897,7 @@ function FutureSidebar({ futureTasks, onAddFuture, onDeleteFuture, onEditFuture 
 export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSaveNotebooks, onSaveJournal, onSaveContacts, onSaveArchive, onSaveDailyHabits, onSaveWeeklyHabits, onSaveSettings, onLogout, userEmail, userId }) {
   const isMobile = useIsMobile();
   const weekDates = getWeekDates();
-  const { tasks, futureTasks, dailyHabits, weeklyHabits, notes } = data;
+  const { tasks, futureTasks, dailyHabits, weeklyHabits, notes, habitHistory } = data;
   const [activeView, setActiveViewState] = useState(() => {
     try { return localStorage.getItem("planner_activeTab") || "planner"; } catch { return "planner"; }
   });
@@ -1175,7 +1301,7 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
               </div>
             )}
             {!isMobile && habitsOpen && (
-              <HabitsTracker dailyHabits={dailyHabits} weeklyHabits={weeklyHabits} onToggleDaily={toggleDaily} onToggleWeekly={toggleWeekly}
+              <HabitsTracker dailyHabits={dailyHabits} weeklyHabits={weeklyHabits} habitHistory={habitHistory || {}} onToggleDaily={toggleDaily} onToggleWeekly={toggleWeekly}
                 onAddDaily={addDailyHabit} onAddWeekly={addWeeklyHabit} onDeleteDaily={deleteDaily} onDeleteWeekly={deleteWeekly} onEditDaily={editDaily} onEditWeekly={editWeekly} onReorderDaily={reorderDaily} onReorderWeekly={reorderWeekly} />
             )}
             <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>

@@ -176,24 +176,47 @@ export function usePlannerData(userId) {
       const dailyWeekKey = dailyDoc?._weekKey || null;
       const weeklyWeekKey = weeklyDoc?._weekKey || null;
 
+      // Read habit history
+      const historyDoc = await readDoc(m("habitHistory"));
+      let habitHistory = historyDoc?.weeks || {};
+
       // Reset habit checks if we're in a new week
-      if (dailyWeekKey !== wk) {
+      // If _weekKey is null (first time with this feature), just stamp the current week without resetting
+      if (dailyWeekKey === null) {
+        writeDoc(m("dailyHabits"), { items: dailyHabits, _weekKey: wk });
+      } else if (dailyWeekKey !== wk) {
+        // Save snapshot of previous week before resetting
+        habitHistory[dailyWeekKey] = {
+          ...(habitHistory[dailyWeekKey] || {}),
+          daily: dailyHabits.map((h) => ({ id: h.id, name: h.name, checks: { ...h.checks } })),
+        };
+        // Keep only last 8 weeks of history
+        const sortedKeys = Object.keys(habitHistory).sort().reverse().slice(0, 8);
+        const trimmed = {};
+        sortedKeys.forEach((k) => { trimmed[k] = habitHistory[k]; });
+        habitHistory = trimmed;
+        writeDoc(m("habitHistory"), { weeks: habitHistory });
+
         dailyHabits = dailyHabits.map((h) => ({ ...h, checks: { mon: false, tue: false, wed: false, thu: false, fri: false, sat: false, sun: false } }));
         writeDoc(m("dailyHabits"), { items: dailyHabits, _weekKey: wk });
       }
-      if (weeklyWeekKey !== wk) {
+      if (weeklyWeekKey === null) {
+        writeDoc(m("weeklyHabits"), { items: weeklyHabits, _weekKey: wk });
+      } else if (weeklyWeekKey !== wk) {
+        habitHistory[weeklyWeekKey] = {
+          ...(habitHistory[weeklyWeekKey] || {}),
+          weekly: weeklyHabits.map((h) => ({ id: h.id, name: h.name, done: h.done })),
+        };
+        const sortedKeys = Object.keys(habitHistory).sort().reverse().slice(0, 8);
+        const trimmed = {};
+        sortedKeys.forEach((k) => { trimmed[k] = habitHistory[k]; });
+        habitHistory = trimmed;
+        writeDoc(m("habitHistory"), { weeks: habitHistory });
+
         weeklyHabits = weeklyHabits.map((h) => ({ ...h, done: false }));
         writeDoc(m("weeklyHabits"), { items: weeklyHabits, _weekKey: wk });
       }
       const settings = settingsDoc || { categories: DEFAULT_CATEGORIES, layout: "vertical", notes: "", darkMode: false };
-
-      // Reset habit checks on new week
-      if (isNewWeek) {
-        dailyHabits = dailyHabits.map((h) => ({ ...h, checks: { mon: false, tue: false, wed: false, thu: false, fri: false, sat: false, sun: false } }));
-        weeklyHabits = weeklyHabits.map((h) => ({ ...h, done: false }));
-        writeDoc(m("dailyHabits"), { items: dailyHabits });
-        writeDoc(m("weeklyHabits"), { items: weeklyHabits });
-      }
 
       if (!notebooksDoc) writeDoc(m("notebooks"), { items: notebooks });
       if (!journalDoc) writeDoc(m("journal"), { entries: journal });
@@ -206,7 +229,7 @@ export function usePlannerData(userId) {
       latestTasksRef.current = tasks;
 
       if (!cancelled) {
-        setData({ tasks, futureTasks, notebooks, journal, contacts, archive, dailyHabits, weeklyHabits,
+        setData({ tasks, futureTasks, notebooks, journal, contacts, archive, dailyHabits, weeklyHabits, habitHistory,
           categories: settings.categories, layout: settings.layout, notes: settings.notes, darkMode: settings.darkMode });
         setLoading(false);
       }
