@@ -108,7 +108,7 @@ function CategoryDot({ categories, selected, onSelect }) {
 }
 
 /* ─── Category Manager (full panel) ─── */
-function CategoryManager({ categories, onChange, layout, onLayoutChange, darkMode, onDarkModeChange }) {
+function CategoryManager({ categories, onChange, layout, onLayoutChange, darkMode, onDarkModeChange, onGetBackups, onRestoreBackup, onExportData }) {
   const [adding, setAdding] = useState(false);
   const [newName, setNewName] = useState("");
   const [newColor, setNewColor] = useState("#B7D5E8");
@@ -117,6 +117,10 @@ function CategoryManager({ categories, onChange, layout, onLayoutChange, darkMod
   const [editColor, setEditColor] = useState("");
   const [editKeywords, setEditKeywords] = useState("");
   const [newKeywords, setNewKeywords] = useState("");
+  const [backups, setBackups] = useState(null);
+  const [backupsLoading, setBackupsLoading] = useState(false);
+  const [restoring, setRestoring] = useState(null);
+  const [showBackups, setShowBackups] = useState(false);
   const addRef = useRef(null);
   const editRef = useRef(null);
   useEffect(() => { if (adding && addRef.current) addRef.current.focus(); }, [adding]);
@@ -299,11 +303,67 @@ function CategoryManager({ categories, onChange, layout, onLayoutChange, darkMod
           </button>
         )}
       </div>
+
+      {/* Backup & Restore */}
+      <div style={{ padding: "12px 16px", borderTop: "1px solid var(--border)", maxWidth: 500 }}>
+        <div style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, fontSize: 9, color: "var(--text-muted)", letterSpacing: 1, textTransform: "uppercase", marginBottom: 10 }}>Backup & Restore</div>
+        <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
+          <button onClick={onExportData} style={{
+            flex: 1, padding: "8px 12px", borderRadius: 6, cursor: "pointer",
+            border: "1.5px solid var(--border)", background: "var(--bg-card)", color: "var(--text)",
+            fontSize: 12, fontWeight: 500, display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+          }}>
+            {"\u2B07"} Export JSON
+          </button>
+          <button onClick={async () => { setBackupsLoading(true); setShowBackups(true); const b = await onGetBackups(); setBackups(b); setBackupsLoading(false); }} style={{
+            flex: 1, padding: "8px 12px", borderRadius: 6, cursor: "pointer",
+            border: "1.5px solid var(--border)", background: "var(--bg-card)", color: "var(--text)",
+            fontSize: 12, fontWeight: 500, display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+          }}>
+            {"\uD83D\uDD04"} {showBackups ? "Refresh Backups" : "View Backups"}
+          </button>
+        </div>
+        <div style={{ fontSize: 10, color: "var(--text-faint)", marginBottom: 8 }}>
+          Backups are saved automatically around 12 AM and 12 PM daily, plus on first open. Last 7 are kept.
+        </div>
+        {showBackups && (
+          <div>
+            {backupsLoading && <div style={{ fontSize: 11, color: "var(--text-muted)", padding: "8px 0" }}>Loading backups...</div>}
+            {backups && backups.length === 0 && <div style={{ fontSize: 11, color: "var(--text-faint)", padding: "8px 0" }}>No backups yet. One will be created automatically.</div>}
+            {backups && backups.map((b) => {
+              const date = new Date(b.timestamp);
+              const now = new Date();
+              const isToday = date.toDateString() === now.toDateString();
+              const isYesterday = new Date(now - 86400000).toDateString() === date.toDateString();
+              const label = isToday ? "Today" : isYesterday ? "Yesterday" : date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+              const time = date.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+              return (
+                <div key={b.id} style={{ padding: "8px 10px", marginBottom: 4, background: "var(--bg-surface)", borderRadius: 6, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <div>
+                    <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text)" }}>{label}, {time}</div>
+                    <div style={{ fontSize: 9, color: "var(--text-muted)", marginTop: 2 }}>
+                      {b.taskCount} tasks, {b.notebookCount} notes, {b.contactCount} contacts, {b.archiveCount} archived
+                    </div>
+                  </div>
+                  {restoring === b.id ? (
+                    <div style={{ display: "flex", gap: 4 }}>
+                      <button onClick={async () => { await onRestoreBackup(b.id); }} style={{ background: "#c44", color: "#fff", border: "none", borderRadius: 4, padding: "4px 10px", fontSize: 10, cursor: "pointer", fontWeight: 600 }}>Yes, restore</button>
+                      <button onClick={() => setRestoring(null)} style={{ background: "var(--border)", color: "var(--text-muted)", border: "none", borderRadius: 4, padding: "4px 10px", fontSize: 10, cursor: "pointer" }}>Cancel</button>
+                    </div>
+                  ) : (
+                    <button onClick={() => setRestoring(b.id)} style={{ background: "none", border: "1px solid var(--border)", borderRadius: 4, padding: "4px 10px", fontSize: 10, cursor: "pointer", color: "var(--text-muted)" }}
+                      onMouseEnter={(e) => { e.target.style.borderColor = "var(--accent)"; e.target.style.color = "var(--accent)"; }}
+                      onMouseLeave={(e) => { e.target.style.borderColor = "var(--border)"; e.target.style.color = "var(--text-muted)"; }}>Restore</button>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
-
-/* ─── Resize Handle ─── */
 function ResizeHandle({ currentHeight, minHeight, maxHeight, onHeightChange }) {
   const handleMouseDown = (e) => {
     e.preventDefault();
@@ -1013,7 +1073,7 @@ function FutureSidebar({ futureTasks, onAddFuture, onDeleteFuture, onEditFuture 
 }
 
 /* ─── Main Planner ─── */
-export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSaveNotebooks, onSaveJournal, onSaveContacts, onSaveArchive, onSaveDailyHabits, onSaveWeeklyHabits, onSaveSettings, onLogout, userEmail, userId }) {
+export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSaveNotebooks, onSaveJournal, onSaveContacts, onSaveArchive, onSaveDailyHabits, onSaveWeeklyHabits, onSaveSettings, onGetBackups, onRestoreBackup, onExportData, onLogout, userEmail, userId }) {
   const isMobile = useIsMobile();
   const weekDates = getWeekDates();
   const { tasks, futureTasks, dailyHabits, weeklyHabits, notes, habitHistory } = data;
@@ -1547,7 +1607,7 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
         {activeView === "notebooks" && <NotebooksPanel notebooks={notebooks} onChange={updateNotebooks} userId={userId} isMobile={isMobile} />}
         {activeView === "journal" && <JournalPanel journal={journal} onChange={updateJournal} userId={userId} isMobile={isMobile} />}
         {activeView === "contacts" && <ContactsPanel contacts={contacts} onChange={updateContacts} />}
-        {activeView === "categories" && <CategoryManager categories={categories} onChange={updateCategories} layout={layout} onLayoutChange={(l) => { update({ layout: l }); onSaveSettings({ categories, layout: l, notes, darkMode }); }} darkMode={darkMode} onDarkModeChange={(dm) => { update({ darkMode: dm }); onSaveSettings({ categories, layout, notes, darkMode: dm }); }} />}
+        {activeView === "categories" && <CategoryManager categories={categories} onChange={updateCategories} layout={layout} onLayoutChange={(l) => { update({ layout: l }); onSaveSettings({ categories, layout: l, notes, darkMode }); }} darkMode={darkMode} onDarkModeChange={(dm) => { update({ darkMode: dm }); onSaveSettings({ categories, layout, notes, darkMode: dm }); }} onGetBackups={onGetBackups} onRestoreBackup={onRestoreBackup} onExportData={onExportData} />}
 
         {activeView === "habits" && (
           <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
