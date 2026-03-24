@@ -1466,11 +1466,13 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
                       );
                     })()}
                     {/* Mobile quick notes inside scroll */}
+                    {isMobile && (
                     <div style={{ padding: "8px 6px 12px" }}>
                       <textarea value={notes} onChange={(e) => { const val = e.target.value; update({ notes: val }); onSaveSettings({ categories, layout, notes: val, darkMode }); }} placeholder="Quick notes..."
                         style={{ width: "100%", minHeight: 50, border: "1px solid var(--border)", borderRadius: 6, padding: "8px 10px", fontSize: 15, lineHeight: 1.5, outline: "none", background: "var(--input-bg)", color: "var(--text)", fontFamily: "'DM Sans', sans-serif", resize: "none", boxSizing: "border-box", overflow: "hidden" }}
                         ref={(el) => { if (el) { el.style.height = "auto"; el.style.height = Math.max(50, el.scrollHeight) + "px"; } }} />
                     </div>
+                    )}
                   </div>
                 ) : (
                   <div style={{ overflow: "auto", padding: "8px 6px" }}>
