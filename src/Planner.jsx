@@ -1465,6 +1465,12 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
                         </div>
                       );
                     })()}
+                    {/* Mobile quick notes inside scroll */}
+                    <div style={{ padding: "8px 6px 12px" }}>
+                      <textarea value={notes} onChange={(e) => { const val = e.target.value; update({ notes: val }); onSaveSettings({ categories, layout, notes: val, darkMode }); }} placeholder="Quick notes..."
+                        style={{ width: "100%", minHeight: 50, border: "1px solid var(--border)", borderRadius: 6, padding: "8px 10px", fontSize: 15, lineHeight: 1.5, outline: "none", background: "var(--input-bg)", color: "var(--text)", fontFamily: "'DM Sans', sans-serif", resize: "none", boxSizing: "border-box", overflow: "hidden" }}
+                        ref={(el) => { if (el) { el.style.height = "auto"; el.style.height = Math.max(50, el.scrollHeight) + "px"; } }} />
+                    </div>
                   </div>
                 ) : (
                   <div style={{ overflow: "auto", padding: "8px 6px" }}>
@@ -1598,6 +1604,91 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
                 <button onClick={() => { const name = prompt("Weekly habit name:"); if (name?.trim()) addWeeklyHabit(name.trim()); }}
                   style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-faint)", fontSize: 14, padding: "4px 0" }}>+ Add weekly habit</button>
               </div>
+
+              {/* Mobile streaks */}
+              {(() => {
+                const hh = habitHistory || {};
+                const weeks = Object.keys(hh).sort().reverse();
+                const dayKeys = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
+                const dayLabels = ["M", "T", "W", "T", "F", "S", "S"];
+                const todayIdx = (() => { const d = new Date().getDay(); return (d + 6) % 7; })();
+
+                const dailyByDay = dayKeys.map((d) => {
+                  const done = dailyHabits.filter((h) => h.checks[d]).length;
+                  return { done, total: dailyHabits.length };
+                });
+
+                const circle = (pct, isFuture, isToday) => {
+                  const size = 30; const r = 12; const circ = 2 * Math.PI * r; const offset = circ * (1 - pct);
+                  const color = pct >= 0.8 ? "#6a9955" : pct >= 0.5 ? "#c9a227" : pct > 0 ? "#c47a20" : "var(--border)";
+                  return (
+                    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+                      <circle cx={size/2} cy={size/2} r={r} fill="none" stroke={isFuture ? "var(--bg-hover)" : "var(--border)"} strokeWidth={3} />
+                      {!isFuture && pct > 0 && <circle cx={size/2} cy={size/2} r={r} fill="none" stroke={color} strokeWidth={3}
+                        strokeDasharray={circ} strokeDashoffset={offset} strokeLinecap="round" transform={`rotate(-90 ${size/2} ${size/2})`} />}
+                      {isToday && <circle cx={size/2} cy={size/2} r={2} fill="var(--accent)" />}
+                    </svg>
+                  );
+                };
+
+                const dailyStreaks = dailyHabits.map((h) => {
+                  let streak = 0;
+                  if (Object.values(h.checks).filter(Boolean).length >= 5) streak++;
+                  else return { name: h.name, streak: 0 };
+                  for (const wk of weeks) {
+                    const wData = hh[wk]?.daily;
+                    if (!wData) break;
+                    const match = wData.find((hh2) => hh2.id === h.id || hh2.name === h.name);
+                    if (match && Object.values(match.checks || {}).filter(Boolean).length >= 5) streak++;
+                    else break;
+                  }
+                  return { name: h.name, streak };
+                });
+
+                const prev = weeks[0] ? hh[weeks[0]] : null;
+                const prevTotal = prev?.daily ? prev.daily.reduce((s, h) => s + Object.values(h.checks || {}).filter(Boolean).length, 0) : 0;
+                const curTotal = dailyHabits.reduce((s, h) => s + Object.values(h.checks).filter(Boolean).length, 0);
+                const daysElapsed = todayIdx + 1;
+                const curPace = daysElapsed > 0 ? Math.round(curTotal / daysElapsed * 7) : 0;
+                let paceMsg = "";
+                if (prev && daysElapsed >= 2) {
+                  if (curPace > prevTotal) paceMsg = `On pace to beat last week!`;
+                  else if (curTotal >= prevTotal) paceMsg = "Already passed last week's total!";
+                }
+
+                const spotlights = [];
+                const longestStreak = dailyStreaks.reduce((best, s) => s.streak > best.streak ? s : best, { name: "", streak: 0 });
+                if (longestStreak.streak >= 2) spotlights.push(`\uD83D\uDD25 ${longestStreak.name}: ${longestStreak.streak}w streak`);
+                dailyHabits.filter((h) => Object.values(h.checks).filter(Boolean).length === 7).forEach((h) => spotlights.push(`\u2B50 ${h.name}: perfect week!`));
+
+                return (
+                  <div style={{ marginTop: 20, padding: "12px 0", borderTop: "1px solid var(--border)" }}>
+                    <div style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, fontSize: 11, color: "var(--text-muted)", letterSpacing: 1, textTransform: "uppercase", marginBottom: 10 }}>This Week</div>
+                    <div style={{ display: "flex", justifyContent: "center", gap: 8, marginBottom: 10 }}>
+                      {dayKeys.map((d, i) => {
+                        const dd = dailyByDay[i];
+                        const pct = dd.total > 0 ? dd.done / dd.total : 0;
+                        return (
+                          <div key={d} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
+                            <span style={{ fontSize: 10, color: i === todayIdx ? "var(--accent)" : "var(--text-faint)", fontWeight: i === todayIdx ? 700 : 400, fontFamily: "'JetBrains Mono', monospace" }}>{dayLabels[i]}</span>
+                            {circle(pct, i > todayIdx, i === todayIdx)}
+                            {i <= todayIdx && <span style={{ fontSize: 9, color: pct >= 0.8 ? "#6a9955" : "var(--text-faint)" }}>{dd.done}/{dd.total}</span>}
+                          </div>
+                        );
+                      })}
+                    </div>
+                    {paceMsg && <div style={{ textAlign: "center", fontSize: 13, color: "#6a9955", fontWeight: 600, marginBottom: 6 }}>{paceMsg}</div>}
+                    {spotlights.length > 0 && (
+                      <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: 6 }}>
+                        {spotlights.map((s, i) => (
+                          <span key={i} style={{ fontSize: 12, padding: "3px 10px", borderRadius: 6, background: "var(--bg-surface)", color: "var(--text-muted)", fontWeight: 500 }}>{s}</span>
+                        ))}
+                      </div>
+                    )}
+                    {weeks.length === 0 && spotlights.length === 0 && !paceMsg && <div style={{ textAlign: "center", fontSize: 12, color: "var(--text-faint)" }}>History starts after your first full week</div>}
+                  </div>
+                );
+              })()}
             </div>
           </div>
         )}
@@ -1688,12 +1779,7 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
           </div>
         )}
 
-        {/* Mobile: habits as a separate tab-like section when on planner view */}
-        {isMobile && activeView === "planner" && (
-          <div style={{ borderTop: "1px solid var(--border)", maxHeight: 120, overflowY: "auto", padding: "6px 8px" }}>
-            <NotesSection notes={notes} onChange={(val) => { update({ notes: val }); onSaveSettings({ categories, layout, notes: val, darkMode }); }} />
-          </div>
-        )}
+        {/* Mobile notes now inside scroll area above */}
       </div>
 
       {/* Mobile: bottom nav bar */}
