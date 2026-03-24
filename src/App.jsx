@@ -23,7 +23,7 @@ export default function App() {
     return <LoginScreen onLogin={login} onSignup={signup} />;
   }
 
-  if (dataLoading || !data) {
+  if (dataLoading) {
     return (
       <div style={{
         display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -31,6 +31,23 @@ export default function App() {
         fontFamily: "'DM Sans', sans-serif", fontSize: 14,
       }}>
         Loading your planner...
+      </div>
+    );
+  }
+
+  if (!data) {
+    return (
+      <div style={{
+        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+        height: '100vh', background: '#fdfcf8', color: '#666',
+        fontFamily: "'DM Sans', sans-serif", fontSize: 14, gap: 12, padding: 24, textAlign: 'center',
+      }}>
+        <div style={{ fontSize: 16, fontWeight: 600, color: '#c44' }}>Could not load your data</div>
+        <div>Check your internet connection and try again.</div>
+        <button onClick={() => window.location.reload()} style={{
+          padding: '10px 24px', background: '#555', color: '#fff', border: 'none',
+          borderRadius: 6, fontSize: 14, cursor: 'pointer', fontWeight: 600, marginTop: 8,
+        }}>Retry</button>
       </div>
     );
   }

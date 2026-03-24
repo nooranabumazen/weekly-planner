@@ -83,13 +83,15 @@ function getPrevWeekKey() {
   return formatLocalDate(prevMonday);
 }
 
+const READ_ERROR = Symbol("READ_ERROR");
+
 async function readDoc(path) {
   try {
     const snap = await getDoc(doc(db, path));
     return snap.exists() ? snap.data() : null;
   } catch (err) {
     console.error("Read error:", path, err);
-    return null;
+    return READ_ERROR; // Distinct from null (doc doesn't exist)
   }
 }
 
@@ -142,6 +144,18 @@ export function usePlannerData(userId) {
 
       if (cancelled) return;
 
+      // If ANY read returned an error (not null, but READ_ERROR), refuse to proceed.
+      // This prevents writing defaults over real data when the network is down.
+      const allReads = [weekDoc, futureDoc, notebooksDoc, journalDoc, contactsDoc, archiveDoc, dailyDoc, weeklyDoc, settingsDoc];
+      const hadError = allReads.some((r) => r === READ_ERROR);
+      if (hadError) {
+        console.error("One or more Firestore reads failed. Not loading to prevent data loss.");
+        // Show error state, user should refresh
+        setData(null);
+        setLoading(false);
+        return;
+      }
+
       let tasks;
       let isNewWeek = false;
       if (weekDoc && weekDoc.tasks) {
@@ -149,6 +163,13 @@ export function usePlannerData(userId) {
       } else {
         isNewWeek = true;
         const prevDoc = await readDoc(`users/${userId}/weeks/${getPrevWeekKey()}`);
+        if (prevDoc === READ_ERROR) {
+          // Can't read previous week, abort entirely to prevent data loss
+          console.error("Failed to read previous week for carry-forward. Aborting load.");
+          setData(null);
+          setLoading(false);
+          return;
+        }
         if (prevDoc && prevDoc.tasks) {
           const pt = prevDoc.tasks;
           const carry = [];
@@ -238,13 +259,19 @@ export function usePlannerData(userId) {
 
       // Read habit history
       const historyDoc = await readDoc(m("habitHistory"));
+      if (historyDoc === READ_ERROR) {
+        console.error("Failed to read habit history. Aborting load.");
+        setData(null);
+        setLoading(false);
+        return;
+      }
       let habitHistory = historyDoc?.weeks || {};
 
-      // Reset habit checks if we're in a new week
+      // Reset habit checks if we're in a new week (only if habit docs exist)
       // If _weekKey is null (first time with this feature), just stamp the current week without resetting
-      if (dailyWeekKey === null) {
+      if (dailyDoc && dailyWeekKey === null) {
         writeDoc(m("dailyHabits"), { items: dailyHabits, _weekKey: wk });
-      } else if (dailyWeekKey !== wk) {
+      } else if (dailyDoc && dailyWeekKey !== wk) {
         // Save snapshot of previous week before resetting
         habitHistory[dailyWeekKey] = {
           ...(habitHistory[dailyWeekKey] || {}),
@@ -260,9 +287,9 @@ export function usePlannerData(userId) {
         dailyHabits = dailyHabits.map((h) => ({ ...h, checks: { mon: false, tue: false, wed: false, thu: false, fri: false, sat: false, sun: false } }));
         writeDoc(m("dailyHabits"), { items: dailyHabits, _weekKey: wk });
       }
-      if (weeklyWeekKey === null) {
+      if (weeklyDoc && weeklyWeekKey === null) {
         writeDoc(m("weeklyHabits"), { items: weeklyHabits, _weekKey: wk });
-      } else if (weeklyWeekKey !== wk) {
+      } else if (weeklyDoc && weeklyWeekKey !== wk) {
         habitHistory[weeklyWeekKey] = {
           ...(habitHistory[weeklyWeekKey] || {}),
           weekly: weeklyHabits.map((h) => ({ id: h.id, name: h.name, done: h.done })),
@@ -278,13 +305,20 @@ export function usePlannerData(userId) {
       }
       const settings = settingsDoc || { categories: DEFAULT_CATEGORIES, layout: "vertical", notes: "", darkMode: false };
 
-      if (!notebooksDoc) writeDoc(m("notebooks"), { items: notebooks });
-      if (!journalDoc) writeDoc(m("journal"), { entries: journal });
-      if (!contactsDoc) writeDoc(m("contacts"), { items: contacts });
-      if (!archiveDoc) writeDoc(m("archive"), { items: archive });
-      if (!dailyDoc) writeDoc(m("dailyHabits"), { items: dailyHabits });
-      if (!weeklyDoc) writeDoc(m("weeklyHabits"), { items: weeklyHabits });
-      if (!settingsDoc) writeDoc(m("settings"), settings);
+      // Only write defaults for a TRULY NEW USER (all meta docs are null)
+      // If some docs exist but others don't, the missing ones were probably deleted intentionally or haven't been created yet
+      const metaDocs = [notebooksDoc, journalDoc, contactsDoc, archiveDoc, dailyDoc, weeklyDoc, settingsDoc];
+      const allMetaNull = metaDocs.every((d) => d === null);
+      if (allMetaNull && !isNewWeek) {
+        // Brand new user: write all defaults
+        writeDoc(m("notebooks"), { items: notebooks });
+        writeDoc(m("journal"), { entries: journal });
+        writeDoc(m("contacts"), { items: contacts });
+        writeDoc(m("archive"), { items: archive });
+        writeDoc(m("dailyHabits"), { items: dailyHabits, _weekKey: wk });
+        writeDoc(m("weeklyHabits"), { items: weeklyHabits, _weekKey: wk });
+        writeDoc(m("settings"), settings);
+      }
 
       latestTasksRef.current = tasks;
 
