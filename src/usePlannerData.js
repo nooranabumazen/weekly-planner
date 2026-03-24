@@ -424,7 +424,145 @@ export function usePlannerData(userId) {
   const saveWeeklyHabits = useCallback((items) => { setData((p) => p ? { ...p, weeklyHabits: items } : p); writeDoc(`users/${userId}/meta/weeklyHabits`, { items, _weekKey: weekKeyRef.current }); }, [userId]);
   const saveSettings = useCallback((s) => { setData((p) => p ? { ...p, categories: s.categories, layout: s.layout, notes: s.notes, darkMode: s.darkMode } : p); writeDoc(`users/${userId}/meta/settings`, s); }, [userId]);
 
-  return { data, loading, save, saveQuiet, saveFuture, saveNotebooks, saveJournal, saveContacts, saveArchive, saveDailyHabits, saveWeeklyHabits, saveSettings };
+  // ─── Backup System ───
+  const lastBackupTime = useRef(0);
+  const MAX_BACKUPS = 7;
+
+  const createBackup = useCallback(async () => {
+    if (!userId || !latestTasksRef.current) return;
+    const now = Date.now();
+    // Don't backup more than once per 6 hours
+    if (now - lastBackupTime.current < 21600000) return;
+    lastBackupTime.current = now;
+
+    try {
+      // Read all current data from Firestore for a complete snapshot
+      const m = (name) => `users/${userId}/meta/${name}`;
+      const [futureDoc, notebooksDoc, journalDoc, contactsDoc, archiveDoc, dailyDoc, weeklyDoc, settingsDoc, historyDoc] = await Promise.all([
+        readDoc(m("futureTasks")), readDoc(m("notebooks")), readDoc(m("journal")),
+        readDoc(m("contacts")), readDoc(m("archive")), readDoc(m("dailyHabits")),
+        readDoc(m("weeklyHabits")), readDoc(m("settings")), readDoc(m("habitHistory")),
+      ]);
+      // Don't backup if any read failed
+      if ([futureDoc, notebooksDoc, journalDoc, contactsDoc, archiveDoc, dailyDoc, weeklyDoc, settingsDoc].some((d) => d === READ_ERROR)) return;
+
+      const backup = {
+        timestamp: now,
+        weekKey: weekKeyRef.current,
+        tasks: latestTasksRef.current,
+        futureTasks: futureDoc?.items || [],
+        notebooks: notebooksDoc?.items || [],
+        journal: journalDoc?.entries || {},
+        contacts: contactsDoc?.items || [],
+        archive: archiveDoc?.items || [],
+        dailyHabits: dailyDoc?.items || [],
+        weeklyHabits: weeklyDoc?.items || [],
+        habitHistory: historyDoc?.weeks || {},
+        settings: settingsDoc || {},
+      };
+
+      // Write backup
+      writeDoc(`users/${userId}/backups/${now}`, backup);
+
+      // Clean up old backups: read backup list, delete oldest if > MAX_BACKUPS
+      const { getDocs: getDocsQuery, collection, query, orderBy, limit } = await import('firebase/firestore');
+      const backupsRef = collection(db, `users/${userId}/backups`);
+      const allBackups = await getDocsQuery(query(backupsRef, orderBy("timestamp", "desc")));
+      const toDelete = [];
+      let count = 0;
+      allBackups.forEach((d) => { count++; if (count > MAX_BACKUPS) toDelete.push(d.ref); });
+      const { deleteDoc: delDoc } = await import('firebase/firestore');
+      for (const ref of toDelete) { delDoc(ref).catch(console.error); }
+    } catch (err) {
+      console.error("Backup error:", err);
+    }
+  }, [userId]);
+
+  const getBackups = useCallback(async () => {
+    if (!userId) return [];
+    try {
+      const { getDocs: getDocsQuery, collection, query, orderBy } = await import('firebase/firestore');
+      const backupsRef = collection(db, `users/${userId}/backups`);
+      const snap = await getDocsQuery(query(backupsRef, orderBy("timestamp", "desc")));
+      const list = [];
+      snap.forEach((d) => {
+        const data = d.data();
+        const taskCount = data.tasks ? Object.values(data.tasks).flat().length : 0;
+        const notebookCount = data.notebooks?.length || 0;
+        const contactCount = data.contacts?.length || 0;
+        const archiveCount = data.archive?.length || 0;
+        list.push({ id: d.id, timestamp: data.timestamp, weekKey: data.weekKey, taskCount, notebookCount, contactCount, archiveCount });
+      });
+      return list;
+    } catch (err) {
+      console.error("Get backups error:", err);
+      return [];
+    }
+  }, [userId]);
+
+  const restoreBackup = useCallback(async (backupId) => {
+    if (!userId) return false;
+    try {
+      const backup = await readDoc(`users/${userId}/backups/${backupId}`);
+      if (!backup || backup === READ_ERROR) return false;
+
+      const m = (name) => `users/${userId}/meta/${name}`;
+      // Write everything back
+      if (backup.tasks) writeDoc(`users/${userId}/weeks/${backup.weekKey || weekKeyRef.current}`, { tasks: backup.tasks, _lastModified: Date.now() });
+      if (backup.futureTasks) writeDoc(m("futureTasks"), { items: backup.futureTasks });
+      if (backup.notebooks) writeDoc(m("notebooks"), { items: backup.notebooks });
+      if (backup.journal) writeDoc(m("journal"), { entries: backup.journal });
+      if (backup.contacts) writeDoc(m("contacts"), { items: backup.contacts });
+      if (backup.archive) writeDoc(m("archive"), { items: backup.archive });
+      if (backup.dailyHabits) writeDoc(m("dailyHabits"), { items: backup.dailyHabits, _weekKey: backup.weekKey || weekKeyRef.current });
+      if (backup.weeklyHabits) writeDoc(m("weeklyHabits"), { items: backup.weeklyHabits, _weekKey: backup.weekKey || weekKeyRef.current });
+      if (backup.settings) writeDoc(m("settings"), backup.settings);
+      if (backup.habitHistory) writeDoc(m("habitHistory"), { weeks: backup.habitHistory });
+
+      // Reload the page to pick up restored data
+      setTimeout(() => window.location.reload(), 500);
+      return true;
+    } catch (err) {
+      console.error("Restore error:", err);
+      return false;
+    }
+  }, [userId]);
+
+  const exportData = useCallback(() => {
+    if (!data) return;
+    const exportObj = {
+      exportedAt: new Date().toISOString(),
+      weekKey: weekKeyRef.current,
+      ...data,
+    };
+    const blob = new Blob([JSON.stringify(exportObj, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `planner-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }, [data]);
+
+  // Auto-backup twice daily: around 12 AM and 12 PM
+  // Checks every 5 minutes if a backup is due. Only backs up if last backup was 6+ hours ago.
+  useEffect(() => {
+    if (!userId) return;
+    const checkBackup = () => {
+      if (!data || !latestTasksRef.current) return;
+      const now = new Date();
+      const hour = now.getHours();
+      // Backup window: 11:30 PM to 12:30 AM, or 11:30 AM to 12:30 PM
+      const inWindow = (hour === 23 && now.getMinutes() >= 30) || hour === 0 || (hour === 11 && now.getMinutes() >= 30) || hour === 12;
+      if (inWindow) createBackup();
+    };
+    // Also backup on first load
+    if (data) createBackup();
+    const interval = setInterval(checkBackup, 300000); // Check every 5 min
+    return () => clearInterval(interval);
+  }, [userId, data !== null, createBackup]);
+
+  return { data, loading, save, saveQuiet, saveFuture, saveNotebooks, saveJournal, saveContacts, saveArchive, saveDailyHabits, saveWeeklyHabits, saveSettings, getBackups, restoreBackup, exportData };
 }
 
 export const DEFAULT_CATEGORIES = [

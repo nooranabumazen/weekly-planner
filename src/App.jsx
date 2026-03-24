@@ -5,7 +5,7 @@ import Planner from './Planner';
 
 export default function App() {
   const { user, loading: authLoading, login, signup, logout } = useAuth();
-  const { data, loading: dataLoading, save, saveQuiet, saveFuture, saveNotebooks, saveJournal, saveContacts, saveArchive, saveDailyHabits, saveWeeklyHabits, saveSettings } = usePlannerData(user?.uid);
+  const { data, loading: dataLoading, save, saveQuiet, saveFuture, saveNotebooks, saveJournal, saveContacts, saveArchive, saveDailyHabits, saveWeeklyHabits, saveSettings, getBackups, restoreBackup, exportData } = usePlannerData(user?.uid);
 
   if (authLoading) {
     return (
@@ -65,6 +65,9 @@ export default function App() {
       onSaveDailyHabits={saveDailyHabits}
       onSaveWeeklyHabits={saveWeeklyHabits}
       onSaveSettings={saveSettings}
+      onGetBackups={getBackups}
+      onRestoreBackup={restoreBackup}
+      onExportData={exportData}
       onLogout={logout}
       userEmail={user.email}
       userId={user.uid}
