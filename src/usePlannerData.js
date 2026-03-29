@@ -425,15 +425,17 @@ export function usePlannerData(userId) {
   const saveSettings = useCallback((s) => { setData((p) => p ? { ...p, categories: s.categories, layout: s.layout, notes: s.notes, darkMode: s.darkMode } : p); writeDoc(`users/${userId}/meta/settings`, s); }, [userId]);
 
   // ─── Backup System ───
-  const lastBackupTime = useRef(0);
   const MAX_BACKUPS = 7;
+
+  const getLastBackupTime = () => { try { return parseInt(localStorage.getItem("planner_lastBackup") || "0", 10); } catch { return 0; } };
+  const setLastBackupTime = (t) => { try { localStorage.setItem("planner_lastBackup", String(t)); } catch {} };
 
   const createBackup = useCallback(async () => {
     if (!userId || !latestTasksRef.current) return;
     const now = Date.now();
-    // Don't backup more than once per 6 hours
-    if (now - lastBackupTime.current < 21600000) return;
-    lastBackupTime.current = now;
+    // Don't backup more than once per 10 hours
+    if (now - getLastBackupTime() < 36000000) return;
+    setLastBackupTime(now);
 
     try {
       // Read all current data from Firestore for a complete snapshot
@@ -545,19 +547,18 @@ export function usePlannerData(userId) {
   }, [data]);
 
   // Auto-backup twice daily: around 12 AM and 12 PM
-  // Checks every 5 minutes if a backup is due. Only backs up if last backup was 6+ hours ago.
+  // Checks every 5 minutes if inside a backup window. 10-hour throttle ensures max 2/day.
   useEffect(() => {
     if (!userId) return;
     const checkBackup = () => {
       if (!data || !latestTasksRef.current) return;
       const now = new Date();
       const hour = now.getHours();
+      const min = now.getMinutes();
       // Backup window: 11:30 PM to 12:30 AM, or 11:30 AM to 12:30 PM
-      const inWindow = (hour === 23 && now.getMinutes() >= 30) || hour === 0 || (hour === 11 && now.getMinutes() >= 30) || hour === 12;
+      const inWindow = (hour === 23 && min >= 30) || hour === 0 || (hour === 11 && min >= 30) || hour === 12;
       if (inWindow) createBackup();
     };
-    // Also backup on first load
-    if (data) createBackup();
     const interval = setInterval(checkBackup, 300000); // Check every 5 min
     return () => clearInterval(interval);
   }, [userId, data !== null, createBackup]);
