@@ -154,7 +154,10 @@ function JournalEditor({ content, onChange, userId }) {
 
 export default function JournalPanel({ journal, onChange, userId, isMobile }) {
   const today = new Date().toISOString().split("T")[0];
-  const [selectedDate, setSelectedDate] = useState(today);
+  const [selectedDate, setSelectedDate] = useState(() => {
+    try { const d = localStorage.getItem("planner_journalNav"); if (d) { localStorage.removeItem("planner_journalNav"); return d; } } catch {}
+    return today;
+  });
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mobileEditing, setMobileEditing] = useState(false);
 

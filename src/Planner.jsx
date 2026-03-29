@@ -1412,16 +1412,35 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
   const getSearchResults = () => {
     if (!searchQuery.trim()) return [];
     const q = searchQuery.toLowerCase(); const results = [];
-    Object.entries(tasks).forEach(([col, list]) => { list.forEach((t) => { if (t.text.toLowerCase().includes(q)) results.push({ type: "Task", section: col.toUpperCase(), text: t.text }); }); });
-    archive.forEach((a) => { if (a.text.toLowerCase().includes(q)) results.push({ type: "Completed", section: a.assignedDate || "later", text: a.text }); });
-    futureTasks.forEach((t) => { if (t.text.toLowerCase().includes(q)) results.push({ type: "Upcoming", section: t.date, text: t.text }); });
-    notebooks.forEach((nb) => { const p = nb.content?.replace(/<[^>]*>/g, "") || ""; if (nb.title.toLowerCase().includes(q) || p.toLowerCase().includes(q)) results.push({ type: "Notebook", section: nb.title, text: p.slice(0, 100) }); });
-    Object.entries(journal).forEach(([date, html]) => { const p = html?.replace(/<[^>]*>/g, "") || ""; if (p.toLowerCase().includes(q)) results.push({ type: "Journal", section: date, text: p.slice(0, 100) }); });
-    contacts.forEach((c) => { const b = [c.name, c.likes, c.dislikes, c.notes, c.relationship, c.birthday].join(" ").toLowerCase(); if (b.includes(q)) results.push({ type: "Person", section: c.relationship || "", text: c.name }); });
-    if (notes?.toLowerCase().includes(q)) results.push({ type: "Quick Notes", section: "", text: notes.slice(0, 100) });
-    dailyHabits.forEach((h) => { if (h.name.toLowerCase().includes(q)) results.push({ type: "Daily Habit", section: "", text: h.name }); });
-    weeklyHabits.forEach((h) => { if (h.name.toLowerCase().includes(q)) results.push({ type: "Weekly Habit", section: "", text: h.name }); });
+    Object.entries(tasks).forEach(([col, list]) => { list.forEach((t) => { if (t.text.toLowerCase().includes(q)) results.push({ type: "Task", section: col.toUpperCase(), text: t.text, nav: { view: "planner", day: col } }); }); });
+    archive.forEach((a) => { if (a.text.toLowerCase().includes(q)) results.push({ type: "Completed", section: a.assignedDate || "later", text: a.text, nav: { view: "archive" } }); });
+    futureTasks.forEach((t) => { if (t.text.toLowerCase().includes(q)) results.push({ type: "Upcoming", section: t.date, text: t.text, nav: { view: "planner" } }); });
+    notebooks.forEach((nb) => { const p = nb.content?.replace(/<[^>]*>/g, "") || ""; if (nb.title.toLowerCase().includes(q) || p.toLowerCase().includes(q)) results.push({ type: "Notebook", section: nb.title, text: p.slice(0, 100), nav: { view: "notebooks", noteId: nb.id } }); });
+    Object.entries(journal).forEach(([date, html]) => { const p = html?.replace(/<[^>]*>/g, "") || ""; if (p.toLowerCase().includes(q)) results.push({ type: "Journal", section: date, text: p.slice(0, 100), nav: { view: "journal", date } }); });
+    contacts.forEach((c) => { const b = [c.name, c.likes, c.dislikes, c.notes, c.relationship, c.birthday].join(" ").toLowerCase(); if (b.includes(q)) results.push({ type: "Person", section: c.relationship || "", text: c.name, nav: { view: "contacts", contactId: c.id } }); });
+    if (notes?.toLowerCase().includes(q)) results.push({ type: "Quick Notes", section: "", text: notes.slice(0, 100), nav: { view: "planner", scrollTo: "notes" } });
+    dailyHabits.forEach((h) => { if (h.name.toLowerCase().includes(q)) results.push({ type: "Daily Habit", section: "", text: h.name, nav: { view: "planner" } }); });
+    weeklyHabits.forEach((h) => { if (h.name.toLowerCase().includes(q)) results.push({ type: "Weekly Habit", section: "", text: h.name, nav: { view: "planner" } }); });
     return results;
+  };
+
+  const navigateToResult = (result) => {
+    setSearchQuery(""); setSearchOpen(false);
+    if (!result.nav) return;
+    const { view, noteId, date, contactId } = result.nav;
+    setActiveView(view);
+    // For notebooks, set the active note
+    if (view === "notebooks" && noteId) {
+      try { localStorage.setItem("planner_activeNote", noteId); } catch {}
+    }
+    // For journal, store the date to navigate to
+    if (view === "journal" && date) {
+      try { localStorage.setItem("planner_journalNav", date); } catch {}
+    }
+    // For contacts, store the contact to expand
+    if (view === "contacts" && contactId) {
+      try { localStorage.setItem("planner_contactNav", contactId); } catch {}
+    }
   };
 
   const navItems = isMobile ? [
@@ -1476,7 +1495,8 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
               const results = getSearchResults();
               return (<div style={{ maxHeight: 200, overflowY: "auto", marginTop: 6 }}>
                 <div style={{ fontSize: 10, color: "var(--text-muted)", marginBottom: 4, fontWeight: 600 }}>{results.length} result{results.length !== 1 ? "s" : ""}</div>
-                {results.map((r, i) => (<div key={i} style={{ padding: "4px 8px", marginBottom: 2, borderRadius: 4, background: "var(--bg-card)", fontSize: isMobile ? 14 : 11 }}>
+                {results.map((r, i) => (<div key={i} onClick={() => navigateToResult(r)} style={{ padding: "4px 8px", marginBottom: 2, borderRadius: 4, background: "var(--bg-card)", fontSize: isMobile ? 14 : 11, cursor: "pointer" }}
+                  onMouseEnter={(e) => e.currentTarget.style.background = "var(--bg-hover)"} onMouseLeave={(e) => e.currentTarget.style.background = "var(--bg-card)"}>
                   <span style={{ fontSize: 9, fontWeight: 600, color: "#8B6914", background: "rgba(139,105,20,0.08)", padding: "1px 4px", borderRadius: 2, marginRight: 6 }}>{r.type}</span>
                   {r.section && <span style={{ fontSize: 9, color: "var(--text-faint)", marginRight: 6 }}>{r.section}</span>}
                   <span style={{ color: "var(--text)" }}>{r.text}</span></div>))}
