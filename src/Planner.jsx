@@ -835,7 +835,7 @@ function DropZone({ onDrop }) {
       onDragEnter={(e) => { e.preventDefault(); e.stopPropagation(); setOver(true); }}
       onDragLeave={(e) => { e.stopPropagation(); setOver(false); }}
       onDrop={(e) => { e.preventDefault(); e.stopPropagation(); setOver(false); onDrop(e); }}
-      style={{ height: over ? 4 : 6, margin: "0", background: over ? "#8B6914" : "transparent", borderRadius: over ? 2 : 0, transition: "background 0.1s" }} />
+      style={{ height: over ? 20 : 10, margin: "0", background: over ? "rgba(139,105,20,0.25)" : "transparent", borderRadius: over ? 4 : 0, transition: "all 0.15s", border: over ? "1.5px dashed #8B6914" : "1.5px dashed transparent" }} />
   );
 }
 
@@ -1136,6 +1136,7 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
 
   // Keep a ref to the latest data to avoid stale closure in callbacks
   const dataRef = useRef(data);
+  const scrollRef = useRef(null);
   dataRef.current = data;
 
   const update = (changes) => {
@@ -1489,7 +1490,16 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
                 onAddDaily={addDailyHabit} onAddWeekly={addWeeklyHabit} onDeleteDaily={deleteDaily} onDeleteWeekly={deleteWeekly} onEditDaily={editDaily} onEditWeekly={editWeekly} onReorderDaily={reorderDaily} onReorderWeekly={reorderWeekly} />
             )}
             <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
-              <div style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column" }}>
+              <div ref={scrollRef} onDragOver={(e) => {
+                e.preventDefault();
+                const el = scrollRef.current;
+                if (!el) return;
+                const rect = el.getBoundingClientRect();
+                const y = e.clientY;
+                const edgeSize = 60;
+                if (y - rect.top < edgeSize) el.scrollTop -= 8;
+                else if (rect.bottom - y < edgeSize) el.scrollTop += 8;
+              }} style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column" }}>
                 {(isMobile || layout === "vertical") ? (
                   <div style={{ padding: isMobile ? "4px 4px" : "4px 8px", display: "flex", flexDirection: "column", gap: 2 }}>
                     {DAYS.map((day, i) => (
