@@ -1445,34 +1445,78 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
     if (!result.nav) return;
     const { view, noteId, date, contactId } = result.nav;
     setActiveView(view);
-    // For notebooks, set the active note
-    if (view === "notebooks" && noteId) {
-      try { localStorage.setItem("planner_activeNote", noteId); } catch {}
-    }
-    // For journal, store the date to navigate to
-    if (view === "journal" && date) {
-      try { localStorage.setItem("planner_journalNav", date); } catch {}
-    }
-    // For contacts, store the contact to expand
-    if (view === "contacts" && contactId) {
-      try { localStorage.setItem("planner_contactNav", contactId); } catch {}
-    }
-    // Scroll to first highlight after render
-    setTimeout(() => {
-      const mark = document.querySelector("mark[data-search-highlight]");
-      if (mark) mark.scrollIntoView({ behavior: "smooth", block: "center" });
-    }, 150);
+    if (view === "notebooks" && noteId) { try { localStorage.setItem("planner_activeNote", noteId); } catch {} }
+    if (view === "journal" && date) { try { localStorage.setItem("planner_journalNav", date); } catch {} }
+    if (view === "contacts" && contactId) { try { localStorage.setItem("planner_contactNav", contactId); } catch {} }
+    setTimeout(() => highlightInDOM(query), 250);
   };
 
-  // Clear highlight on any user interaction (click or keypress)
+  const clearDOMHighlights = () => {
+    document.querySelectorAll("mark[data-search-highlight]").forEach((m) => {
+      const parent = m.parentNode;
+      if (parent) { parent.replaceChild(document.createTextNode(m.textContent), m); parent.normalize(); }
+    });
+  };
+
+  const highlightInDOM = (query) => {
+    if (!query) return;
+    clearDOMHighlights();
+    const qLower = query.toLowerCase();
+    const root = document.getElementById("root");
+    if (!root) return;
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+      acceptNode: (node) => {
+        const tag = node.parentElement?.tagName;
+        if (!tag || tag === "SCRIPT" || tag === "STYLE" || tag === "INPUT" || tag === "TEXTAREA" || tag === "MARK") return NodeFilter.FILTER_REJECT;
+        if (node.textContent.toLowerCase().includes(qLower)) return NodeFilter.FILTER_ACCEPT;
+        return NodeFilter.FILTER_REJECT;
+      }
+    });
+    const nodes = [];
+    while (walker.nextNode()) nodes.push(walker.currentNode);
+    let firstMark = null;
+    for (const textNode of nodes) {
+      const text = textNode.textContent;
+      const idx = text.toLowerCase().indexOf(qLower);
+      if (idx === -1 || !textNode.parentNode) continue;
+      const before = text.slice(0, idx);
+      const match = text.slice(idx, idx + query.length);
+      const after = text.slice(idx + query.length);
+      const mark = document.createElement("mark");
+      mark.setAttribute("data-search-highlight", "true");
+      mark.style.cssText = "background:#c9a227;color:#1a1a1a;border-radius:2px;padding:0 2px;";
+      mark.textContent = match;
+      const frag = document.createDocumentFragment();
+      if (before) frag.appendChild(document.createTextNode(before));
+      frag.appendChild(mark);
+      if (after) frag.appendChild(document.createTextNode(after));
+      textNode.parentNode.replaceChild(frag, textNode);
+      if (!firstMark) firstMark = mark;
+    }
+    // For textareas (quick notes): scroll to and select the match
+    if (!firstMark) {
+      const textareas = root.querySelectorAll("textarea");
+      for (const ta of textareas) {
+        const idx = ta.value.toLowerCase().indexOf(qLower);
+        if (idx !== -1) {
+          ta.scrollIntoView({ behavior: "smooth", block: "center" });
+          ta.focus();
+          ta.setSelectionRange(idx, idx + query.length);
+          firstMark = ta;
+          break;
+        }
+      }
+    }
+    if (firstMark) firstMark.scrollIntoView({ behavior: "smooth", block: "center" });
+  };
+
   useEffect(() => {
     if (!highlightQuery) return;
-    const clear = () => setHighlightQuery("");
-    // Small delay so the initial click on the search result doesn't immediately clear it
+    const clear = () => { setHighlightQuery(""); clearDOMHighlights(); };
     const timer = setTimeout(() => {
       document.addEventListener("keydown", clear, { once: true });
       document.addEventListener("mousedown", clear, { once: true });
-    }, 300);
+    }, 400);
     return () => { clearTimeout(timer); document.removeEventListener("keydown", clear); document.removeEventListener("mousedown", clear); };
   }, [highlightQuery]);
 
