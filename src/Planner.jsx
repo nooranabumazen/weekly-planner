@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useEffect } from "react";
+import React, { useState, useRef, useCallback, useEffect } from "react";
 import { makeTask, getWeekDates, getUpcomingDates, DEFAULT_CATEGORIES, formatLocalDate } from "./usePlannerData";
 import NotebooksPanel from "./NotebooksSidebar";
 import JournalPanel from "./JournalPanel";
@@ -828,14 +828,17 @@ function TaskCard({ task, columnId, categories, onDragStart, onToggle, onDelete,
 }
 
 /* ─── Drop Zone ─── */
+const DragContext = React.createContext(false);
+
 function DropZone({ onDrop }) {
   const [over, setOver] = useState(false);
+  const dragging = React.useContext(DragContext);
   return (
     <div data-dropzone="true" onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); setOver(true); }}
       onDragEnter={(e) => { e.preventDefault(); e.stopPropagation(); setOver(true); }}
       onDragLeave={(e) => { e.stopPropagation(); setOver(false); }}
       onDrop={(e) => { e.preventDefault(); e.stopPropagation(); setOver(false); onDrop(e); }}
-      style={{ height: over ? 20 : 10, margin: "0", background: over ? "rgba(139,105,20,0.25)" : "transparent", borderRadius: over ? 4 : 0, transition: "all 0.15s", border: over ? "1.5px dashed #8B6914" : "1.5px dashed transparent" }} />
+      style={{ height: over ? 20 : dragging ? 8 : 2, margin: 0, background: over ? "rgba(139,105,20,0.25)" : "transparent", borderRadius: over ? 4 : 0, transition: "all 0.15s", border: over ? "1.5px dashed #8B6914" : "1.5px dashed transparent", overflow: "hidden" }} />
   );
 }
 
@@ -1137,7 +1140,18 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
   // Keep a ref to the latest data to avoid stale closure in callbacks
   const dataRef = useRef(data);
   const scrollRef = useRef(null);
+  const [isDragging, setIsDragging] = useState(false);
   dataRef.current = data;
+
+  // Track global drag state for DropZone sizing
+  useEffect(() => {
+    const onStart = () => setIsDragging(true);
+    const onEnd = () => setIsDragging(false);
+    document.addEventListener("dragstart", onStart);
+    document.addEventListener("dragend", onEnd);
+    document.addEventListener("drop", onEnd);
+    return () => { document.removeEventListener("dragstart", onStart); document.removeEventListener("dragend", onEnd); document.removeEventListener("drop", onEnd); };
+  }, []);
 
   const update = (changes) => {
     const latest = dataRef.current;
@@ -1430,6 +1444,7 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
   const mPad = isMobile ? "12px" : "8px";
 
   return (
+    <DragContext.Provider value={isDragging}>
     <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", height: "100vh", fontFamily: "'DM Sans', 'Segoe UI', sans-serif", background: "var(--bg)", color: "var(--text)" }}>
       <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet" />
 
@@ -1879,5 +1894,6 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
         </div>
       )}
     </div>
+    </DragContext.Provider>
   );
 }
