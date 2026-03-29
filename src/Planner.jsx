@@ -70,17 +70,26 @@ function autoDetectCategory(text, categories) {
   const selfCareCategoryId = selfCareCategory?.id || null;
 
   // Check each category: use stored keywords if present, fall back to built-in defaults
+  // Sort keywords longest-first so "shower" matches before "show"
   for (const cat of categories) {
     if (cat.id === "cat_none") continue;
     const storedKw = cat.keywords && cat.keywords.length > 0 ? cat.keywords : null;
     const builtinKw = CATEGORY_KEYWORDS[cat.id] || null;
-    // For selfcare, also check if this category matches by name
     const isSelfCare = cat.id === "cat_selfcare" || (selfCareCategoryId && cat.id === selfCareCategoryId);
     const selfCareKw = isSelfCare ? CATEGORY_KEYWORDS.cat_selfcare : null;
 
-    const keywords = storedKw || builtinKw || selfCareKw || [];
+    const keywords = (storedKw || builtinKw || selfCareKw || []).slice().sort((a, b) => b.length - a.length);
     for (const kw of keywords) {
-      if (kw && lower.includes(kw.toLowerCase())) return cat.id;
+      if (!kw) continue;
+      // Multi-word keywords use includes (e.g. "prep food", "land day")
+      // Single-word keywords use word boundary regex to prevent partial matches (e.g. "show" in "shower")
+      const kwLower = kw.toLowerCase();
+      if (kwLower.includes(" ")) {
+        if (lower.includes(kwLower)) return cat.id;
+      } else {
+        const re = new RegExp("\\b" + kwLower.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "\\b");
+        if (re.test(lower)) return cat.id;
+      }
     }
   }
   // Check custom categories by name match
