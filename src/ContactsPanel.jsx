@@ -1,6 +1,14 @@
 import { useState, useRef, useEffect } from "react";
 
-function ContactCard({ contact, onUpdate, onDelete, expanded, onToggle }) {
+function HL({ text, query }) {
+  if (!query || !text) return text || "";
+  const lower = text.toLowerCase();
+  const idx = lower.indexOf(query.toLowerCase());
+  if (idx === -1) return text;
+  return <>{text.slice(0, idx)}<mark data-search-highlight style={{ background: "#c9a227", color: "#1a1a1a", borderRadius: 2, padding: "0 1px" }}>{text.slice(idx, idx + query.length)}</mark>{text.slice(idx + query.length)}</>;
+}
+
+function ContactCard({ contact, onUpdate, onDelete, expanded, onToggle, highlightQuery }) {
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState(contact);
   const nameRef = useRef(null);
@@ -43,7 +51,7 @@ function ContactCard({ contact, onUpdate, onDelete, expanded, onToggle }) {
     <div style={{ background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 6, marginBottom: 4, overflow: "hidden" }}>
       <div onClick={onToggle} style={{ padding: "8px 10px", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <div>
-          <span style={{ fontSize: 16, fontWeight: 600, color: "var(--text)" }}>{contact.name}</span>
+          <span style={{ fontSize: 16, fontWeight: 600, color: "var(--text)" }}><HL text={contact.name} query={highlightQuery} /></span>
           {contact.relationship && <span style={{ fontSize: 9, color: "var(--text-muted)", marginLeft: 6, fontWeight: 500, background: "var(--border-light)", padding: "1px 5px", borderRadius: 3 }}>{contact.relationship}</span>}
         </div>
         <span style={{ fontSize: 11, color: "var(--text-faint)", transition: "transform 0.2s", transform: expanded ? "rotate(90deg)" : "rotate(0deg)", display: "inline-block" }}>{"\u25B6"}</span>
@@ -67,7 +75,7 @@ function ContactCard({ contact, onUpdate, onDelete, expanded, onToggle }) {
   );
 }
 
-export default function ContactsPanel({ contacts, onChange }) {
+export default function ContactsPanel({ contacts, onChange, highlightQuery }) {
   const [search, setSearch] = useState("");
   const [expandedId, setExpandedId] = useState(() => {
     try { const id = localStorage.getItem("planner_contactNav"); if (id) { localStorage.removeItem("planner_contactNav"); return id; } } catch {}
@@ -108,7 +116,7 @@ export default function ContactsPanel({ contacts, onChange }) {
             <ContactCard key={contact.id} contact={contact} expanded={expandedId === contact.id}
               onToggle={() => setExpandedId(expandedId === contact.id ? null : contact.id)}
               onUpdate={(updated) => updateContact(contact.id, updated)}
-              onDelete={() => deleteContact(contact.id)} />
+              onDelete={() => deleteContact(contact.id)} highlightQuery={highlightQuery} />
           ))}
         </div>
         <div style={{ padding: "6px 0", fontSize: 10, color: "var(--text-faint)", borderTop: "1px solid var(--border)" }}>

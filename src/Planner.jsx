@@ -17,6 +17,18 @@ function useIsMobile(breakpoint = 640) {
   return isMobile;
 }
 
+/* ─── Search Highlight Helper ─── */
+function HighlightText({ text, query }) {
+  if (!query || !text) return text || "";
+  const lower = text.toLowerCase();
+  const qLower = query.toLowerCase();
+  const idx = lower.indexOf(qLower);
+  if (idx === -1) return text;
+  return (
+    <>{text.slice(0, idx)}<mark data-search-highlight style={{ background: "#c9a227", color: "#1a1a1a", borderRadius: 2, padding: "0 1px" }}>{text.slice(idx, idx + query.length)}</mark>{text.slice(idx + query.length)}</>
+  );
+}
+
 /* ─── Category Helpers ─── */
 function getCatColor(categories, catId) {
   const cat = categories.find((c) => c.id === catId);
@@ -700,7 +712,7 @@ function NotesSection({ notes, onChange }) {
 }
 
 /* ─── Task Card ─── */
-function TaskCard({ task, columnId, categories, onDragStart, onToggle, onDelete, onEdit, onChangeCategory, isMobile, onMove, onSetRecurring }) {
+function TaskCard({ task, columnId, categories, onDragStart, onToggle, onDelete, onEdit, onChangeCategory, isMobile, onMove, onSetRecurring, highlightQuery }) {
   const [editing, setEditing] = useState(false);
   const [editText, setEditText] = useState(task.text);
   const [hover, setHover] = useState(false);
@@ -753,7 +765,7 @@ function TaskCard({ task, columnId, categories, onDragStart, onToggle, onDelete,
       ) : (
         <span onDoubleClick={() => { setEditing(true); setEditText(task.text); }}
           style={{ flex: 1, textDecoration: task.done ? "line-through" : "none", cursor: "pointer", color: task.done ? "var(--text-muted)" : "var(--text)" }}>
-          {task.text}
+          <HighlightText text={task.text} query={highlightQuery} />
           {task.recurring && <span title={`Repeats ${task.recurring.type === "weeks" ? task.recurring.count + " weeks" : "until " + task.recurring.until}`} style={{ fontSize: 9, marginLeft: 4, color: "var(--text-faint)" }}>{"\uD83D\uDD01"}</span>}
         </span>
       )}
@@ -843,7 +855,7 @@ function DropZone({ onDrop }) {
 }
 
 /* ─── Day Section ─── */
-function DaySection({ dayInfo, columnId, tasks, categories, onDragStart, onDrop, onToggle, onDelete, onEdit, onAdd, onChangeCategory, isMobile, onMove, onSetRecurring }) {
+function DaySection({ dayInfo, columnId, tasks, categories, onDragStart, onDrop, onToggle, onDelete, onEdit, onAdd, onChangeCategory, isMobile, onMove, onSetRecurring, highlightQuery }) {
   const [dragOver, setDragOver] = useState(false);
   const [adding, setAdding] = useState(false);
   const [newText, setNewText] = useState("");
@@ -895,12 +907,12 @@ function DaySection({ dayInfo, columnId, tasks, categories, onDragStart, onDrop,
         {incompleteTasks.map((task, idx) => (
           <div key={task.id}>
             <DropZone onDrop={(e) => handleDropAtIndex(e, task.id)} />
-            <TaskCard task={task} columnId={columnId} categories={categories} onDragStart={onDragStart} onToggle={onToggle} onDelete={onDelete} onEdit={onEdit} onChangeCategory={onChangeCategory} isMobile={isMobile} onMove={onMove} onSetRecurring={onSetRecurring} />
+            <TaskCard task={task} columnId={columnId} categories={categories} onDragStart={onDragStart} onToggle={onToggle} onDelete={onDelete} onEdit={onEdit} onChangeCategory={onChangeCategory} isMobile={isMobile} onMove={onMove} onSetRecurring={onSetRecurring} highlightQuery={highlightQuery} />
           </div>
         ))}
         <DropZone onDrop={(e) => handleDropAtIndex(e, null)} />
         {doneTasks.length > 0 && doneTasks.map((task) => (
-          <TaskCard key={task.id} task={task} columnId={columnId} categories={categories} onDragStart={onDragStart} onToggle={onToggle} onDelete={onDelete} onEdit={onEdit} onChangeCategory={onChangeCategory} isMobile={isMobile} onMove={onMove} onSetRecurring={onSetRecurring} />
+          <TaskCard key={task.id} task={task} columnId={columnId} categories={categories} onDragStart={onDragStart} onToggle={onToggle} onDelete={onDelete} onEdit={onEdit} onChangeCategory={onChangeCategory} isMobile={isMobile} onMove={onMove} onSetRecurring={onSetRecurring} highlightQuery={highlightQuery} />
         ))}
       </div>
 
@@ -929,7 +941,7 @@ function DaySection({ dayInfo, columnId, tasks, categories, onDragStart, onDrop,
 }
 
 /* ─── Day Column (horizontal layout) ─── */
-function DayColumn({ dayInfo, columnId, tasks, categories, onDragStart, onDrop, onToggle, onDelete, onEdit, onAdd, onChangeCategory, colWidth, onMove, onSetRecurring }) {
+function DayColumn({ dayInfo, columnId, tasks, categories, onDragStart, onDrop, onToggle, onDelete, onEdit, onAdd, onChangeCategory, colWidth, onMove, onSetRecurring, highlightQuery }) {
   const [dragOver, setDragOver] = useState(false);
   const [adding, setAdding] = useState(false);
   const [newText, setNewText] = useState("");
@@ -971,7 +983,7 @@ function DayColumn({ dayInfo, columnId, tasks, categories, onDragStart, onDrop, 
         {incompleteTasks.map((task, idx) => (
           <div key={task.id}>
             <DropZone onDrop={(e) => handleDropAtIndex(e, task.id)} />
-            <TaskCard task={task} columnId={columnId} categories={categories} onDragStart={onDragStart} onToggle={onToggle} onDelete={onDelete} onEdit={onEdit} onChangeCategory={onChangeCategory} onMove={onMove} onSetRecurring={onSetRecurring} />
+            <TaskCard task={task} columnId={columnId} categories={categories} onDragStart={onDragStart} onToggle={onToggle} onDelete={onDelete} onEdit={onEdit} onChangeCategory={onChangeCategory} onMove={onMove} onSetRecurring={onSetRecurring} highlightQuery={highlightQuery} />
           </div>
         ))}
         <DropZone onDrop={(e) => handleDropAtIndex(e, null)} />
@@ -981,7 +993,7 @@ function DayColumn({ dayInfo, columnId, tasks, categories, onDragStart, onDrop, 
               <span style={{ background: isToday ? "rgba(180,140,80,0.06)" : "var(--bg)", padding: "0 3px", position: "relative", top: -5 }}>done</span>
             </div>
             {doneTasks.map((task) => (
-              <TaskCard key={task.id} task={task} columnId={columnId} categories={categories} onDragStart={onDragStart} onToggle={onToggle} onDelete={onDelete} onEdit={onEdit} onChangeCategory={onChangeCategory} onMove={onMove} onSetRecurring={onSetRecurring} />
+              <TaskCard key={task.id} task={task} columnId={columnId} categories={categories} onDragStart={onDragStart} onToggle={onToggle} onDelete={onDelete} onEdit={onEdit} onChangeCategory={onChangeCategory} onMove={onMove} onSetRecurring={onSetRecurring} highlightQuery={highlightQuery} />
             ))}
           </>
         )}
@@ -1007,7 +1019,7 @@ function DayColumn({ dayInfo, columnId, tasks, categories, onDragStart, onDrop, 
 }
 
 /* ─── Future Sidebar ─── */
-function FutureSidebar({ futureTasks, onAddFuture, onDeleteFuture, onEditFuture }) {
+function FutureSidebar({ futureTasks, onAddFuture, onDeleteFuture, onEditFuture, highlightQuery }) {
   const [adding, setAdding] = useState(false);
   const [open, setOpen] = useState(true);
   const [newText, setNewText] = useState("");
@@ -1047,7 +1059,7 @@ function FutureSidebar({ futureTasks, onAddFuture, onDeleteFuture, onEditFuture 
                       onClick={(e) => e.stopPropagation()}
                       style={{ flex: 1, border: "1px solid var(--border)", borderRadius: 3, padding: "1px 4px", fontSize: 12, outline: "none", background: "var(--input-bg)", color: "var(--text)", boxSizing: "border-box" }} />
                   ) : (
-                    <span onDoubleClick={() => { setEditingId(task.id); setEditText(task.text); }} style={{ flex: 1, wordBreak: "break-word", cursor: "text" }}>{task.text}</span>
+                    <span onDoubleClick={() => { setEditingId(task.id); setEditText(task.text); }} style={{ flex: 1, wordBreak: "break-word", cursor: "text" }}><HighlightText text={task.text} query={highlightQuery} /></span>
                   )}
                   <button onClick={() => onDeleteFuture(task.id)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-faint)", fontSize: 11, padding: 0, marginLeft: 3, fontWeight: 600, lineHeight: 1 }} onMouseEnter={(e) => (e.target.style.color = "#c44")} onMouseLeave={(e) => (e.target.style.color = "#bbb")}>&times;</button>
                 </div>))}</div>);
@@ -1086,6 +1098,7 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
   const setActiveView = (view) => { setActiveViewState(view); try { localStorage.setItem("planner_activeTab", view); } catch {} };
   const [searchQuery, setSearchQuery] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
+  const [highlightQuery, setHighlightQuery] = useState(""); // persists after search close to highlight matches
   const [laterHeight, setLaterHeight] = useState(50);
   const [notesHeight, setNotesHeight] = useState(70);
   const [colWidth, setColWidth] = useState(160);
@@ -1425,7 +1438,10 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
   };
 
   const navigateToResult = (result) => {
-    setSearchQuery(""); setSearchOpen(false);
+    const query = searchQuery;
+    setSearchOpen(false);
+    setSearchQuery("");
+    setHighlightQuery(query);
     if (!result.nav) return;
     const { view, noteId, date, contactId } = result.nav;
     setActiveView(view);
@@ -1441,7 +1457,24 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
     if (view === "contacts" && contactId) {
       try { localStorage.setItem("planner_contactNav", contactId); } catch {}
     }
+    // Scroll to first highlight after render
+    setTimeout(() => {
+      const mark = document.querySelector("mark[data-search-highlight]");
+      if (mark) mark.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 150);
   };
+
+  // Clear highlight on any user interaction (click or keypress)
+  useEffect(() => {
+    if (!highlightQuery) return;
+    const clear = () => setHighlightQuery("");
+    // Small delay so the initial click on the search result doesn't immediately clear it
+    const timer = setTimeout(() => {
+      document.addEventListener("keydown", clear, { once: true });
+      document.addEventListener("mousedown", clear, { once: true });
+    }, 300);
+    return () => { clearTimeout(timer); document.removeEventListener("keydown", clear); document.removeEventListener("mousedown", clear); };
+  }, [highlightQuery]);
 
   const navItems = isMobile ? [
     { id: "planner", icon: "\u{1F4C5}", label: "Planner" },
@@ -1539,11 +1572,11 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
                   <div style={{ padding: isMobile ? "4px 4px" : "4px 8px", display: "flex", flexDirection: "column", gap: 2 }}>
                     {DAYS.map((day, i) => (
                       <DaySection key={day} dayInfo={weekDates[i]} columnId={day.toLowerCase()} tasks={tasks[day.toLowerCase()]} categories={categories}
-                        onDragStart={() => {}} onDrop={handleDrop} onToggle={toggleDone} onDelete={deleteTask} onEdit={editTask} onAdd={addTask} onChangeCategory={changeCategory} isMobile={isMobile} onMove={moveTask} onSetRecurring={setRecurring} />
+                        onDragStart={() => {}} onDrop={handleDrop} onToggle={toggleDone} onDelete={deleteTask} onEdit={editTask} onAdd={addTask} onChangeCategory={changeCategory} isMobile={isMobile} onMove={moveTask} onSetRecurring={setRecurring} highlightQuery={highlightQuery} />
                     ))}
                     {isMobile && (
                       <DaySection dayInfo={null} columnId="later" tasks={tasks.later} categories={categories} onDragStart={() => {}} onDrop={handleDrop}
-                        onToggle={toggleDone} onDelete={deleteTask} onEdit={editTask} onAdd={addTask} onChangeCategory={changeCategory} isMobile={isMobile} onMove={moveTask} onSetRecurring={setRecurring} />
+                        onToggle={toggleDone} onDelete={deleteTask} onEdit={editTask} onAdd={addTask} onChangeCategory={changeCategory} isMobile={isMobile} onMove={moveTask} onSetRecurring={setRecurring} highlightQuery={highlightQuery} />
                     )}
                     {/* Mobile upcoming section */}
                     {isMobile && futureTasks.length > 0 && (() => {
@@ -1585,7 +1618,7 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
                       {DAYS.map((day, i) => (
                         <div key={day} style={{ display: "flex" }}>
                           <DayColumn dayInfo={weekDates[i]} columnId={day.toLowerCase()} tasks={tasks[day.toLowerCase()]} categories={categories}
-                            onDragStart={() => {}} onDrop={handleDrop} onToggle={toggleDone} onDelete={deleteTask} onEdit={editTask} onAdd={addTask} onChangeCategory={changeCategory} colWidth={colWidth} onMove={moveTask} onSetRecurring={setRecurring} />
+                            onDragStart={() => {}} onDrop={handleDrop} onToggle={toggleDone} onDelete={deleteTask} onEdit={editTask} onAdd={addTask} onChangeCategory={changeCategory} colWidth={colWidth} onMove={moveTask} onSetRecurring={setRecurring} highlightQuery={highlightQuery} />
                           {i < 6 && (
                             <div onMouseDown={(e) => {
                               e.preventDefault();
@@ -1618,10 +1651,10 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
                       <div style={{ padding: "0px 8px 6px" }}>
                         {layout === "vertical" ? (
                           <DaySection dayInfo={null} columnId="later" tasks={tasks.later} categories={categories} onDragStart={() => {}} onDrop={handleDrop}
-                            onToggle={toggleDone} onDelete={deleteTask} onEdit={editTask} onAdd={addTask} onChangeCategory={changeCategory} onMove={moveTask} onSetRecurring={setRecurring} />
+                            onToggle={toggleDone} onDelete={deleteTask} onEdit={editTask} onAdd={addTask} onChangeCategory={changeCategory} onMove={moveTask} onSetRecurring={setRecurring} highlightQuery={highlightQuery} />
                         ) : (
                           <DayColumn dayInfo={null} columnId="later" tasks={tasks.later} categories={categories} onDragStart={() => {}} onDrop={handleDrop}
-                            onToggle={toggleDone} onDelete={deleteTask} onEdit={editTask} onAdd={addTask} onChangeCategory={changeCategory} colWidth="100%" onMove={moveTask} onSetRecurring={setRecurring} />
+                            onToggle={toggleDone} onDelete={deleteTask} onEdit={editTask} onAdd={addTask} onChangeCategory={changeCategory} colWidth="100%" onMove={moveTask} onSetRecurring={setRecurring} highlightQuery={highlightQuery} />
                         )}
                       </div>
                     )}
@@ -1644,14 +1677,14 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
                   </div>
                 )}
               </div>
-              {!isMobile && <FutureSidebar futureTasks={futureTasks} onAddFuture={addFuture} onDeleteFuture={deleteFuture} onEditFuture={editFuture} />}
+              {!isMobile && <FutureSidebar futureTasks={futureTasks} onAddFuture={addFuture} onDeleteFuture={deleteFuture} onEditFuture={editFuture} highlightQuery={highlightQuery} />}
             </div>
           </div>
         )}
 
         {activeView === "notebooks" && <NotebooksPanel notebooks={notebooks} onChange={updateNotebooks} userId={userId} isMobile={isMobile} />}
         {activeView === "journal" && <JournalPanel journal={journal} onChange={updateJournal} userId={userId} isMobile={isMobile} />}
-        {activeView === "contacts" && <ContactsPanel contacts={contacts} onChange={updateContacts} />}
+        {activeView === "contacts" && <ContactsPanel contacts={contacts} onChange={updateContacts} highlightQuery={highlightQuery} />}
         {activeView === "categories" && <CategoryManager categories={categories} onChange={updateCategories} layout={layout} onLayoutChange={(l) => { update({ layout: l }); onSaveSettings({ categories, layout: l, notes, darkMode }); }} darkMode={darkMode} onDarkModeChange={(dm) => { update({ darkMode: dm }); onSaveSettings({ categories, layout, notes, darkMode: dm }); }} onGetBackups={onGetBackups} onRestoreBackup={onRestoreBackup} onExportData={onExportData} />}
 
         {activeView === "habits" && (
@@ -1869,7 +1902,7 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
                 return (
                   <div key={entry.id} style={{ background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 5, padding: "6px 8px", marginBottom: 4, fontSize: isMobile ? 14 : 11, borderLeft: `3px solid ${catColor}`, display: "flex", alignItems: "flex-start", gap: 6 }}>
                     <div style={{ flex: 1 }}>
-                      <div style={{ color: "var(--text)", fontWeight: 500 }}>{entry.text}</div>
+                      <div style={{ color: "var(--text)", fontWeight: 500 }}><HighlightText text={entry.text} query={highlightQuery} /></div>
                       <div style={{ fontSize: isMobile ? 11 : 9, color: "var(--text-muted)", marginTop: 3 }}>
                         {entry.category && <span style={{ background: catColor, padding: "1px 4px", borderRadius: 2, marginRight: 4, color: "var(--text)", fontSize: 8 }}>{getCatName(categories, entry.category)}</span>}
                         Assigned: {dateLabel} &middot; Done: {completedLabel}
