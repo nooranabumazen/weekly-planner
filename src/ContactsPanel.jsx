@@ -69,7 +69,10 @@ function ContactCard({ contact, onUpdate, onDelete, expanded, onToggle }) {
 
 export default function ContactsPanel({ contacts, onChange }) {
   const [search, setSearch] = useState("");
-  const [expandedId, setExpandedId] = useState(null);
+  const [expandedId, setExpandedId] = useState(() => {
+    try { const id = localStorage.getItem("planner_contactNav"); if (id) { localStorage.removeItem("planner_contactNav"); return id; } } catch {}
+    return null;
+  });
 
   if (!contacts) return null;
 
