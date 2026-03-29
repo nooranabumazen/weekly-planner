@@ -1172,8 +1172,8 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
     const onEnd = () => { setIsDragging(false); if (dragTimeout) clearTimeout(dragTimeout); };
     // Use capture phase for drop so we catch it even if stopPropagation is called
     const onDropCapture = () => { setTimeout(() => setIsDragging(false), 50); };
-    // Safety: if dragover stops firing for 200ms, drag is over
-    const onDragOver = () => { if (dragTimeout) clearTimeout(dragTimeout); dragTimeout = setTimeout(() => setIsDragging(false), 200); };
+    // Safety: if dragover stops firing for 3s, drag is over
+    const onDragOver = () => { if (dragTimeout) clearTimeout(dragTimeout); dragTimeout = setTimeout(() => setIsDragging(false), 3000); };
     document.addEventListener("dragstart", onStart);
     document.addEventListener("dragend", onEnd);
     document.addEventListener("drop", onDropCapture, true);
