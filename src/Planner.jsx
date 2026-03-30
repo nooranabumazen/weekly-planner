@@ -1168,20 +1168,17 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
   // Track global drag state for DropZone sizing
   useEffect(() => {
     let dragTimeout = null;
-    const onStart = () => { setIsDragging(true); if (dragTimeout) clearTimeout(dragTimeout); };
-    const onEnd = () => { setIsDragging(false); if (dragTimeout) clearTimeout(dragTimeout); };
-    // Use capture phase for drop so we catch it even if stopPropagation is called
-    const onDropCapture = () => { setTimeout(() => setIsDragging(false), 50); };
-    // Safety: if dragover stops firing for 3s, drag is over
-    const onDragOver = () => { if (dragTimeout) clearTimeout(dragTimeout); dragTimeout = setTimeout(() => setIsDragging(false), 3000); };
+    const clearDrag = () => { setIsDragging(false); if (dragTimeout) { clearTimeout(dragTimeout); dragTimeout = null; } };
+    const onStart = () => { setIsDragging(true); if (dragTimeout) { clearTimeout(dragTimeout); dragTimeout = null; } };
+    const onDragOver = () => { if (dragTimeout) clearTimeout(dragTimeout); dragTimeout = setTimeout(clearDrag, 3000); };
     document.addEventListener("dragstart", onStart);
-    document.addEventListener("dragend", onEnd);
-    document.addEventListener("drop", onDropCapture, true);
+    document.addEventListener("dragend", clearDrag);
+    document.addEventListener("drop", clearDrag, true);
     document.addEventListener("dragover", onDragOver);
     return () => {
       document.removeEventListener("dragstart", onStart);
-      document.removeEventListener("dragend", onEnd);
-      document.removeEventListener("drop", onDropCapture, true);
+      document.removeEventListener("dragend", clearDrag);
+      document.removeEventListener("drop", clearDrag, true);
       document.removeEventListener("dragover", onDragOver);
       if (dragTimeout) clearTimeout(dragTimeout);
     };
