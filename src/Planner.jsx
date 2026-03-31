@@ -1391,27 +1391,7 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
     }
   }, []);
 
-  const deleteTask = useCallback((col, id) => {
-    const t = dataRef.current.tasks;
-    const task = t[col]?.find((x) => x.id === id);
-    // If deleting a recurring task, save the rule to persistent recurring rules
-    if (task?.recurring && onSaveRecurringRules) {
-      const rule = { ...task.recurring, text: task.text, category: task.category || "cat_none" };
-      // Read existing rules from Firestore and append (async, fire-and-forget)
-      import('firebase/firestore').then(({ getDoc: gd, doc: d }) => {
-        gd(d(db, `users/${userId}/meta/recurringRules`)).then((snap) => {
-          const existing = snap.exists() ? (snap.data().items || []) : [];
-          // Avoid duplicates
-          if (!existing.some((r) => r.text === rule.text && r.day === rule.day)) {
-            onSaveRecurringRules([...existing, rule]);
-          }
-        }).catch(() => {
-          onSaveRecurringRules([rule]);
-        });
-      });
-    }
-    update({ tasks: { ...t, [col]: t[col].filter((x) => x.id !== id) } });
-  }, [userId, onSaveRecurringRules]);
+  const deleteTask = useCallback((col, id) => { const t = dataRef.current.tasks; update({ tasks: { ...t, [col]: t[col].filter((x) => x.id !== id) } }); }, []);
   const editTask = useCallback((col, id, text) => { const t = dataRef.current.tasks; update({ tasks: { ...t, [col]: t[col].map((x) => (x.id === id ? { ...x, text } : x)) } }); }, []);
   const addTask = useCallback((col, text, catId) => {
     const t = dataRef.current.tasks;
@@ -1440,9 +1420,27 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
   const changeCategory = useCallback((col, id, catId) => { const t = dataRef.current.tasks; update({ tasks: { ...t, [col]: t[col].map((x) => (x.id === id ? { ...x, category: catId } : x)) } }); }, []);
   const setRecurring = useCallback((col, id, rule) => {
     const t = dataRef.current.tasks;
+    const task = t[col]?.find((x) => x.id === id);
     const newTasks = { ...t, [col]: t[col].map((x) => x.id === id ? { ...x, recurring: rule || undefined } : x) };
     update({ tasks: newTasks });
-  }, []);
+    // Save to persistent recurring rules immediately
+    if (task && onSaveRecurringRules) {
+      import('firebase/firestore').then(({ getDoc: gd, doc: d }) => {
+        gd(d(db, `users/${userId}/meta/recurringRules`)).then((snap) => {
+          const existing = snap.exists() ? (snap.data().items || []) : [];
+          // Remove any old rule for this task text + day
+          const filtered = existing.filter((r) => !(r.text === task.text && r.day === (rule?.day || col)));
+          if (rule) {
+            // Adding/updating a rule
+            filtered.push({ ...rule, text: task.text, category: task.category || "cat_none" });
+          }
+          onSaveRecurringRules(filtered);
+        }).catch(() => {
+          if (rule) onSaveRecurringRules([{ ...rule, text: task.text, category: task.category || "cat_none" }]);
+        });
+      });
+    }
+  }, [userId, onSaveRecurringRules]);
   const toggleDaily = (hid, day) => { const updated = dailyHabits.map((h) => h.id === hid ? { ...h, checks: { ...h.checks, [day]: !h.checks[day] } } : h); update({ dailyHabits: updated }); onSaveDailyHabits(updated); };
   const toggleWeekly = (hid) => { const updated = weeklyHabits.map((h) => h.id === hid ? { ...h, done: !h.done } : h); update({ weeklyHabits: updated }); onSaveWeeklyHabits(updated); };
   const addDailyHabit = (name) => { const updated = [...dailyHabits, { id: "dh" + Date.now(), name, checks: { mon: false, tue: false, wed: false, thu: false, fri: false, sat: false, sun: false } }]; update({ dailyHabits: updated }); onSaveDailyHabits(updated); };
