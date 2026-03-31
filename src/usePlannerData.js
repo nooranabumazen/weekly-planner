@@ -137,16 +137,17 @@ export function usePlannerData(userId) {
       const weekPath = `users/${userId}/weeks/${wk}`;
       const m = (name) => `users/${userId}/meta/${name}`;
 
-      const [weekDoc, futureDoc, notebooksDoc, journalDoc, contactsDoc, archiveDoc, dailyDoc, weeklyDoc, settingsDoc] = await Promise.all([
+      const [weekDoc, futureDoc, notebooksDoc, journalDoc, contactsDoc, archiveDoc, dailyDoc, weeklyDoc, settingsDoc, recurringDoc] = await Promise.all([
         readDoc(weekPath), readDoc(m("futureTasks")), readDoc(m("notebooks")), readDoc(m("journal")),
         readDoc(m("contacts")), readDoc(m("archive")), readDoc(m("dailyHabits")), readDoc(m("weeklyHabits")), readDoc(m("settings")),
+        readDoc(m("recurringRules")),
       ]);
 
       if (cancelled) return;
 
       // If ANY read returned an error (not null, but READ_ERROR), refuse to proceed.
       // This prevents writing defaults over real data when the network is down.
-      const allReads = [weekDoc, futureDoc, notebooksDoc, journalDoc, contactsDoc, archiveDoc, dailyDoc, weeklyDoc, settingsDoc];
+      const allReads = [weekDoc, futureDoc, notebooksDoc, journalDoc, contactsDoc, archiveDoc, dailyDoc, weeklyDoc, settingsDoc, recurringDoc];
       const hadError = allReads.some((r) => r === READ_ERROR);
       if (hadError) {
         console.error("One or more Firestore reads failed. Not loading to prevent data loss.");
@@ -186,28 +187,27 @@ export function usePlannerData(userId) {
                 const rule = t.recurring;
                 let shouldRepeat = false;
                 let newRule = null;
-                if (rule.type === "weeks" && rule.count > 1) {
+                if (rule.type === "weeks" && rule.count >= 1) {
                   shouldRepeat = true;
-                  newRule = { ...rule, count: rule.count - 1 };
+                  newRule = rule.count > 1 ? { ...rule, count: rule.count - 1 } : null; // null = last repeat, remove recurring
                 } else if (rule.type === "until" && rule.until >= wk) {
                   shouldRepeat = true;
                   newRule = rule;
                 }
                 if (shouldRepeat) {
                   const day = rule.day || d;
-                  const newTask = { id: "t" + Date.now() + "_" + Math.random().toString(36).slice(2,6), text: t.text, done: false, category: t.category || "cat_none", recurring: newRule };
+                  const newTask = { id: "t" + Date.now() + "_" + Math.random().toString(36).slice(2,6), text: t.text, done: false, category: t.category || "cat_none", recurring: newRule || undefined };
                   // Check if already carried forward (avoid duplicate)
-                  if (!carry.some((c) => c.text === t.text && !c.done)) {
+                  const existing = carry.find((c) => c.text === t.text && !c.done);
+                  if (!existing) {
                     if (dayKeys.includes(day)) {
-                      // Will be placed in the right day below
                       carry.push({ ...newTask, _targetDay: day });
                     } else {
                       carry.push(newTask);
                     }
                   } else {
                     // Update recurring rule on the carried-forward copy
-                    const existing = carry.find((c) => c.text === t.text && !c.done);
-                    if (existing) existing.recurring = newRule;
+                    existing.recurring = newRule || undefined;
                   }
                 }
               }
@@ -231,13 +231,40 @@ export function usePlannerData(userId) {
               const rule = t.recurring;
               let shouldRepeat = false;
               let newRule = null;
-              if (rule.type === "weeks" && rule.count > 1) { shouldRepeat = true; newRule = { ...rule, count: rule.count - 1 }; }
+              if (rule.type === "weeks" && rule.count >= 1) { shouldRepeat = true; newRule = rule.count > 1 ? { ...rule, count: rule.count - 1 } : null; }
               else if (rule.type === "until" && rule.until >= wk) { shouldRepeat = true; newRule = rule; }
               if (shouldRepeat && !newTasks.later.some((c) => c.text === t.text)) {
-                newTasks.later.push({ id: "t" + Date.now() + "_" + Math.random().toString(36).slice(2,6), text: t.text, done: false, category: t.category || "cat_none", recurring: newRule });
+                newTasks.later.push({ id: "t" + Date.now() + "_" + Math.random().toString(36).slice(2,6), text: t.text, done: false, category: t.category || "cat_none", recurring: newRule || undefined });
               }
             }
           });
+
+          // Also generate tasks from persistent recurring rules (survives task deletion)
+          const rules = recurringDoc?.items || [];
+          const updatedRules = [];
+          for (const rule of rules) {
+            let shouldRepeat = false;
+            let newRule = null;
+            if (rule.type === "weeks" && rule.count >= 1) {
+              shouldRepeat = true;
+              newRule = rule.count > 1 ? { ...rule, count: rule.count - 1 } : null;
+            } else if (rule.type === "until" && rule.until >= wk) {
+              shouldRepeat = true;
+              newRule = { ...rule };
+            }
+            if (shouldRepeat) {
+              const day = rule.day || "mon";
+              const existing = dayKeys.includes(day) ? newTasks[day].some((t) => t.text === rule.text) : newTasks.later.some((t) => t.text === rule.text);
+              if (!existing) {
+                const newTask = { id: "t" + Date.now() + "_" + Math.random().toString(36).slice(2,6), text: rule.text, done: false, category: rule.category || "cat_none", recurring: newRule || undefined };
+                if (dayKeys.includes(day)) newTasks[day].push(newTask);
+                else newTasks.later.push(newTask);
+              }
+              if (newRule) updatedRules.push(newRule);
+            }
+            // If not shouldRepeat, rule expires and is not kept
+          }
+          writeDoc(m("recurringRules"), { items: updatedRules });
 
           tasks = newTasks;
           writeDoc(weekPath, { tasks, _lastModified: Date.now() });
@@ -423,6 +450,7 @@ export function usePlannerData(userId) {
   const saveDailyHabits = useCallback((items) => { setData((p) => p ? { ...p, dailyHabits: items } : p); writeDoc(`users/${userId}/meta/dailyHabits`, { items, _weekKey: weekKeyRef.current }); }, [userId]);
   const saveWeeklyHabits = useCallback((items) => { setData((p) => p ? { ...p, weeklyHabits: items } : p); writeDoc(`users/${userId}/meta/weeklyHabits`, { items, _weekKey: weekKeyRef.current }); }, [userId]);
   const saveSettings = useCallback((s) => { setData((p) => p ? { ...p, categories: s.categories, layout: s.layout, notes: s.notes, darkMode: s.darkMode } : p); writeDoc(`users/${userId}/meta/settings`, s); }, [userId]);
+  const saveRecurringRules = useCallback((items) => { writeDoc(`users/${userId}/meta/recurringRules`, { items }); }, [userId]);
 
   // ─── Backup System ───
   const MAX_BACKUPS = 7;
@@ -563,7 +591,7 @@ export function usePlannerData(userId) {
     return () => clearInterval(interval);
   }, [userId, data !== null, createBackup]);
 
-  return { data, loading, save, saveQuiet, saveFuture, saveNotebooks, saveJournal, saveContacts, saveArchive, saveDailyHabits, saveWeeklyHabits, saveSettings, getBackups, restoreBackup, exportData };
+  return { data, loading, save, saveQuiet, saveFuture, saveNotebooks, saveJournal, saveContacts, saveArchive, saveDailyHabits, saveWeeklyHabits, saveSettings, saveRecurringRules, getBackups, restoreBackup, exportData };
 }
 
 export const DEFAULT_CATEGORIES = [
