@@ -146,6 +146,20 @@ function JournalEditor({ content, onChange, userId }) {
       `}} />
       <div ref={editorRef} contentEditable onInput={handleInput} onBlur={handleInput} onPaste={handlePaste}
         onClick={(e) => { if (e.target.tagName === "A" && e.target.href) { e.preventDefault(); window.open(e.target.href, "_blank"); } }}
+        onKeyDown={(e) => {
+          if (e.key === "Tab") {
+            e.preventDefault();
+            const sel = window.getSelection();
+            const node = sel?.anchorNode;
+            const li = node?.closest ? node.closest("li") : node?.parentElement?.closest("li");
+            if (li) {
+              document.execCommand(e.shiftKey ? "outdent" : "indent");
+            } else {
+              document.execCommand("insertHTML", false, "&nbsp;&nbsp;&nbsp;&nbsp;");
+            }
+            handleInput();
+          }
+        }}
         suppressContentEditableWarning
         style={{ flex: 1, overflowY: "auto", padding: "14px 24px 14px 48px", fontSize: 13, lineHeight: 1.7, outline: "none", color: "var(--text)", fontFamily: "'DM Sans', sans-serif" }} />
     </div>

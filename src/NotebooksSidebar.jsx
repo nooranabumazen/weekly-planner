@@ -330,13 +330,11 @@ function RichEditor({ content, onChange, userId }) {
         <ToolbarButton icon={<span style={{ fontSize: 12 }}>&#128279;</span>} title="Insert link" onClick={insertLink} />
         <ToolbarButton icon={<span style={{ fontSize: 12 }}>&#128444;</span>} title="Insert image" onClick={insertImage} />
         <ToolbarButton icon={<span style={{ fontSize: 10, fontFamily: "monospace" }}>&#9638;</span>} title="Insert table" onClick={insertTable} />
-        <ToolbarButton icon={<span style={{ fontSize: 9, fontFamily: "monospace" }}>+R</span>} title="Add row (click in table first)" onClick={addTableRow} />
-        <ToolbarButton icon={<span style={{ fontSize: 9, fontFamily: "monospace" }}>+C</span>} title="Add column (click in table first)" onClick={addTableCol} />
-        <ToolbarButton icon={<span style={{ fontSize: 9, fontFamily: "monospace", color: "#c44" }}>{"\u2212"}R</span>} title="Remove row" onClick={removeTableRow} />
-        <ToolbarButton icon={<span style={{ fontSize: 9, fontFamily: "monospace", color: "#c44" }}>{"\u2212"}C</span>} title="Remove column" onClick={removeTableCol} />
         <div style={{ width: 1, height: 18, background: "var(--border)", margin: "0 3px" }} />
         <ToolbarButton icon={<span style={{ fontSize: 10 }}>&bull; &ndash;</span>} title="Bullet list" onClick={() => exec("insertUnorderedList")} />
         <ToolbarButton icon={<span style={{ fontSize: 10 }}>1. &ndash;</span>} title="Numbered list" onClick={() => exec("insertOrderedList")} />
+        <ToolbarButton icon={<span style={{ fontSize: 11 }}>{"\u2192"}</span>} title="Indent" onClick={() => exec("indent")} />
+        <ToolbarButton icon={<span style={{ fontSize: 11 }}>{"\u2190"}</span>} title="Outdent" onClick={() => exec("outdent")} />
         <div style={{ width: 1, height: 18, background: "var(--border)", margin: "0 3px" }} />
         <ToolbarButton icon={<span style={{ fontSize: 11 }}>&mdash;</span>} title="Insert divider" onClick={insertDivider} />
       </div>
@@ -354,6 +352,20 @@ function RichEditor({ content, onChange, userId }) {
       <div ref={editorRef} contentEditable onInput={handleInput} onBlur={handleInput} onPaste={handlePaste}
         onClick={(e) => { if (e.target.tagName === "A" && e.target.href) { e.preventDefault(); window.open(e.target.href, "_blank"); } }}
         onContextMenu={handleContextMenu}
+        onKeyDown={(e) => {
+          if (e.key === "Tab") {
+            e.preventDefault();
+            const sel = window.getSelection();
+            const node = sel?.anchorNode;
+            const li = node?.closest ? node.closest("li") : node?.parentElement?.closest("li");
+            if (li) {
+              exec(e.shiftKey ? "outdent" : "indent");
+            } else {
+              exec("insertHTML", "&nbsp;&nbsp;&nbsp;&nbsp;");
+            }
+            handleInput();
+          }
+        }}
         suppressContentEditableWarning
         style={{ flex: 1, overflowY: "auto", padding: "14px 24px 14px 48px", fontSize: 13, lineHeight: 1.6, outline: "none", color: "var(--text)", fontFamily: "'DM Sans', sans-serif", minHeight: 100, position: "relative" }} />
       {ctxMenu && (
