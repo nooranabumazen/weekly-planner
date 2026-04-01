@@ -1985,104 +1985,145 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
               const weeks = Object.keys(hh).sort().reverse();
               if (weeks.length === 0 && dailyHabits.length === 0) return null;
 
-              const prevWeek = weeks[0];
-              const prev = prevWeek ? hh[prevWeek] : null;
+              const recent4 = weeks.slice(0, 4);
+              const dayLabels = ["M","T","W","T","F","S","S"];
+              const dayKeys = ["mon","tue","wed","thu","fri","sat","sun"];
 
-              // Last week's daily habit completion
-              const prevDailyData = prev?.daily || [];
-              const prevDailyTotal = prevDailyData.length * 7;
-              const prevDailyDone = prevDailyData.reduce((s, h) => s + Object.values(h.checks || {}).filter(Boolean).length, 0);
-              const prevDailyPct = prevDailyTotal > 0 ? Math.round(prevDailyDone / prevDailyTotal * 100) : 0;
+              // Build per-habit grid data: rows = habits, cols = weeks (newest first), cells = day checks
+              const allHabitNames = new Set();
+              recent4.forEach((wk) => { (hh[wk]?.daily || []).forEach((h) => allHabitNames.add(h.name)); });
+              dailyHabits.forEach((h) => allHabitNames.add(h.name));
+              const habitNames = [...allHabitNames];
 
-              // Last week's weekly habit completion
-              const prevWeeklyData = prev?.weekly || [];
-              const prevWeeklyTotal = prevWeeklyData.length;
-              const prevWeeklyDone = prevWeeklyData.filter((h) => h.done).length;
+              // Week labels
+              const weekLabels = recent4.map((wk) => {
+                const d = new Date(wk + "T12:00:00");
+                return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+              });
+
+              // Weekly habits: per-week detail
+              const allWeeklyNames = new Set();
+              recent4.forEach((wk) => { (hh[wk]?.weekly || []).forEach((h) => allWeeklyNames.add(h.name)); });
+              weeklyHabits.forEach((h) => allWeeklyNames.add(h.name));
+              const weeklyNames = [...allWeeklyNames];
 
               // 4-week averages
-              const recent4 = weeks.slice(0, 4);
               let total4Daily = 0, possible4Daily = 0, total4Weekly = 0, possible4Weekly = 0;
               recent4.forEach((wk) => {
                 const w = hh[wk];
                 if (w?.daily) { total4Daily += w.daily.reduce((s, h) => s + Object.values(h.checks || {}).filter(Boolean).length, 0); possible4Daily += w.daily.length * 7; }
                 if (w?.weekly) { total4Weekly += w.weekly.filter((h) => h.done).length; possible4Weekly += w.weekly.length; }
               });
-              const avg4DailyPct = possible4Daily > 0 ? Math.round(total4Daily / possible4Daily * 100) : 0;
-              const avg4WeeklyPct = possible4Weekly > 0 ? Math.round(total4Weekly / possible4Weekly * 100) : 0;
 
-              // Per-habit breakdown for last week
-              const perHabitLastWeek = prevDailyData.map((h) => ({
-                name: h.name,
-                done: Object.values(h.checks || {}).filter(Boolean).length,
-                total: 7,
-              }));
-
-              const bar = (pct, color) => (
-                <div style={{ flex: 1, height: 6, background: "var(--border)", borderRadius: 3, overflow: "hidden" }}>
-                  <div style={{ width: `${pct}%`, height: "100%", background: color, borderRadius: 3 }} />
-                </div>
+              const dot = (on) => (
+                <div style={{ width: 10, height: 10, borderRadius: 2, background: on ? "#6a9955" : "var(--border)", opacity: on ? 1 : 0.4 }} />
               );
 
               const sLabel = { fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, fontSize: 9, color: "var(--text-muted)", letterSpacing: 1, textTransform: "uppercase", marginBottom: 8 };
 
               return (
-                <div style={{ padding: "10px 16px", borderBottom: "1px solid var(--border)", maxWidth: 600 }}>
+                <div style={{ padding: "10px 16px", borderBottom: "1px solid var(--border)", maxWidth: 700 }}>
                   <div style={sLabel}>Habit Progress</div>
 
-                  {prev ? (
+                  {/* Daily habits heat map */}
+                  {habitNames.length > 0 && recent4.length > 0 && (
                     <>
-                      {/* Last week overview */}
-                      <div style={{ fontSize: 10, color: "var(--text-muted)", fontWeight: 600, marginBottom: 6 }}>Last Week</div>
-                      <div style={{ display: "flex", gap: 12, marginBottom: 10 }}>
-                        <div style={{ flex: 1 }}>
-                          <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
-                            <span style={{ fontSize: 9, color: "var(--text-muted)", minWidth: 40 }}>Daily</span>
-                            {bar(prevDailyPct, "#6a9955")}
-                            <span style={{ fontSize: 9, color: "var(--text-muted)", minWidth: 55, textAlign: "right" }}>{prevDailyDone}/{prevDailyTotal} ({prevDailyPct}%)</span>
-                          </div>
-                          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                            <span style={{ fontSize: 9, color: "var(--text-muted)", minWidth: 40 }}>Weekly</span>
-                            {bar(prevWeeklyTotal > 0 ? Math.round(prevWeeklyDone / prevWeeklyTotal * 100) : 0, "#5b8fb9")}
-                            <span style={{ fontSize: 9, color: "var(--text-muted)", minWidth: 55, textAlign: "right" }}>{prevWeeklyDone}/{prevWeeklyTotal}</span>
-                          </div>
-                        </div>
+                      <div style={{ fontSize: 10, color: "var(--text-muted)", fontWeight: 600, marginBottom: 6 }}>Daily Habits ({recent4.length} week{recent4.length > 1 ? "s" : ""})</div>
+                      <div style={{ overflowX: "auto", marginBottom: 12 }}>
+                        <table style={{ borderCollapse: "collapse", fontSize: 9 }}>
+                          <thead>
+                            <tr>
+                              <td style={{ padding: "2px 8px 2px 0", minWidth: 90 }} />
+                              {recent4.map((wk, wi) => (
+                                <td key={wk} colSpan={7} style={{ textAlign: "center", padding: "2px 4px", color: "var(--text-muted)", fontWeight: 600, borderLeft: wi > 0 ? "1px solid var(--border)" : "none" }}>
+                                  {weekLabels[wi]}
+                                </td>
+                              ))}
+                            </tr>
+                            <tr>
+                              <td />
+                              {recent4.map((wk, wi) => dayLabels.map((d, di) => (
+                                <td key={wk+d+di} style={{ textAlign: "center", padding: "0 1px", color: "var(--text-faint)", fontSize: 7, borderLeft: di === 0 && wi > 0 ? "1px solid var(--border)" : "none" }}>{d}</td>
+                              )))}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {habitNames.map((name) => (
+                              <tr key={name}>
+                                <td style={{ padding: "3px 8px 3px 0", color: "var(--text)", fontSize: 10, whiteSpace: "nowrap", maxWidth: 120, overflow: "hidden", textOverflow: "ellipsis" }}>{name}</td>
+                                {recent4.map((wk, wi) => {
+                                  const weekData = hh[wk]?.daily || [];
+                                  const habit = weekData.find((h) => h.name === name);
+                                  return dayKeys.map((dk, di) => {
+                                    const on = habit ? !!habit.checks?.[dk] : false;
+                                    return (
+                                      <td key={wk+dk} style={{ padding: "2px 1px", textAlign: "center", borderLeft: di === 0 && wi > 0 ? "1px solid var(--border)" : "none" }}>
+                                        {dot(on)}
+                                      </td>
+                                    );
+                                  });
+                                })}
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
                       </div>
-
-                      {/* Per-habit last week */}
-                      {perHabitLastWeek.length > 0 && (
-                        <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginBottom: 10 }}>
-                          {perHabitLastWeek.map((h) => (
-                            <span key={h.name} style={{
-                              fontSize: 9, padding: "2px 8px", borderRadius: 4, fontWeight: 500,
-                              background: h.done >= 5 ? "rgba(106,153,85,0.15)" : h.done >= 3 ? "rgba(201,162,39,0.15)" : "rgba(196,122,32,0.15)",
-                              color: h.done >= 5 ? "#6a9955" : h.done >= 3 ? "#c9a227" : "#c47a20",
-                            }}>
-                              {h.name}: {h.done}/7
-                            </span>
-                          ))}
-                        </div>
-                      )}
                     </>
-                  ) : (
-                    <div style={{ fontSize: 10, color: "var(--text-faint)", marginBottom: 10 }}>Last week's data will appear after your first full week</div>
+                  )}
+
+                  {/* Weekly habits detail */}
+                  {weeklyNames.length > 0 && recent4.length > 0 && (
+                    <>
+                      <div style={{ fontSize: 10, color: "var(--text-muted)", fontWeight: 600, marginBottom: 6 }}>Weekly Habits</div>
+                      <div style={{ overflowX: "auto", marginBottom: 12 }}>
+                        <table style={{ borderCollapse: "collapse", fontSize: 9 }}>
+                          <thead>
+                            <tr>
+                              <td style={{ padding: "2px 8px 2px 0", minWidth: 90 }} />
+                              {recent4.map((wk, wi) => (
+                                <td key={wk} style={{ textAlign: "center", padding: "2px 10px", color: "var(--text-muted)", fontWeight: 600, borderLeft: wi > 0 ? "1px solid var(--border)" : "none" }}>
+                                  {weekLabels[wi]}
+                                </td>
+                              ))}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {weeklyNames.map((name) => (
+                              <tr key={name}>
+                                <td style={{ padding: "3px 8px 3px 0", color: "var(--text)", fontSize: 10, whiteSpace: "nowrap" }}>{name}</td>
+                                {recent4.map((wk, wi) => {
+                                  const weekData = hh[wk]?.weekly || [];
+                                  const habit = weekData.find((h) => h.name === name);
+                                  const done = habit?.done;
+                                  return (
+                                    <td key={wk} style={{ textAlign: "center", padding: "2px 10px", borderLeft: wi > 0 ? "1px solid var(--border)" : "none" }}>
+                                      <span style={{ fontSize: 12, color: done ? "#6a9955" : "#c47a20" }}>{done ? "\u2713" : "\u2717"}</span>
+                                    </td>
+                                  );
+                                })}
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </>
                   )}
 
                   {/* 4-week averages */}
                   {recent4.length > 0 && (
-                    <>
-                      <div style={{ fontSize: 10, color: "var(--text-muted)", fontWeight: 600, marginBottom: 6 }}>Past {recent4.length} Week{recent4.length > 1 ? "s" : ""} Average</div>
-                      <div style={{ display: "flex", gap: 12 }}>
-                        <div style={{ background: "var(--bg-surface)", borderRadius: 6, padding: "8px 14px", textAlign: "center", flex: 1 }}>
-                          <div style={{ fontSize: 22, fontWeight: 700, color: "#6a9955" }}>{avg4DailyPct}%</div>
-                          <div style={{ fontSize: 9, color: "var(--text-muted)", fontFamily: "'JetBrains Mono', monospace", textTransform: "uppercase", letterSpacing: 0.5 }}>Daily Habits</div>
-                        </div>
-                        <div style={{ background: "var(--bg-surface)", borderRadius: 6, padding: "8px 14px", textAlign: "center", flex: 1 }}>
-                          <div style={{ fontSize: 22, fontWeight: 700, color: "#5b8fb9" }}>{avg4WeeklyPct}%</div>
-                          <div style={{ fontSize: 9, color: "var(--text-muted)", fontFamily: "'JetBrains Mono', monospace", textTransform: "uppercase", letterSpacing: 0.5 }}>Weekly Habits</div>
-                        </div>
+                    <div style={{ display: "flex", gap: 12 }}>
+                      <div style={{ background: "var(--bg-surface)", borderRadius: 6, padding: "8px 14px", textAlign: "center", flex: 1 }}>
+                        <div style={{ fontSize: 22, fontWeight: 700, color: "#6a9955" }}>{possible4Daily > 0 ? Math.round(total4Daily / possible4Daily * 100) : 0}%</div>
+                        <div style={{ fontSize: 9, color: "var(--text-muted)", fontFamily: "'JetBrains Mono', monospace", textTransform: "uppercase", letterSpacing: 0.5 }}>Daily Avg</div>
                       </div>
-                    </>
+                      <div style={{ background: "var(--bg-surface)", borderRadius: 6, padding: "8px 14px", textAlign: "center", flex: 1 }}>
+                        <div style={{ fontSize: 22, fontWeight: 700, color: "#5b8fb9" }}>{possible4Weekly > 0 ? Math.round(total4Weekly / possible4Weekly * 100) : 0}%</div>
+                        <div style={{ fontSize: 9, color: "var(--text-muted)", fontFamily: "'JetBrains Mono', monospace", textTransform: "uppercase", letterSpacing: 0.5 }}>Weekly Avg</div>
+                      </div>
+                    </div>
                   )}
+
+                  {weeks.length === 0 && <div style={{ fontSize: 10, color: "var(--text-faint)" }}>Habit history will appear after your first full week</div>}
                 </div>
               );
             })()}
