@@ -1979,6 +1979,114 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
               );
             })()}
 
+            {/* Habit Progress */}
+            {(() => {
+              const hh = habitHistory || {};
+              const weeks = Object.keys(hh).sort().reverse();
+              if (weeks.length === 0 && dailyHabits.length === 0) return null;
+
+              const prevWeek = weeks[0];
+              const prev = prevWeek ? hh[prevWeek] : null;
+
+              // Last week's daily habit completion
+              const prevDailyData = prev?.daily || [];
+              const prevDailyTotal = prevDailyData.length * 7;
+              const prevDailyDone = prevDailyData.reduce((s, h) => s + Object.values(h.checks || {}).filter(Boolean).length, 0);
+              const prevDailyPct = prevDailyTotal > 0 ? Math.round(prevDailyDone / prevDailyTotal * 100) : 0;
+
+              // Last week's weekly habit completion
+              const prevWeeklyData = prev?.weekly || [];
+              const prevWeeklyTotal = prevWeeklyData.length;
+              const prevWeeklyDone = prevWeeklyData.filter((h) => h.done).length;
+
+              // 4-week averages
+              const recent4 = weeks.slice(0, 4);
+              let total4Daily = 0, possible4Daily = 0, total4Weekly = 0, possible4Weekly = 0;
+              recent4.forEach((wk) => {
+                const w = hh[wk];
+                if (w?.daily) { total4Daily += w.daily.reduce((s, h) => s + Object.values(h.checks || {}).filter(Boolean).length, 0); possible4Daily += w.daily.length * 7; }
+                if (w?.weekly) { total4Weekly += w.weekly.filter((h) => h.done).length; possible4Weekly += w.weekly.length; }
+              });
+              const avg4DailyPct = possible4Daily > 0 ? Math.round(total4Daily / possible4Daily * 100) : 0;
+              const avg4WeeklyPct = possible4Weekly > 0 ? Math.round(total4Weekly / possible4Weekly * 100) : 0;
+
+              // Per-habit breakdown for last week
+              const perHabitLastWeek = prevDailyData.map((h) => ({
+                name: h.name,
+                done: Object.values(h.checks || {}).filter(Boolean).length,
+                total: 7,
+              }));
+
+              const bar = (pct, color) => (
+                <div style={{ flex: 1, height: 6, background: "var(--border)", borderRadius: 3, overflow: "hidden" }}>
+                  <div style={{ width: `${pct}%`, height: "100%", background: color, borderRadius: 3 }} />
+                </div>
+              );
+
+              const sLabel = { fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, fontSize: 9, color: "var(--text-muted)", letterSpacing: 1, textTransform: "uppercase", marginBottom: 8 };
+
+              return (
+                <div style={{ padding: "10px 16px", borderBottom: "1px solid var(--border)", maxWidth: 600 }}>
+                  <div style={sLabel}>Habit Progress</div>
+
+                  {prev ? (
+                    <>
+                      {/* Last week overview */}
+                      <div style={{ fontSize: 10, color: "var(--text-muted)", fontWeight: 600, marginBottom: 6 }}>Last Week</div>
+                      <div style={{ display: "flex", gap: 12, marginBottom: 10 }}>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
+                            <span style={{ fontSize: 9, color: "var(--text-muted)", minWidth: 40 }}>Daily</span>
+                            {bar(prevDailyPct, "#6a9955")}
+                            <span style={{ fontSize: 9, color: "var(--text-muted)", minWidth: 55, textAlign: "right" }}>{prevDailyDone}/{prevDailyTotal} ({prevDailyPct}%)</span>
+                          </div>
+                          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                            <span style={{ fontSize: 9, color: "var(--text-muted)", minWidth: 40 }}>Weekly</span>
+                            {bar(prevWeeklyTotal > 0 ? Math.round(prevWeeklyDone / prevWeeklyTotal * 100) : 0, "#5b8fb9")}
+                            <span style={{ fontSize: 9, color: "var(--text-muted)", minWidth: 55, textAlign: "right" }}>{prevWeeklyDone}/{prevWeeklyTotal}</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Per-habit last week */}
+                      {perHabitLastWeek.length > 0 && (
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginBottom: 10 }}>
+                          {perHabitLastWeek.map((h) => (
+                            <span key={h.name} style={{
+                              fontSize: 9, padding: "2px 8px", borderRadius: 4, fontWeight: 500,
+                              background: h.done >= 5 ? "rgba(106,153,85,0.15)" : h.done >= 3 ? "rgba(201,162,39,0.15)" : "rgba(196,122,32,0.15)",
+                              color: h.done >= 5 ? "#6a9955" : h.done >= 3 ? "#c9a227" : "#c47a20",
+                            }}>
+                              {h.name}: {h.done}/7
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <div style={{ fontSize: 10, color: "var(--text-faint)", marginBottom: 10 }}>Last week's data will appear after your first full week</div>
+                  )}
+
+                  {/* 4-week averages */}
+                  {recent4.length > 0 && (
+                    <>
+                      <div style={{ fontSize: 10, color: "var(--text-muted)", fontWeight: 600, marginBottom: 6 }}>Past {recent4.length} Week{recent4.length > 1 ? "s" : ""} Average</div>
+                      <div style={{ display: "flex", gap: 12 }}>
+                        <div style={{ background: "var(--bg-surface)", borderRadius: 6, padding: "8px 14px", textAlign: "center", flex: 1 }}>
+                          <div style={{ fontSize: 22, fontWeight: 700, color: "#6a9955" }}>{avg4DailyPct}%</div>
+                          <div style={{ fontSize: 9, color: "var(--text-muted)", fontFamily: "'JetBrains Mono', monospace", textTransform: "uppercase", letterSpacing: 0.5 }}>Daily Habits</div>
+                        </div>
+                        <div style={{ background: "var(--bg-surface)", borderRadius: 6, padding: "8px 14px", textAlign: "center", flex: 1 }}>
+                          <div style={{ fontSize: 22, fontWeight: 700, color: "#5b8fb9" }}>{avg4WeeklyPct}%</div>
+                          <div style={{ fontSize: 9, color: "var(--text-muted)", fontFamily: "'JetBrains Mono', monospace", textTransform: "uppercase", letterSpacing: 0.5 }}>Weekly Habits</div>
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </div>
+              );
+            })()}
+
             <div style={{ flex: 1, overflowY: "auto", padding: "8px 16px", maxWidth: 600 }}>
               {archive.length === 0 && <div style={{ fontSize: 11, color: "var(--text-faint)", textAlign: "center", marginTop: 20 }}>No completed tasks yet</div>}
               {archive.map((entry) => {
