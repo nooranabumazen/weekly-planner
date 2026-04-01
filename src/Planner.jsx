@@ -1336,7 +1336,7 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
       const dayIdx = dayMap[col];
       const dateStr = dayIdx !== undefined ? getWeekDates()[dayIdx]?.fullDate : null;
       const entry = { id: "a" + Date.now() + "_" + Math.random().toString(36).slice(2, 6), text: task.text, category: task.category, completedAt: new Date().toISOString(), assignedDay: col, assignedDate: dateStr || "later" };
-      const newArchive = [entry, ...currentArchive].slice(0, 500);
+      const newArchive = [entry, ...currentArchive];
       // #region agent log toggleDone -> nowDone
       fetch("http://127.0.0.1:7349/ingest/33b1731a-45e3-48ae-9ad6-aa14cf816181", {
         method: "POST",
@@ -1946,12 +1946,18 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
                       <div style={{ fontSize: 22, fontWeight: 700, color: "var(--accent)" }}>{pastMonth.length}</div>
                       <div style={{ fontSize: 9, color: "var(--text-muted)", fontFamily: "'JetBrains Mono', monospace", textTransform: "uppercase", letterSpacing: 0.5 }}>Past 30 Days</div>
                     </div>
-                    {pastMonth.length > 0 && (
+                    {pastMonth.length > 0 && (() => {
+                      // Calculate actual days of data (from oldest archived task to now, capped at 30)
+                      const oldest = archive.reduce((min, a) => { const d = new Date(a.completedAt); return d < min ? d : min; }, now);
+                      const actualDays = Math.min(30, Math.max(1, Math.ceil((now - oldest) / 86400000)));
+                      const avg = Math.round(pastMonth.length / actualDays * 7);
+                      return (
                       <div style={{ background: "var(--bg-surface)", borderRadius: 6, padding: "8px 14px", textAlign: "center", flex: 1 }}>
-                        <div style={{ fontSize: 22, fontWeight: 700, color: "var(--accent)" }}>{Math.round(pastMonth.length / 30 * 7)}</div>
+                        <div style={{ fontSize: 22, fontWeight: 700, color: "var(--accent)" }}>{avg}</div>
                         <div style={{ fontSize: 9, color: "var(--text-muted)", fontFamily: "'JetBrains Mono', monospace", textTransform: "uppercase", letterSpacing: 0.5 }}>Avg / Week</div>
                       </div>
-                    )}
+                      );
+                    })()}
                   </div>
                   {Object.keys(weekByCat).length > 0 && (
                     <>
