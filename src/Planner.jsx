@@ -2025,10 +2025,31 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
                 <div style={{ padding: "10px 16px", borderBottom: "1px solid var(--border)", maxWidth: 700 }}>
                   <div style={sLabel}>Habit Progress</div>
 
+                  {/* Daily habits progress bars per week */}
+                  {recent4.length > 0 && (
+                    <div style={{ marginBottom: 10 }}>
+                      <div style={{ fontSize: 10, color: "var(--text-muted)", fontWeight: 600, marginBottom: 6 }}>Daily Habits ({recent4.length} week{recent4.length > 1 ? "s" : ""})</div>
+                      {recent4.map((wk, wi) => {
+                        const wd = hh[wk]?.daily || [];
+                        const done = wd.reduce((s, h) => s + Object.values(h.checks || {}).filter(Boolean).length, 0);
+                        const total = wd.length * 7;
+                        const pct = total > 0 ? Math.round(done / total * 100) : 0;
+                        return (
+                          <div key={wk} style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 3 }}>
+                            <span style={{ fontSize: 9, color: "var(--text-muted)", minWidth: 55 }}>{weekLabels[wi]}</span>
+                            <div style={{ flex: 1, height: 6, background: "var(--border)", borderRadius: 3, overflow: "hidden" }}>
+                              <div style={{ width: `${pct}%`, height: "100%", background: "#6a9955", borderRadius: 3 }} />
+                            </div>
+                            <span style={{ fontSize: 9, color: "var(--text-muted)", minWidth: 50, textAlign: "right" }}>{done}/{total} ({pct}%)</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+
                   {/* Daily habits heat map */}
                   {habitNames.length > 0 && recent4.length > 0 && (
                     <>
-                      <div style={{ fontSize: 10, color: "var(--text-muted)", fontWeight: 600, marginBottom: 6 }}>Daily Habits ({recent4.length} week{recent4.length > 1 ? "s" : ""})</div>
                       <div style={{ overflowX: "auto", marginBottom: 12 }}>
                         <table style={{ borderCollapse: "collapse", fontSize: 9 }}>
                           <thead>
