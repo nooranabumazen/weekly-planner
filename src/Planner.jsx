@@ -536,7 +536,9 @@ function HabitsTracker({ dailyHabits, weeklyHabits, habitHistory, onToggleDaily,
       <div style={{ flex: 1, minWidth: 0, overflow: "hidden", paddingLeft: 4, display: "flex", flexDirection: "column" }}>
         <div style={sLabel}>Weekly Habits</div>
         <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
-          <div style={{ height: 14 }} /> {/* Spacer to align with daily habits day header row */}
+          <div style={{ display: "flex", alignItems: "center", visibility: "hidden" }}>
+            <div style={{ fontSize: 9, fontWeight: 600, letterSpacing: 0.5, fontFamily: "'JetBrains Mono', monospace" }}>&nbsp;</div>
+          </div> {/* Invisible spacer matching daily habits day header row */}
           {weeklyHabits.map((h) => (
             <div key={h.id} draggable onDragStart={() => setDragHabit({ id: h.id, type: "weekly" })} onDragOver={(e) => e.preventDefault()} onDrop={() => handleWeeklyDrop(h.id)}
               style={{ display: "flex", alignItems: "center", gap: 6, cursor: "grab", borderBottom: "1px solid var(--border-light)", paddingBottom: 3, marginBottom: 3 }}>
