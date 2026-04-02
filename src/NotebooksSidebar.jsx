@@ -85,6 +85,64 @@ function ColorPicker({ colors, onSelect, buttonIcon, title }) {
   );
 }
 
+function BulletPicker() {
+  const [open, setOpen] = useState(false);
+  const ref3 = useRef(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const close = (e) => { if (ref3.current && !ref3.current.contains(e.target)) setOpen(false); };
+    document.addEventListener("mousedown", close);
+    return () => document.removeEventListener("mousedown", close);
+  }, [open]);
+
+  const styles = [
+    { label: "Disc", icon: "\u2022", value: "disc" },
+    { label: "Circle", icon: "\u25CB", value: "circle" },
+    { label: "Square", icon: "\u25A0", value: "square" },
+    { label: "Dash", icon: "\u2013", value: "dash" },
+  ];
+
+  const applyBullet = (style) => {
+    document.execCommand("insertUnorderedList");
+    const sel = window.getSelection();
+    const node = sel?.anchorNode;
+    const ul = node?.closest ? node.closest("ul") : node?.parentElement?.closest("ul");
+    if (ul) {
+      if (style === "dash") {
+        ul.style.listStyleType = '"\u2013  "';
+      } else {
+        ul.style.listStyleType = style;
+      }
+    }
+    setOpen(false);
+  };
+
+  return (
+    <div ref={ref3} style={{ position: "relative" }}>
+      <ToolbarButton icon={<span style={{ fontSize: 10 }}>&bull; &ndash;</span>} title="Bullet list" onClick={() => setOpen(!open)} active={open} />
+      {open && (
+        <div style={{
+          position: "absolute", top: 30, left: 0, background: "var(--bg-card)",
+          border: "1px solid var(--border)", borderRadius: 6, padding: "4px 0",
+          boxShadow: "0 4px 12px rgba(0,0,0,0.1)", zIndex: 100, minWidth: 110,
+        }}>
+          {styles.map((s) => (
+            <div key={s.value}
+              onMouseDown={(e) => { e.preventDefault(); applyBullet(s.value); }}
+              style={{ padding: "4px 12px", cursor: "pointer", fontSize: 11, color: "var(--text)", display: "flex", alignItems: "center", gap: 8 }}
+              onMouseEnter={(e) => e.currentTarget.style.background = "var(--bg-hover)"}
+              onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}>
+              <span style={{ fontSize: 14, width: 16, textAlign: "center" }}>{s.icon}</span>
+              <span>{s.label}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function RichEditor({ content, onChange, userId }) {
   const editorRef = useRef(null);
   const isInternalChange = useRef(false);
@@ -331,7 +389,7 @@ function RichEditor({ content, onChange, userId }) {
         <ToolbarButton icon={<span style={{ fontSize: 12 }}>&#128444;</span>} title="Insert image" onClick={insertImage} />
         <ToolbarButton icon={<span style={{ fontSize: 10, fontFamily: "monospace" }}>&#9638;</span>} title="Insert table" onClick={insertTable} />
         <div style={{ width: 1, height: 18, background: "var(--border)", margin: "0 3px" }} />
-        <ToolbarButton icon={<span style={{ fontSize: 10 }}>&bull; &ndash;</span>} title="Bullet list" onClick={() => exec("insertUnorderedList")} />
+        <BulletPicker />
         <ToolbarButton icon={<span style={{ fontSize: 10 }}>1. &ndash;</span>} title="Numbered list" onClick={() => exec("insertOrderedList")} />
         <ToolbarButton icon={<span style={{ fontSize: 11 }}>{"\u2192"}</span>} title="Indent" onClick={() => exec("indent")} />
         <ToolbarButton icon={<span style={{ fontSize: 11 }}>{"\u2190"}</span>} title="Outdent" onClick={() => exec("outdent")} />
