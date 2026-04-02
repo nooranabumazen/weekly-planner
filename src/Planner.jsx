@@ -839,10 +839,19 @@ function TaskCard({ task, columnId, categories, onDragStart, onToggle, onDelete,
       )}
       {/* Right-click context menu */}
       {ctxMenu && (
-        <div onMouseDown={(e) => e.stopPropagation()} style={{
+        <div ref={(el) => {
+          if (el) {
+            const rect = el.getBoundingClientRect();
+            const maxY = window.innerHeight - 8;
+            if (rect.bottom > maxY) el.style.top = Math.max(8, ctxMenu.y - rect.height) + "px";
+            const maxX = window.innerWidth - 8;
+            if (rect.right > maxX) el.style.left = Math.max(8, ctxMenu.x - rect.width) + "px";
+          }
+        }} onMouseDown={(e) => e.stopPropagation()} style={{
           position: "fixed", left: ctxMenu.x, top: ctxMenu.y, zIndex: 1000,
           background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 6,
           boxShadow: "0 4px 16px rgba(0,0,0,0.18)", padding: "4px 0", minWidth: 170,
+          maxHeight: "calc(100vh - 16px)", overflowY: "auto",
         }}>
           <div onMouseDown={(e) => { e.preventDefault(); setEditing(true); setEditText(task.text); setCtxMenu(null); }}
             style={{ padding: "6px 14px", cursor: "pointer", fontSize: 12, color: "var(--text)" }}
