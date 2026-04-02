@@ -2025,41 +2025,30 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
                 <div style={{ padding: "10px 16px", borderBottom: "1px solid var(--border)", maxWidth: 700 }}>
                   <div style={sLabel}>Habit Progress</div>
 
-                  {/* Daily habits progress bars per week */}
-                  {recent4.length > 0 && (
-                    <div style={{ marginBottom: 10 }}>
-                      <div style={{ fontSize: 10, color: "var(--text-muted)", fontWeight: 600, marginBottom: 6 }}>Daily Habits ({recent4.length} week{recent4.length > 1 ? "s" : ""})</div>
-                      {recent4.map((wk, wi) => {
-                        const wd = hh[wk]?.daily || [];
-                        const done = wd.reduce((s, h) => s + Object.values(h.checks || {}).filter(Boolean).length, 0);
-                        const total = wd.length * 7;
-                        const pct = total > 0 ? Math.round(done / total * 100) : 0;
-                        return (
-                          <div key={wk} style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 3 }}>
-                            <span style={{ fontSize: 9, color: "var(--text-muted)", minWidth: 55 }}>{weekLabels[wi]}</span>
-                            <div style={{ flex: 1, height: 6, background: "var(--border)", borderRadius: 3, overflow: "hidden" }}>
-                              <div style={{ width: `${pct}%`, height: "100%", background: "#6a9955", borderRadius: 3 }} />
-                            </div>
-                            <span style={{ fontSize: 9, color: "var(--text-muted)", minWidth: 50, textAlign: "right" }}>{done}/{total} ({pct}%)</span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-
-                  {/* Daily habits heat map */}
+                  {/* Daily habits heat map with integrated progress bars */}
                   {habitNames.length > 0 && recent4.length > 0 && (
                     <>
-                      <div style={{ overflowX: "auto", marginBottom: 12 }}>
+                      <div style={{ fontSize: 10, color: "var(--text-muted)", fontWeight: 600, marginBottom: 4 }}>Daily Habits ({recent4.length} week{recent4.length > 1 ? "s" : ""})</div>
+                      <div style={{ overflowX: "auto", marginBottom: 10 }}>
                         <table style={{ borderCollapse: "collapse", fontSize: 9 }}>
                           <thead>
                             <tr>
-                              <td style={{ padding: "2px 8px 2px 0", minWidth: 90 }} />
-                              {recent4.map((wk, wi) => (
-                                <td key={wk} colSpan={7} style={{ textAlign: "center", padding: "2px 4px", color: "var(--text-muted)", fontWeight: 600, borderLeft: wi > 0 ? "1px solid var(--border)" : "none" }}>
-                                  {weekLabels[wi]}
-                                </td>
-                              ))}
+                              <td style={{ padding: "0 6px 0 0", minWidth: 80 }} />
+                              {recent4.map((wk, wi) => {
+                                const wd = hh[wk]?.daily || [];
+                                const done = wd.reduce((s, h) => s + Object.values(h.checks || {}).filter(Boolean).length, 0);
+                                const total = wd.length * 7;
+                                const pct = total > 0 ? Math.round(done / total * 100) : 0;
+                                return (
+                                  <td key={wk} colSpan={7} style={{ padding: "0 2px 3px", borderLeft: wi > 0 ? "1px solid var(--border)" : "none" }}>
+                                    <div style={{ textAlign: "center", color: "var(--text-muted)", fontWeight: 600, fontSize: 8, marginBottom: 2 }}>{weekLabels[wi]}</div>
+                                    <div style={{ height: 4, background: "var(--border)", borderRadius: 2, overflow: "hidden" }}>
+                                      <div style={{ width: `${pct}%`, height: "100%", background: "#6a9955", borderRadius: 2 }} />
+                                    </div>
+                                    <div style={{ textAlign: "center", fontSize: 7, color: "var(--text-faint)", marginTop: 1 }}>{pct}%</div>
+                                  </td>
+                                );
+                              })}
                             </tr>
                             <tr>
                               <td />
@@ -2071,14 +2060,14 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
                           <tbody>
                             {habitNames.map((name) => (
                               <tr key={name}>
-                                <td style={{ padding: "3px 8px 3px 0", color: "var(--text)", fontSize: 10, whiteSpace: "nowrap", maxWidth: 120, overflow: "hidden", textOverflow: "ellipsis" }}>{name}</td>
+                                <td style={{ padding: "1px 6px 1px 0", color: "var(--text)", fontSize: 10, whiteSpace: "nowrap", maxWidth: 120, overflow: "hidden", textOverflow: "ellipsis" }}>{name}</td>
                                 {recent4.map((wk, wi) => {
                                   const weekData = hh[wk]?.daily || [];
                                   const habit = weekData.find((h) => h.name === name);
                                   return dayKeys.map((dk, di) => {
                                     const on = habit ? !!habit.checks?.[dk] : false;
                                     return (
-                                      <td key={wk+dk} style={{ padding: "2px 1px", textAlign: "center", borderLeft: di === 0 && wi > 0 ? "1px solid var(--border)" : "none" }}>
+                                      <td key={wk+dk} style={{ padding: "1px 1px", textAlign: "center", borderLeft: di === 0 && wi > 0 ? "1px solid var(--border)" : "none" }}>
                                         {dot(on)}
                                       </td>
                                     );
@@ -2095,14 +2084,14 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
                   {/* Weekly habits detail */}
                   {weeklyNames.length > 0 && recent4.length > 0 && (
                     <>
-                      <div style={{ fontSize: 10, color: "var(--text-muted)", fontWeight: 600, marginBottom: 6 }}>Weekly Habits</div>
-                      <div style={{ overflowX: "auto", marginBottom: 12 }}>
+                      <div style={{ fontSize: 10, color: "var(--text-muted)", fontWeight: 600, marginBottom: 4 }}>Weekly Habits</div>
+                      <div style={{ overflowX: "auto", marginBottom: 10 }}>
                         <table style={{ borderCollapse: "collapse", fontSize: 9 }}>
                           <thead>
                             <tr>
-                              <td style={{ padding: "2px 8px 2px 0", minWidth: 90 }} />
+                              <td style={{ padding: "0 6px 0 0", minWidth: 80 }} />
                               {recent4.map((wk, wi) => (
-                                <td key={wk} style={{ textAlign: "center", padding: "2px 10px", color: "var(--text-muted)", fontWeight: 600, borderLeft: wi > 0 ? "1px solid var(--border)" : "none" }}>
+                                <td key={wk} style={{ textAlign: "center", padding: "0 8px 2px", color: "var(--text-muted)", fontWeight: 600, fontSize: 8, borderLeft: wi > 0 ? "1px solid var(--border)" : "none" }}>
                                   {weekLabels[wi]}
                                 </td>
                               ))}
@@ -2111,14 +2100,14 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
                           <tbody>
                             {weeklyNames.map((name) => (
                               <tr key={name}>
-                                <td style={{ padding: "3px 8px 3px 0", color: "var(--text)", fontSize: 10, whiteSpace: "nowrap" }}>{name}</td>
+                                <td style={{ padding: "1px 6px 1px 0", color: "var(--text)", fontSize: 10, whiteSpace: "nowrap" }}>{name}</td>
                                 {recent4.map((wk, wi) => {
                                   const weekData = hh[wk]?.weekly || [];
                                   const habit = weekData.find((h) => h.name === name);
                                   const done = habit?.done;
                                   return (
-                                    <td key={wk} style={{ textAlign: "center", padding: "2px 10px", borderLeft: wi > 0 ? "1px solid var(--border)" : "none" }}>
-                                      <span style={{ fontSize: 12, color: done ? "#6a9955" : "#c47a20" }}>{done ? "\u2713" : "\u2717"}</span>
+                                    <td key={wk} style={{ textAlign: "center", padding: "1px 8px", borderLeft: wi > 0 ? "1px solid var(--border)" : "none" }}>
+                                      <span style={{ fontSize: 11, color: done ? "#6a9955" : "#c47a20" }}>{done ? "\u2713" : "\u2717"}</span>
                                     </td>
                                   );
                                 })}
