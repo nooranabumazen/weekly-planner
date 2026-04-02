@@ -647,19 +647,60 @@ function HabitsTracker({ dailyHabits, weeklyHabits, habitHistory, onToggleDaily,
         };
 
         const spotlights = [];
-        if (longestStreak.streak >= 2) spotlights.push({ icon: "\uD83D\uDD25", text: `Longest streak: ${longestStreak.name} (${longestStreak.streak}w)` });
-        if (mostImproved.improved >= 2) spotlights.push({ icon: "\uD83D\uDCC8", text: `Most improved: ${mostImproved.name} (+${mostImproved.improved} days)` });
-        perfectThisWeek.forEach((h) => spotlights.push({ icon: "\u2B50", text: `Perfect week: ${h.name} (7/7)` }));
+
+        // Longest active streak (lower threshold to 1 week)
+        if (longestStreak.streak >= 1) spotlights.push({ icon: "\uD83D\uDD25", text: `${longestStreak.name}: ${longestStreak.streak}w streak${longestStreak.streak >= 3 ? "!" : ""}` });
+
+        // Most improved this week vs last (threshold: 1+ more days)
+        if (mostImproved.improved >= 1) spotlights.push({ icon: "\uD83D\uDCC8", text: `${mostImproved.name}: +${mostImproved.improved} day${mostImproved.improved > 1 ? "s" : ""} vs last week` });
+
+        // Perfect week THIS week (7/7)
+        perfectThisWeek.forEach((h) => spotlights.push({ icon: "\u2B50", text: `${h.name}: perfect week! (7/7)` }));
+
+        // Last week achievements (from history)
+        if (prev?.daily) {
+          prev.daily.forEach((h) => {
+            const done = Object.values(h.checks || {}).filter(Boolean).length;
+            if (done === 7) spotlights.push({ icon: "\u2B50", text: `${h.name}: perfect last week! (7/7)` });
+          });
+          // Best daily habit last week
+          const bestLast = prev.daily.reduce((best, h) => {
+            const d = Object.values(h.checks || {}).filter(Boolean).length;
+            return d > best.done ? { name: h.name, done: d } : best;
+          }, { name: "", done: 0 });
+          if (bestLast.done >= 5 && !spotlights.some((s) => s.text.includes(bestLast.name))) {
+            spotlights.push({ icon: "\uD83D\uDCAA", text: `${bestLast.name}: ${bestLast.done}/7 last week` });
+          }
+        }
+
+        // Weekly habits completed last week
+        if (prev?.weekly) {
+          const weeklyDone = prev.weekly.filter((h) => h.done);
+          if (weeklyDone.length > 0 && weeklyDone.length === prev.weekly.length) {
+            spotlights.push({ icon: "\uD83C\uDF1F", text: `All weekly habits completed last week!` });
+          }
+        }
+
+        // Near milestone
         nearMilestone.forEach((s) => {
           const next = s.streak < 3 ? 3 : s.streak < 5 ? 5 : 8;
-          spotlights.push({ icon: "\uD83C\uDFAF", text: `${s.name} is ${next - s.streak}w from a ${next}-week streak!` });
+          spotlights.push({ icon: "\uD83C\uDFAF", text: `${s.name}: ${next - s.streak}w from ${next}-week streak` });
         });
+
+        // Current week encouragement based on today's progress
+        const todayDone = dailyHabits.filter((h) => {
+          const todayKey = dayKeys[todayIdx];
+          return h.checks[todayKey];
+        }).length;
+        if (todayDone === dailyHabits.length && dailyHabits.length > 0 && spotlights.length < 4) {
+          spotlights.push({ icon: "\u2705", text: `All daily habits done today!` });
+        }
 
         // Pace message
         let paceMsg = "";
-        if (prev && daysElapsed >= 2) {
-          if (curPace > prevTotal) paceMsg = `On pace to beat last week (projected ${curPace} vs ${prevTotal})`;
-          else if (curTotal >= prevTotal) paceMsg = "Already passed last week's total!";
+        if (prev && daysElapsed >= 1) {
+          if (curTotal >= prevTotal) paceMsg = "Already passed last week's total!";
+          else if (curPace > prevTotal) paceMsg = `On pace to beat last week (projected ${curPace} vs ${prevTotal})`;
         }
 
         return (
