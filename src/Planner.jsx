@@ -512,7 +512,7 @@ function HabitsTracker({ dailyHabits, weeklyHabits, habitHistory, onToggleDaily,
             const cnt = Object.values(h.checks).filter(Boolean).length;
             return (
               <div key={h.id} draggable onDragStart={() => setDragHabit({ id: h.id, type: "daily" })} onDragOver={(e) => e.preventDefault()} onDrop={() => handleDailyDrop(h.id)}
-                style={{ display: "flex", alignItems: "center", cursor: "grab" }}>
+                style={{ display: "flex", alignItems: "center", cursor: "grab", borderBottom: "1px solid var(--border-light)", paddingBottom: 3, marginBottom: 3 }}>
                 {editingHabit?.id === h.id && editingHabit?.type === "daily" ? (
                   <input ref={editRef} value={editText} onChange={(e) => setEditText(e.target.value)} onBlur={saveEdit}
                     onKeyDown={(e) => { if (e.key === "Enter") saveEdit(); if (e.key === "Escape") setEditingHabit(null); }}
@@ -539,7 +539,7 @@ function HabitsTracker({ dailyHabits, weeklyHabits, habitHistory, onToggleDaily,
           <div style={{ height: 14 }} /> {/* Spacer to align with daily habits day header row */}
           {weeklyHabits.map((h) => (
             <div key={h.id} draggable onDragStart={() => setDragHabit({ id: h.id, type: "weekly" })} onDragOver={(e) => e.preventDefault()} onDrop={() => handleWeeklyDrop(h.id)}
-              style={{ display: "flex", alignItems: "center", gap: 6, cursor: "grab" }}>
+              style={{ display: "flex", alignItems: "center", gap: 6, cursor: "grab", borderBottom: "1px solid var(--border-light)", paddingBottom: 3, marginBottom: 3 }}>
               <div onClick={() => onToggleWeekly(h.id)} style={chk(h.done)}>{h.done && "\u2713"}</div>
               {editingHabit?.id === h.id && editingHabit?.type === "weekly" ? (
                 <input ref={editRef} value={editText} onChange={(e) => setEditText(e.target.value)} onBlur={saveEdit}
@@ -1111,8 +1111,10 @@ function FutureSidebar({ futureTasks, onAddFuture, onDeleteFuture, onEditFuture,
   const [editText, setEditText] = useState("");
   const [calMonth, setCalMonth] = useState(() => new Date().getMonth());
   const [calYear, setCalYear] = useState(() => new Date().getFullYear());
+  const [highlightDate, setHighlightDate] = useState(null);
   const addRef = useRef(null);
   const editRef = useRef(null);
+  const listRef = useRef(null);
   useEffect(() => { if (adding && addRef.current) addRef.current.focus(); }, [adding]);
   useEffect(() => { if (editingId && editRef.current) editRef.current.focus(); }, [editingId]);
   const grouped = {};
@@ -1160,7 +1162,17 @@ function FutureSidebar({ futureTasks, onAddFuture, onDeleteFuture, onEditFuture,
                 const hasTask = taskDates.has(dateStr);
                 const isToday = dateStr === todayStr;
                 return (
-                  <div key={i} onClick={() => setNewDate(dateStr)}
+                  <div key={i} onClick={() => {
+                    setNewDate(dateStr);
+                    if (hasTask && listRef.current) {
+                      setHighlightDate(dateStr);
+                      setTimeout(() => {
+                        const el = listRef.current?.querySelector(`[data-future-date="${dateStr}"]`);
+                        if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+                      }, 50);
+                      setTimeout(() => setHighlightDate(null), 2000);
+                    }
+                  }}
                     style={{ textAlign: "center", fontSize: 9, padding: "2px 0", cursor: "pointer", borderRadius: 3, position: "relative",
                       color: isToday ? "var(--accent)" : "var(--text-muted)", fontWeight: isToday ? 700 : 400,
                       background: newDate === dateStr ? "rgba(139,105,20,0.15)" : "transparent",
@@ -1172,10 +1184,11 @@ function FutureSidebar({ futureTasks, onAddFuture, onDeleteFuture, onEditFuture,
               })}
             </div>
           </div>
-          <div style={{ flex: 1, overflowY: "auto", padding: "8px 8px" }}>
+          <div ref={listRef} style={{ flex: 1, overflowY: "auto", padding: "8px 8px" }}>
             {sortedDates.map((date) => {
               const label = new Date(date + "T12:00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
-              return (<div key={date} style={{ marginBottom: 8 }}><div style={{ fontSize: 11, fontWeight: 600, color: "var(--text-muted)", marginBottom: 3 }}>{label}</div>
+              const isHighlighted = highlightDate === date;
+              return (<div key={date} data-future-date={date} style={{ marginBottom: 8, padding: isHighlighted ? "4px 6px" : 0, background: isHighlighted ? "rgba(139,105,20,0.12)" : "transparent", borderRadius: 6, transition: "background 0.3s" }}><div style={{ fontSize: 11, fontWeight: 600, color: isHighlighted ? "var(--accent)" : "var(--text-muted)", marginBottom: 3 }}>{label}</div>
                 {grouped[date].map((task) => (<div key={task.id} draggable onDragStart={(e) => { e.dataTransfer.setData("text/plain", JSON.stringify({ taskId: task.id, from: "future", futureText: task.text })); }}
                   style={{ background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 4, padding: "5px 7px", marginBottom: 3, fontSize: 12, cursor: "grab", display: "flex", justifyContent: "space-between", alignItems: "center" }}
                   onMouseEnter={(e) => { e.currentTarget.style.boxShadow = "0 2px 6px rgba(0,0,0,0.1)"; }} onMouseLeave={(e) => { e.currentTarget.style.boxShadow = "none"; }}>
