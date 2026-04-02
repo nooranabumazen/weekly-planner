@@ -1077,6 +1077,8 @@ function FutureSidebar({ futureTasks, onAddFuture, onDeleteFuture, onEditFuture,
   const [newDate, setNewDate] = useState("");
   const [editingId, setEditingId] = useState(null);
   const [editText, setEditText] = useState("");
+  const [calMonth, setCalMonth] = useState(() => new Date().getMonth());
+  const [calYear, setCalYear] = useState(() => new Date().getFullYear());
   const addRef = useRef(null);
   const editRef = useRef(null);
   useEffect(() => { if (adding && addRef.current) addRef.current.focus(); }, [adding]);
@@ -1086,6 +1088,19 @@ function FutureSidebar({ futureTasks, onAddFuture, onDeleteFuture, onEditFuture,
   const sortedDates = Object.keys(grouped).sort();
   const submitAdd = () => { if (newText.trim() && newDate) { onAddFuture(newText.trim(), newDate); setNewText(""); setNewDate(""); } setAdding(false); };
   const count = futureTasks.length;
+  const taskDates = new Set(futureTasks.map((t) => t.date));
+  const todayStr = new Date().toISOString().split("T")[0];
+
+  const MNAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  const DLABELS = ["M","T","W","T","F","S","S"];
+  const firstDay = new Date(calYear, calMonth, 1);
+  let startDow = firstDay.getDay(); if (startDow === 0) startDow = 7;
+  const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
+  const calCells = [];
+  for (let i = 1; i < startDow; i++) calCells.push(null);
+  for (let d = 1; d <= daysInMonth; d++) calCells.push(d);
+  const prevMonth = () => { if (calMonth === 0) { setCalMonth(11); setCalYear(calYear - 1); } else setCalMonth(calMonth - 1); };
+  const nextMonth = () => { if (calMonth === 11) { setCalMonth(0); setCalYear(calYear + 1); } else setCalMonth(calMonth + 1); };
 
   return (
     <div style={{ width: open ? 190 : 36, minWidth: open ? 190 : 36, background: "var(--bg-surface)", borderLeft: "1px solid var(--border)", display: "flex", flexDirection: "column", overflow: "hidden", transition: "width 0.2s ease, min-width 0.2s ease" }}>
@@ -1096,6 +1111,35 @@ function FutureSidebar({ futureTasks, onAddFuture, onDeleteFuture, onEditFuture,
       </button>
       {open && (
         <>
+          {/* Mini calendar */}
+          <div style={{ padding: "6px 6px 4px", borderBottom: "1px solid var(--border)" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 3 }}>
+              <button onClick={prevMonth} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-faint)", fontSize: 10, padding: "0 3px" }}>{"\u25C0"}</button>
+              <span style={{ fontSize: 9, fontWeight: 600, color: "var(--text-muted)" }}>{MNAMES[calMonth]} {calYear}</span>
+              <button onClick={nextMonth} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-faint)", fontSize: 10, padding: "0 3px" }}>{"\u25B6"}</button>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 0 }}>
+              {DLABELS.map((d, i) => (
+                <div key={i} style={{ textAlign: "center", fontSize: 7, color: "var(--text-faint)", fontFamily: "'JetBrains Mono', monospace", padding: "1px 0" }}>{d}</div>
+              ))}
+              {calCells.map((day, i) => {
+                if (day === null) return <div key={`e${i}`} />;
+                const dateStr = `${calYear}-${String(calMonth + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+                const hasTask = taskDates.has(dateStr);
+                const isToday = dateStr === todayStr;
+                return (
+                  <div key={i} onClick={() => setNewDate(dateStr)}
+                    style={{ textAlign: "center", fontSize: 9, padding: "2px 0", cursor: "pointer", borderRadius: 3, position: "relative",
+                      color: isToday ? "var(--accent)" : "var(--text-muted)", fontWeight: isToday ? 700 : 400,
+                      background: newDate === dateStr ? "rgba(139,105,20,0.15)" : "transparent",
+                    }}>
+                    {day}
+                    {hasTask && <div style={{ position: "absolute", bottom: 0, left: "50%", transform: "translateX(-50%)", width: 3, height: 3, borderRadius: "50%", background: "var(--accent)" }} />}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
           <div style={{ flex: 1, overflowY: "auto", padding: "8px 8px" }}>
             {sortedDates.map((date) => {
               const label = new Date(date + "T12:00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
