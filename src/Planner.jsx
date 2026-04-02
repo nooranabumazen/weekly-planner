@@ -817,7 +817,7 @@ function TaskCard({ task, columnId, categories, onDragStart, onToggle, onDelete,
         <span onDoubleClick={() => { setEditing(true); setEditText(task.text); }}
           style={{ flex: 1, textDecoration: task.done ? "line-through" : "none", cursor: "pointer", color: task.done ? "var(--text-muted)" : "var(--text)" }}>
           <HighlightText text={task.text} query={highlightQuery} />
-          {task.recurring && <span title={`Repeats ${task.recurring.type === "weeks" ? task.recurring.count + " weeks" : "until " + task.recurring.until}`} style={{ fontSize: 9, marginLeft: 4, color: "var(--text-faint)" }}>{"\uD83D\uDD01"}</span>}
+          {task.recurring && <span title={`Repeats ${task.recurring.type === "weeks" ? task.recurring.count + " weeks" : task.recurring.type === "monthly" ? "monthly" : "until " + task.recurring.until}`} style={{ fontSize: 9, marginLeft: 4, color: "var(--text-faint)" }}>{"\uD83D\uDD01"}</span>}
         </span>
       )}
       {(hover || showCatPicker) && !editing && (
@@ -856,12 +856,12 @@ function TaskCard({ task, columnId, categories, onDragStart, onToggle, onDelete,
           </div>
           {repeatMenu && (
             <div style={{ padding: "4px 14px 8px", borderTop: "1px solid var(--border)" }}>
-              <div style={{ fontSize: 9, color: "var(--text-muted)", fontWeight: 600, marginBottom: 4, fontFamily: "'JetBrains Mono', monospace", textTransform: "uppercase", letterSpacing: 0.5 }}>Repeat on {columnId === "later" ? "later" : columnId.toUpperCase()}</div>
+              <div style={{ fontSize: 9, color: "var(--text-muted)", fontWeight: 600, marginBottom: 4, fontFamily: "'JetBrains Mono', monospace", textTransform: "uppercase", letterSpacing: 0.5 }}>Weekly</div>
               {[2, 4, 8, 12].map((n) => (
                 <div key={n} onMouseDown={(e) => { e.preventDefault(); onSetRecurring(columnId, task.id, { type: "weeks", count: n, day: columnId }); setCtxMenu(null); }}
                   style={{ padding: "3px 0", cursor: "pointer", fontSize: 11, color: "var(--text)" }}
                   onMouseEnter={(e) => e.currentTarget.style.color = "var(--accent)"} onMouseLeave={(e) => e.currentTarget.style.color = "var(--text)"}>
-                  For {n} weeks
+                  Every week for {n} weeks
                 </div>
               ))}
               <div style={{ marginTop: 4, display: "flex", gap: 4, alignItems: "center" }}>
@@ -871,9 +871,32 @@ function TaskCard({ task, columnId, categories, onDragStart, onToggle, onDelete,
                 {repeatDate && <button onMouseDown={(e) => { e.preventDefault(); onSetRecurring(columnId, task.id, { type: "until", until: repeatDate, day: columnId }); setCtxMenu(null); }}
                   style={{ background: "var(--accent)", color: "#fff", border: "none", borderRadius: 3, padding: "2px 6px", fontSize: 9, cursor: "pointer", fontWeight: 600 }}>Set</button>}
               </div>
+              <div style={{ fontSize: 9, color: "var(--text-muted)", fontWeight: 600, marginTop: 8, marginBottom: 4, fontFamily: "'JetBrains Mono', monospace", textTransform: "uppercase", letterSpacing: 0.5 }}>Monthly</div>
+              {(() => {
+                const today = new Date();
+                const dayOfMonth = today.getDate();
+                const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
+                const weekdayNames = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+                const dow = today.getDay();
+                const weekNum = Math.ceil(dayOfMonth / 7);
+                const ordinals = ["","1st","2nd","3rd","4th","5th"];
+                const monthlyOptions = [
+                  { label: `${ordinals[weekNum]} ${weekdayNames[dow]} of month`, rule: { type: "monthly", pattern: "nth_weekday", weekday: dow, nth: weekNum, day: columnId } },
+                  { label: `1st of every month`, rule: { type: "monthly", pattern: "day_of_month", dayOfMonth: 1, day: columnId } },
+                  { label: `15th of every month`, rule: { type: "monthly", pattern: "day_of_month", dayOfMonth: 15, day: columnId } },
+                  { label: `Last day of month`, rule: { type: "monthly", pattern: "last_day", day: columnId } },
+                ];
+                return monthlyOptions.map((opt, i) => (
+                  <div key={i} onMouseDown={(e) => { e.preventDefault(); onSetRecurring(columnId, task.id, opt.rule); setCtxMenu(null); }}
+                    style={{ padding: "3px 0", cursor: "pointer", fontSize: 11, color: "var(--text)" }}
+                    onMouseEnter={(e) => e.currentTarget.style.color = "var(--accent)"} onMouseLeave={(e) => e.currentTarget.style.color = "var(--text)"}>
+                    {opt.label}
+                  </div>
+                ));
+              })()}
               {task.recurring && (
                 <div onMouseDown={(e) => { e.preventDefault(); onSetRecurring(columnId, task.id, null); setCtxMenu(null); }}
-                  style={{ padding: "4px 0 0", cursor: "pointer", fontSize: 10, color: "#c44" }}>
+                  style={{ padding: "4px 0 0", cursor: "pointer", fontSize: 10, color: "#c44", marginTop: 4 }}>
                   Remove repeat
                 </div>
               )}

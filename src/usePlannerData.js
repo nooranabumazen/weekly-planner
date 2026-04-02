@@ -105,6 +105,28 @@ function writeDocSync(path, data) {
   setDoc(doc(db, path), data).catch((err) => console.error("Write error:", path, err));
 }
 
+// Check if a monthly recurring rule should generate a task this week, and which day
+function checkMonthlyRule(rule, weekStartDate) {
+  // weekStartDate is a Date object for Monday of this week
+  const dayKeys = ["mon","tue","wed","thu","fri","sat","sun"];
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(weekStartDate);
+    d.setDate(d.getDate() + i);
+    const dayOfMonth = d.getDate();
+    const dow = d.getDay(); // 0=Sun, 6=Sat
+    const lastDayOfMonth = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+    const weekNum = Math.ceil(dayOfMonth / 7); // 1st, 2nd, 3rd, etc.
+
+    let match = false;
+    if (rule.pattern === "day_of_month" && dayOfMonth === rule.dayOfMonth) match = true;
+    if (rule.pattern === "last_day" && dayOfMonth === lastDayOfMonth) match = true;
+    if (rule.pattern === "nth_weekday" && dow === rule.weekday && weekNum === rule.nth) match = true;
+
+    if (match) return dayKeys[i]; // return which day of the week to place it
+  }
+  return null; // not this week
+}
+
 export function usePlannerData(userId) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -187,15 +209,20 @@ export function usePlannerData(userId) {
                 const rule = t.recurring;
                 let shouldRepeat = false;
                 let newRule = null;
+                let targetDay = null;
                 if (rule.type === "weeks" && rule.count >= 1) {
                   shouldRepeat = true;
-                  newRule = rule.count > 1 ? { ...rule, count: rule.count - 1 } : null; // null = last repeat, remove recurring
+                  newRule = rule.count > 1 ? { ...rule, count: rule.count - 1 } : null;
                 } else if (rule.type === "until" && rule.until >= wk) {
                   shouldRepeat = true;
                   newRule = rule;
+                } else if (rule.type === "monthly") {
+                  const weekStart = new Date(wk + "T12:00:00");
+                  targetDay = checkMonthlyRule(rule, weekStart);
+                  if (targetDay) { shouldRepeat = true; newRule = { ...rule }; }
                 }
                 if (shouldRepeat) {
-                  const day = rule.day || d;
+                  const day = targetDay || rule.day || d;
                   const newTask = { id: "t" + Date.now() + "_" + Math.random().toString(36).slice(2,6), text: t.text, done: false, category: t.category || "cat_none", recurring: newRule || undefined };
                   // Check if already carried forward (avoid duplicate)
                   const existing = carry.find((c) => c.text === t.text && !c.done);
@@ -233,6 +260,11 @@ export function usePlannerData(userId) {
               let newRule = null;
               if (rule.type === "weeks" && rule.count >= 1) { shouldRepeat = true; newRule = rule.count > 1 ? { ...rule, count: rule.count - 1 } : null; }
               else if (rule.type === "until" && rule.until >= wk) { shouldRepeat = true; newRule = rule; }
+              else if (rule.type === "monthly") {
+                const weekStart = new Date(wk + "T12:00:00");
+                const targetDay = checkMonthlyRule(rule, weekStart);
+                if (targetDay) { shouldRepeat = true; newRule = { ...rule }; }
+              }
               if (shouldRepeat && !newTasks.later.some((c) => c.text === t.text)) {
                 newTasks.later.push({ id: "t" + Date.now() + "_" + Math.random().toString(36).slice(2,6), text: t.text, done: false, category: t.category || "cat_none", recurring: newRule || undefined });
               }
@@ -245,15 +277,20 @@ export function usePlannerData(userId) {
           for (const rule of rules) {
             let shouldRepeat = false;
             let newRule = null;
+            let targetDay = null;
             if (rule.type === "weeks" && rule.count >= 1) {
               shouldRepeat = true;
               newRule = rule.count > 1 ? { ...rule, count: rule.count - 1 } : null;
             } else if (rule.type === "until" && rule.until >= wk) {
               shouldRepeat = true;
               newRule = { ...rule };
+            } else if (rule.type === "monthly") {
+              const weekStart = new Date(wk + "T12:00:00");
+              targetDay = checkMonthlyRule(rule, weekStart);
+              if (targetDay) { shouldRepeat = true; newRule = { ...rule }; }
             }
             if (shouldRepeat) {
-              const day = rule.day || "mon";
+              const day = targetDay || rule.day || "mon";
               const existing = dayKeys.includes(day) ? newTasks[day].some((t) => t.text === rule.text) : newTasks.later.some((t) => t.text === rule.text);
               if (!existing) {
                 const newTask = { id: "t" + Date.now() + "_" + Math.random().toString(36).slice(2,6), text: rule.text, done: false, category: rule.category || "cat_none", recurring: newRule || undefined };
@@ -262,7 +299,8 @@ export function usePlannerData(userId) {
               }
               if (newRule) updatedRules.push(newRule);
             }
-            // If not shouldRepeat, rule expires and is not kept
+            // Monthly rules persist forever, weekly/until rules expire when done
+            if (!shouldRepeat && rule.type === "monthly") updatedRules.push(rule);
           }
           writeDoc(m("recurringRules"), { items: updatedRules });
 
