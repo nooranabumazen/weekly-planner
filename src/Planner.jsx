@@ -2105,11 +2105,12 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
                                 {recent4.map((wk, wi) => {
                                   const weekData = hh[wk]?.daily || [];
                                   const habit = weekData.find((h) => h.name === name);
+                                  const existed = !!habit;
                                   return dayKeys.map((dk, di) => {
-                                    const on = habit ? !!habit.checks?.[dk] : false;
+                                    const on = existed ? !!habit.checks?.[dk] : false;
                                     return (
                                       <td key={wk+dk} style={{ padding: "1px 1px", textAlign: "center", borderLeft: di === 0 && wi > 0 ? "1px solid var(--border)" : "none" }}>
-                                        {dot(on)}
+                                        {existed ? dot(on) : <div style={{ width: 10, height: 10, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 7, color: "var(--text-faint)" }}>&ndash;</div>}
                                       </td>
                                     );
                                   });
@@ -2145,10 +2146,10 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
                                 {recent4.map((wk, wi) => {
                                   const weekData = hh[wk]?.weekly || [];
                                   const habit = weekData.find((h) => h.name === name);
-                                  const done = habit?.done;
+                                  const existed = !!habit;
                                   return (
                                     <td key={wk} style={{ textAlign: "center", padding: "1px 8px", borderLeft: wi > 0 ? "1px solid var(--border)" : "none" }}>
-                                      <span style={{ fontSize: 11, color: done ? "#6a9955" : "#c47a20" }}>{done ? "\u2713" : "\u2717"}</span>
+                                      {existed ? <span style={{ fontSize: 11, color: habit.done ? "#6a9955" : "#c47a20" }}>{habit.done ? "\u2713" : "\u2717"}</span> : <span style={{ fontSize: 9, color: "var(--text-faint)" }}>&ndash;</span>}
                                     </td>
                                   );
                                 })}
