@@ -426,6 +426,8 @@ export default function NotebooksPanel({ notebooks, onChange, userId, isMobile }
     onChange([...notebooks, { id, title: "New Note", content: "<p></p>" }]);
     setActiveTab(id);
     if (isMobile) setMobileEditing(true);
+    setRenaming(id);
+    setRenameText("");
   };
 
   const deleteNotebook = (id) => {
