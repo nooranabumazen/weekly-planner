@@ -511,8 +511,9 @@ function HabitsTracker({ dailyHabits, weeklyHabits, habitHistory, onToggleDaily,
           {dailyHabits.map((h) => {
             const cnt = Object.values(h.checks).filter(Boolean).length;
             return (
-              <div key={h.id} draggable onDragStart={() => setDragHabit({ id: h.id, type: "daily" })} onDragOver={(e) => e.preventDefault()} onDrop={() => handleDailyDrop(h.id)}
-                style={{ display: "flex", alignItems: "center", cursor: "grab", borderBottom: "1px solid var(--border-light)", paddingBottom: 3, marginBottom: 3 }}>
+              <div key={h.id}>
+              <div draggable onDragStart={() => setDragHabit({ id: h.id, type: "daily" })} onDragOver={(e) => e.preventDefault()} onDrop={() => handleDailyDrop(h.id)}
+                style={{ display: "flex", alignItems: "center", cursor: "grab", paddingBottom: 2, marginBottom: 1 }}>
                 {editingHabit?.id === h.id && editingHabit?.type === "daily" ? (
                   <input ref={editRef} value={editText} onChange={(e) => setEditText(e.target.value)} onBlur={saveEdit}
                     onKeyDown={(e) => { if (e.key === "Enter") saveEdit(); if (e.key === "Escape") setEditingHabit(null); }}
@@ -523,6 +524,8 @@ function HabitsTracker({ dailyHabits, weeklyHabits, habitHistory, onToggleDaily,
                 )}
                 {DAYS.map((d) => (<div key={d} style={{ width: 28, display: "flex", justifyContent: "center", flexShrink: 0 }}><div onClick={() => onToggleDaily(h.id, d.toLowerCase())} style={chk(h.checks[d.toLowerCase()])}>{h.checks[d.toLowerCase()] && "\u2713"}</div></div>))}
                 <button onClick={() => onDeleteDaily(h.id)} style={{ width: 18, flexShrink: 0, background: "none", border: "none", cursor: "pointer", color: "var(--text-faint)", fontSize: 13, padding: 0, fontWeight: 600 }} onMouseEnter={(e) => (e.target.style.color = "#c44")} onMouseLeave={(e) => (e.target.style.color = "var(--text-faint)")}>&times;</button>
+              </div>
+              <div style={{ height: 0, borderBottom: "0.5px solid var(--border-light)", opacity: 0.5, marginBottom: 2 }} />
               </div>);
           })}
           {addingDaily ? (<div style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 2 }}><input ref={dailyRef} value={newDaily} onChange={(e) => setNewDaily(e.target.value)} onBlur={addDH} onKeyDown={(e) => { if (e.key === "Enter") addDH(); if (e.key === "Escape") setAddingDaily(false); }} placeholder="Habit name..." style={{ flex: 1, border: "1px solid var(--border)", borderRadius: 4, padding: "3px 6px", fontSize: 11, outline: "none", background: "var(--input-bg)", color: "var(--text)" }} /></div>
@@ -541,7 +544,7 @@ function HabitsTracker({ dailyHabits, weeklyHabits, habitHistory, onToggleDaily,
           </div> {/* Invisible spacer matching daily habits day header row */}
           {weeklyHabits.map((h) => (
             <div key={h.id} draggable onDragStart={() => setDragHabit({ id: h.id, type: "weekly" })} onDragOver={(e) => e.preventDefault()} onDrop={() => handleWeeklyDrop(h.id)}
-              style={{ display: "flex", alignItems: "center", gap: 6, cursor: "grab", borderBottom: "1px solid var(--border-light)", paddingBottom: 3, marginBottom: 3 }}>
+              style={{ display: "flex", alignItems: "center", gap: 6, cursor: "grab" }}>
               <div onClick={() => onToggleWeekly(h.id)} style={chk(h.done)}>{h.done && "\u2713"}</div>
               {editingHabit?.id === h.id && editingHabit?.type === "weekly" ? (
                 <input ref={editRef} value={editText} onChange={(e) => setEditText(e.target.value)} onBlur={saveEdit}
