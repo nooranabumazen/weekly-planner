@@ -1788,7 +1788,7 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
               <h1 style={{ margin: 0, fontSize: isMobile ? 20 : 18, fontWeight: 700, letterSpacing: -0.5 }}>Weekly Planner</h1>
               <span style={{ fontSize: isMobile ? 13 : 11, color: "var(--text-muted)" }}>{weekDates[0]?.date} , {weekDates[6]?.date}</span>
             </div>
-            {!isMobile && (
+            {!isMobile && layout !== "horizontal" && (
               <div style={{ display: "flex", alignItems: "center", borderBottom: "1px solid var(--border)", padding: "0 12px" }}>
                 <button onClick={() => setHabitsOpen(!habitsOpen)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", fontSize: 10, padding: "6px 0", display: "flex", alignItems: "center", gap: 4 }}>
                   <span style={{ fontSize: 8, transition: "transform 0.2s", transform: habitsOpen ? "rotate(90deg)" : "rotate(0deg)", display: "inline-block" }}>{"\u25B6"}</span>
@@ -1796,7 +1796,7 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
                 </button>
               </div>
             )}
-            {!isMobile && habitsOpen && (
+            {!isMobile && layout !== "horizontal" && habitsOpen && (
               <HabitsTracker dailyHabits={dailyHabits} weeklyHabits={weeklyHabits} habitHistory={habitHistory || {}} onToggleDaily={toggleDaily} onToggleWeekly={toggleWeekly}
                 onAddDaily={addDailyHabit} onAddWeekly={addWeeklyHabit} onDeleteDaily={deleteDaily} onDeleteWeekly={deleteWeekly} onEditDaily={editDaily} onEditWeekly={editWeekly} onReorderDaily={reorderDaily} onReorderWeekly={reorderWeekly} />
             )}
@@ -1916,6 +1916,21 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
                           style={{ width: "100%", minHeight: 50, border: "1px solid var(--border)", borderRadius: 6, padding: "6px 10px", fontSize: 12, lineHeight: 1.5, outline: "none", background: "var(--input-bg)", color: "var(--text)", fontFamily: "'DM Sans', sans-serif", resize: "none", boxSizing: "border-box", overflow: "hidden", height: "auto" }}
                           ref={(el) => { if (el) { el.style.height = "auto"; el.style.height = Math.max(50, el.scrollHeight) + "px"; } }} />
                       </div>
+                    )}
+                  </div>
+                )}
+                {/* Habits at bottom for horizontal layout */}
+                {!isMobile && layout === "horizontal" && (
+                  <div style={{ borderTop: "1px solid var(--border)", flexShrink: 0 }}>
+                    <div style={{ display: "flex", alignItems: "center", padding: "0 12px" }}>
+                      <button onClick={() => setHabitsOpen(!habitsOpen)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", fontSize: 10, padding: "6px 0", display: "flex", alignItems: "center", gap: 4 }}>
+                        <span style={{ fontSize: 8, transition: "transform 0.2s", transform: habitsOpen ? "rotate(90deg)" : "rotate(0deg)", display: "inline-block" }}>{"\u25B6"}</span>
+                        <span style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, fontSize: 9, letterSpacing: 1, textTransform: "uppercase" }}>Habits</span>
+                      </button>
+                    </div>
+                    {habitsOpen && (
+                      <HabitsTracker dailyHabits={dailyHabits} weeklyHabits={weeklyHabits} habitHistory={habitHistory || {}} onToggleDaily={toggleDaily} onToggleWeekly={toggleWeekly}
+                        onAddDaily={addDailyHabit} onAddWeekly={addWeeklyHabit} onDeleteDaily={deleteDaily} onDeleteWeekly={deleteWeekly} onEditDaily={editDaily} onEditWeekly={editWeekly} onReorderDaily={reorderDaily} onReorderWeekly={reorderWeekly} />
                     )}
                   </div>
                 )}
