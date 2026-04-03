@@ -487,7 +487,7 @@ export function usePlannerData(userId) {
   const saveArchive = useCallback((items) => { setData((p) => p ? { ...p, archive: items } : p); writeDoc(`users/${userId}/meta/archive`, { items }); }, [userId]);
   const saveDailyHabits = useCallback((items) => { setData((p) => p ? { ...p, dailyHabits: items } : p); writeDoc(`users/${userId}/meta/dailyHabits`, { items, _weekKey: weekKeyRef.current }); }, [userId]);
   const saveWeeklyHabits = useCallback((items) => { setData((p) => p ? { ...p, weeklyHabits: items } : p); writeDoc(`users/${userId}/meta/weeklyHabits`, { items, _weekKey: weekKeyRef.current }); }, [userId]);
-  const saveSettings = useCallback((s) => { setData((p) => p ? { ...p, categories: s.categories, layout: s.layout, notes: s.notes, darkMode: s.darkMode } : p); writeDoc(`users/${userId}/meta/settings`, s); }, [userId]);
+  const saveSettings = useCallback((s) => { setData((p) => p ? { ...p, categories: s.categories, layout: s.layout, notes: s.notes, darkMode: s.darkMode, taskFontSize: s.taskFontSize } : p); writeDoc(`users/${userId}/meta/settings`, s); }, [userId]);
   const saveRecurringRules = useCallback((items) => { writeDoc(`users/${userId}/meta/recurringRules`, { items }); }, [userId]);
 
   // ─── Backup System ───
