@@ -805,7 +805,7 @@ function TaskCard({ task, columnId, categories, onDragStart, onToggle, onDelete,
       onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}
       onContextMenu={handleContextMenu}
       style={{
-        display: "flex", alignItems: "center", gap: isMobile ? 10 : 8, padding: isMobile ? "8px 12px" : "3px 10px",
+        display: "flex", alignItems: "flex-start", gap: isMobile ? 10 : 6, padding: isMobile ? "8px 12px" : "3px 6px",
         borderLeft: `4px solid ${catColor}`,
         background: hover ? "var(--bg-hover)" : `${catColor}18`,
         cursor: editing ? "text" : "grab",
@@ -813,7 +813,7 @@ function TaskCard({ task, columnId, categories, onDragStart, onToggle, onDelete,
         fontSize: isMobile ? 16 : 13, lineHeight: 1.4, userSelect: "none", position: "relative",
       }}>
       <input type="checkbox" checked={task.done} onChange={() => onToggle(columnId, task.id)}
-        style={{ cursor: "pointer", accentColor: "#5a5a5a", flexShrink: 0, width: isMobile ? 20 : 15, height: isMobile ? 20 : 15 }} />
+        style={{ cursor: "pointer", accentColor: "#5a5a5a", flexShrink: 0, width: isMobile ? 20 : 14, height: isMobile ? 20 : 14, marginTop: isMobile ? 2 : 2 }} />
       {editing ? (
         <input ref={inputRef} value={editText} onChange={(e) => setEditText(e.target.value)} onBlur={save}
           onKeyDown={(e) => { if (e.key === "Enter") save(); if (e.key === "Escape") setEditing(false); }}
@@ -1057,7 +1057,7 @@ function DayColumn({ dayInfo, columnId, tasks, categories, onDragStart, onDrop, 
       style={{
         width: isLater ? "100%" : colWidth, minWidth: isLater ? "auto" : colWidth, flexShrink: 0,
         background: dragOver ? "rgba(139,105,20,0.04)" : isToday ? "rgba(180,140,80,0.06)" : "transparent",
-        borderRadius: 8, padding: "6px 4px", transition: "background 0.2s", display: "flex", flexDirection: "column",
+        borderRadius: 8, padding: "6px 2px", transition: "background 0.2s", display: "flex", flexDirection: "column",
         border: isToday ? "1.5px solid rgba(180,140,80,0.25)" : dragOver ? "1.5px dashed rgba(139,105,20,0.3)" : "1.5px solid transparent",
       }}>
       <div style={{ flexShrink: 0, marginBottom: 4, padding: "0 2px" }}>
