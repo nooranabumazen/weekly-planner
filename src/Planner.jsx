@@ -1891,13 +1891,13 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
                       <span style={{ fontSize: 9, color: "var(--text-faint)" }}>({tasks.later?.length || 0})</span>
                     </button>
                     {laterOpen && (
-                      <div style={{ padding: "0px 8px 6px" }}>
-                        {layout === "vertical" ? (
+                      <div style={{ display: "flex" }}>
+                        <div style={{ flex: 1, padding: "0px 8px 6px" }}>
                           <DaySection dayInfo={null} columnId="later" tasks={tasks.later} categories={categories} onDragStart={() => {}} onDrop={handleDrop}
                             onToggle={toggleDone} onDelete={deleteTask} onEdit={editTask} onAdd={addTask} onChangeCategory={changeCategory} onMove={moveTask} onSetRecurring={setRecurring} highlightQuery={highlightQuery} taskFontSize={taskFontSize} />
-                        ) : (
-                          <DayColumn dayInfo={null} columnId="later" tasks={tasks.later} categories={categories} onDragStart={() => {}} onDrop={handleDrop}
-                            onToggle={toggleDone} onDelete={deleteTask} onEdit={editTask} onAdd={addTask} onChangeCategory={changeCategory} colWidth="100%" onMove={moveTask} onSetRecurring={setRecurring} highlightQuery={highlightQuery} taskFontSize={taskFontSize} />
+                        </div>
+                        {layout === "horizontal" && (
+                          <FutureSidebar futureTasks={futureTasks} onAddFuture={addFuture} onDeleteFuture={deleteFuture} onEditFuture={editFuture} highlightQuery={highlightQuery} taskFontSize={taskFontSize} />
                         )}
                       </div>
                     )}
@@ -1935,7 +1935,7 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
                   </div>
                 )}
               </div>
-              {!isMobile && <FutureSidebar futureTasks={futureTasks} onAddFuture={addFuture} onDeleteFuture={deleteFuture} onEditFuture={editFuture} highlightQuery={highlightQuery} taskFontSize={taskFontSize} />}
+              {!isMobile && layout !== "horizontal" && <FutureSidebar futureTasks={futureTasks} onAddFuture={addFuture} onDeleteFuture={deleteFuture} onEditFuture={editFuture} highlightQuery={highlightQuery} taskFontSize={taskFontSize} />}
             </div>
           </div>
         )}
