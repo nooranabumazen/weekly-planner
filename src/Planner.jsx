@@ -502,7 +502,7 @@ function HabitsTracker({ dailyHabits, weeklyHabits, habitHistory, onToggleDaily,
       <div ref={containerRef} style={{ display: "flex", overflow: "hidden" }}>
       <div style={{ flex: `0 0 ${splitPct}%`, minWidth: 0, overflow: "hidden", paddingRight: 4 }}>
         <div style={sLabel}>Daily Habits</div>
-        <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
           <div style={{ display: "flex", alignItems: "center" }}>
             <div style={{ width: nameColWidth, flexShrink: 0 }} />
             {DAYS.map((d) => (<div key={d} style={{ width: 28, textAlign: "center", fontSize: 9, fontWeight: 600, color: "var(--text-muted)", letterSpacing: 0.5, fontFamily: "'JetBrains Mono', monospace", flexShrink: 0 }}>{d.slice(0,2)}</div>))}
@@ -525,7 +525,7 @@ function HabitsTracker({ dailyHabits, weeklyHabits, habitHistory, onToggleDaily,
                 {DAYS.map((d) => (<div key={d} style={{ width: 28, display: "flex", justifyContent: "center", flexShrink: 0 }}><div onClick={() => onToggleDaily(h.id, d.toLowerCase())} style={chk(h.checks[d.toLowerCase()])}>{h.checks[d.toLowerCase()] && "\u2713"}</div></div>))}
                 <button onClick={() => onDeleteDaily(h.id)} style={{ width: 18, flexShrink: 0, background: "none", border: "none", cursor: "pointer", color: "var(--text-faint)", fontSize: 13, padding: 0, fontWeight: 600 }} onMouseEnter={(e) => (e.target.style.color = "#c44")} onMouseLeave={(e) => (e.target.style.color = "var(--text-faint)")}>&times;</button>
               </div>
-              <div style={{ height: 0, borderBottom: "0.5px solid var(--border-light)", opacity: 0.5, marginBottom: 0 }} />
+              <div style={{ height: 0, borderBottom: "0.5px solid var(--border-light)", opacity: 0.5, marginBottom: 1 }} />
               </div>);
           })}
           {addingDaily ? (<div style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 2 }}><input ref={dailyRef} value={newDaily} onChange={(e) => setNewDaily(e.target.value)} onBlur={addDH} onKeyDown={(e) => { if (e.key === "Enter") addDH(); if (e.key === "Escape") setAddingDaily(false); }} placeholder="Habit name..." style={{ flex: 1, border: "1px solid var(--border)", borderRadius: 4, padding: "3px 6px", fontSize: 11, outline: "none", background: "var(--input-bg)", color: "var(--text)" }} /></div>
