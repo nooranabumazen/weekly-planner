@@ -1,201 +1,200 @@
 # Weekly Planner
 
-A personal weekly planner and productivity app that syncs across all your devices. Built as a Progressive Web App (PWA) with Firebase for cloud sync.
+[![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=white)](https://react.dev)
+[![Firebase](https://img.shields.io/badge/Firebase-Firestore-FFCA28?logo=firebase&logoColor=white)](https://firebase.google.com)
+[![Vercel](https://img.shields.io/badge/Deployed_on-Vercel-000?logo=vercel)](https://vercel.com)
+[![PWA](https://img.shields.io/badge/PWA-Installable-5A0FC8?logo=pwa&logoColor=white)](https://web.dev/progressive-web-apps/)
+[![Vite](https://img.shields.io/badge/Vite-Build-646CFF?logo=vite&logoColor=white)](https://vitejs.dev)
 
-<!-- Screenshot: Main planner view showing the weekly layout with tasks -->
+A personal weekly planner and productivity PWA with cloud sync, habit tracking, rich text notebooks, journaling, and more. Zero external UI libraries.
+
 ![Main planner view](screenshots/planner-view.png)
+
+---
+
+## At a Glance
+
+| Feature | Description |
+|:---|:---|
+| **Task Planner** | Drag-and-drop weekly tasks with auto-carry-forward for incomplete items |
+| **Recurring Tasks** | Weekly (2/4/8/12w), until-date, and monthly (1st, 15th, last day, nth weekday) |
+| **Smart Categories** | Auto-detect category by keywords with word-boundary matching |
+| **Daily/Weekly Habits** | Checkbox grid with streak tracking, momentum circles, and spotlight messages |
+| **Rich Text Notebooks** | Bold, italic, highlights, tables, images, bullet style picker, indent/outdent |
+| **Daily Journal** | Editor + scrollable feed view with date cards |
+| **Global Search** | Search everything, click to navigate, DOM-based gold highlighting |
+| **Archive + Analytics** | Unlimited task history, habit heat maps, progress bars, 4-week averages |
+| **Automated Backups** | Twice-daily Firestore snapshots + manual JSON export and restore |
+| **People Tracker** | Contacts with birthdays, likes/dislikes, relationship notes |
+| **Dark Mode** | Full theme with 12 CSS variables, syncs across devices |
+| **Cross-Device Sync** | Firebase Auth + Firestore, debounced writes, visibility-change refresh |
+| **Mobile PWA** | Responsive layout, bottom nav, portrait lock, installable on any device |
+
+---
 
 ## Features
 
-### Weekly Task Planner
-Organize your week with a clean, scrollable day-by-day layout. Add tasks to any day, drag and drop them between days, and check them off when done. Incomplete tasks automatically carry forward to Monday of the next week so nothing gets lost.
+### Task Management
 
-<!-- Screenshot: Tasks with category colors visible -->
+**Weekly Planner** with vertical (list) or horizontal (column) layouts. Add tasks to any day, drag and drop between days, and check them off. Incomplete tasks carry forward to Monday automatically.
+
+**Smart Categories** auto-detect as you type using word-boundary regex. "shower" won't match "show". Customize category names, colors, and keyword lists in Settings.
+
+**Later List** for unscheduled tasks. Drag into a day to auto-categorize.
+
+**Upcoming Tasks** with a mini calendar showing gold dots on days with scheduled tasks. Click a date to scroll to and highlight its tasks. Tasks auto-promote to the planner when their week arrives.
+
 ![Tasks with categories](screenshots/tasks-categories.png)
 
-### Smart Categories
-Tasks are automatically color-coded by category based on keywords as you type. The system uses word-boundary matching to prevent false positives ("show" won't match "shower"). You can customize categories with any name, color, and keyword list from Settings.
-
-Default categories: Cleaning, Cooking, Learning, Crafts/Art/Reading, Sporas, Events, Volunteering, Gardening, Self Care, and Other.
-
 ### Recurring Tasks
-Right-click any task and choose Repeat to make it recurring. Options include:
 
-- **Weekly:** Repeat every week for 2, 4, 8, or 12 weeks, or until a specific date
-- **Monthly:** Repeat on the 1st, 15th, or last day of each month, or on a specific weekday pattern (e.g. "3rd Wednesday of every month")
+Right-click any task to set up recurring schedules:
 
-Recurring rules are saved persistently, so they survive even if you check off, delete, or clear the task. They'll keep generating fresh tasks on schedule.
+| Type | Options | Behavior |
+|:---|:---|:---|
+| **Weekly** | Every week for 2, 4, 8, or 12 weeks | Count decrements each week |
+| **Until Date** | Repeat until a specific date | Expires after the date |
+| **Monthly** | 1st of month, 15th, last day, or nth weekday (e.g. 3rd Wednesday) | Repeats forever, placed on the correct day |
 
-### Later List
-A dedicated section for tasks you want to remember but haven't scheduled yet. Tasks in Later are uncategorized by default and get auto-categorized when you drag them into a specific day.
+Rules are saved persistently, so they survive checking off, deleting, or clearing tasks.
 
-### Upcoming Tasks
-Schedule tasks for future weeks with a built-in mini calendar. The calendar shows gold dots on days that have scheduled tasks. Click a day to scroll to and highlight its tasks. When a scheduled week arrives, those tasks automatically move into the planner.
+### Habits and Streaks
 
-<!-- Screenshot: Upcoming sidebar with mini calendar -->
+**Daily Habits**: Mon-Sun checkbox grid with faint row separators for visual clarity. Reorder by dragging, rename by double-clicking.
 
-### Daily and Weekly Habits
-Track recurring habits with a checkbox grid. Daily habits show a Mon through Sun row of checkboxes. Weekly habits are a simple checklist. Both reset each week, and the previous week's data is saved to habit history.
+**Weekly Habits**: Simple checklist that resets each week.
 
-Habits can be reordered by dragging and renamed by double-clicking.
+**Streaks Section** (collapsible): Momentum circles for each day, pace comparison vs. last week, and spotlight messages including streak counts, improvement tracking, perfect weeks, and "all habits done today" encouragement.
 
-<!-- Screenshot: Habits tracker section -->
 ![Habits tracker](screenshots/habits.png)
 
-### Habit Streaks and Spotlights
-A collapsible Streaks section below the habits grid shows:
-
-- **Momentum circles:** SVG rings for each day of the week showing daily completion percentage
-- **Pace message:** Comparison against last week's progress
-- **Spotlight messages:** Encouragement based on your data, including streak counts, improvement vs. last week, perfect weeks, and today's completion status
-
 ### Rich Text Notebooks
-A built-in notes system with multiple notebooks. Each has a rich text editor with bold, italic, underline, strikethrough, headings, highlights, text colors, links, images, tables, and dividers. The toolbar includes:
 
-- **Bullet style picker:** Choose between disc, circle, square, or dash bullet styles
-- **Indent/outdent** for nested lists
-- **Tab key** inserts a tab space, or indents/outdents when inside a list
+Full editor toolbar with formatting, colors, links, images, tables, and a bullet style picker (disc, circle, square, dash). Tab key inserts tab spaces or indents lists. Tables have right-click context menus for row/column management. Spellcheck is disabled in tables. New notes auto-focus the name field for immediate editing.
 
-Tables have right-click context menus for adding/removing rows and columns. Spellcheck is disabled in tables to avoid red squiggles on non-dictionary words. New notes open with the name field focused for immediate editing.
-
-<!-- Screenshot: Notebooks panel with editor -->
 ![Notebooks](screenshots/notebooks.png)
 
 ### Daily Journal
-Write daily journal entries with the same rich text editor. Two viewing modes:
 
-- **Editor mode:** Mini calendar sidebar with green dots on days with entries. Click a date to edit that day's entry.
-- **Feed mode:** A scrollable timeline of all entries displayed as cards, newest first, similar to a blog feed. Each card shows the date, full formatted weekday, and rendered content. Click the pencil icon to edit any entry.
+Two viewing modes:
 
-<!-- Screenshot: Journal panel with calendar -->
+| Mode | Description |
+|:---|:---|
+| **Editor** | Mini calendar sidebar with green entry dots. Click any date to write or edit. |
+| **Feed** | Scrollable timeline of entry cards with date badges, formatted weekdays, and rendered content. |
+
+Toggle between modes with a single click. "What's on your mind today?" prompt when no entry exists for today.
+
 ![Journal](screenshots/journal.png)
 
-### People / Contacts
-Keep track of people in your life with expandable cards. Store names, birthdays, likes, dislikes, relationship labels, and general notes. Fully searchable.
-
 ### Global Search
-Search across everything: tasks, archive, upcoming tasks, notebooks, journal entries, contacts, quick notes, and habits. Click any result to:
 
-- Navigate directly to the matching view (notes, journal date, contact, archive, etc.)
-- Scroll to and highlight the matching text in gold
-- Highlights work inside contentEditable editors, regular text, and even textareas
-- Dismiss the highlight with any click or keypress
+Searches across tasks, archive, notebooks, journal, contacts, quick notes, and habits. Click any result to:
+- Navigate to the matching view
+- Scroll to and highlight the match in gold (DOM TreeWalker-based)
+- Works inside contentEditable, textareas, and all rendered text
+- Dismiss with any click or keypress
 
-### Task Archive and Productivity Stats
-Every completed task is logged in the archive indefinitely with its category, assigned date, and completion date. The archive includes:
+### Archive and Analytics
 
-**Productivity stats:**
-- Tasks completed in the past 7 and 30 days
-- Average tasks per week (calculated using actual account age, not a fixed 30-day divisor)
-- Category breakdown with color-coded tags
+All completed tasks stored indefinitely. The archive dashboard includes:
 
-**Habit progress:**
-- Per-week progress bars for daily habits
-- Heat map grid showing each daily habit's M-T-W-T-F-S-S completion pattern across up to 4 weeks (green dots for done, grey for missed, dash for habits that didn't exist yet)
-- Weekly habits detail table showing checkmark/X for each habit per week
-- 4-week average completion percentages
+| Stat | Details |
+|:---|:---|
+| **Productivity** | Tasks completed in 7/30 days, avg/week (uses actual account age) |
+| **Category Breakdown** | Color-coded tags showing task distribution |
+| **Daily Habit Heat Map** | Per-habit M-T-W-T-F-S-S dots across 4 weeks (green = done, grey = missed, dash = didn't exist yet) |
+| **Weekly Habit Detail** | Checkmark/X per habit per week |
+| **Progress Bars** | Per-week daily completion with integrated bar chart |
+| **4-Week Averages** | Daily and weekly habit completion percentages |
 
-### Drag and Drop
-HTML5 drag and drop with several refinements:
+### Backup and Restore
 
-- Drop zones are invisible normally (2px), expand to 8px when any drag starts, and grow to 20px with a gold dashed border when directly hovered
-- Auto-scroll when dragging near the top or bottom edges of the scroll area
-- Drop state reliably cleans up via capture-phase listeners and a 3-second timeout fallback
+| Method | Details |
+|:---|:---|
+| **Auto Backup** | Twice daily (~12 AM and ~12 PM), 10-hour throttle in localStorage, max 7 kept |
+| **Manual Export** | Download complete JSON backup to your device |
+| **Restore** | Browse backups in Settings, see timestamps and data counts, two-step confirmation |
 
-### Automated Backups
-The app automatically backs up all your data to Firestore twice daily (around 12 AM and 12 PM). Last 7 backups are kept. You can also:
+### Other Features
 
-- **Export JSON** to download a complete backup file to your device
-- **View Backups** in Settings to see timestamps and data counts
-- **Restore** any backup with a two-step confirmation
+- **Dark Mode** with 12 CSS variables for full theme coverage
+- **People/Contacts** tracker with expandable cards, search, and birthday storage
+- **Drag and Drop** with context-aware drop zones (2px normal, 8px during drag, 20px on hover) and auto-scroll near edges
+- **Mobile Layout** with bottom nav, large touch targets, portrait lock
+- **Installable PWA** on phone home screen or desktop taskbar
+- **Cross-Device Sync** via Firebase with debounced writes, visibility-change refresh, and data-loss prevention
 
-### Dark Mode
-Full dark theme that applies to every part of the app, including editors, tables, and all UI elements. Toggle in Settings.
-
-<!-- Screenshot: Dark mode view -->
-![Dark mode](screenshots/dark-mode.png)
-
-### Layout Options
-Switch between a vertical list layout (days stacked top to bottom) and a horizontal column layout (days side by side) in Settings. Your preference syncs across devices.
-
-### Mobile Friendly
-On phones (screens under 640px), the app switches to a mobile layout with a bottom navigation bar, larger touch targets, and a simplified single-column view. Portrait orientation is enforced via the PWA manifest.
-
-<!-- Screenshot: Mobile view on phone -->
-![Mobile view](screenshots/mobile.png)
-
-### Cross-Device Sync
-Sign in with the same account on any device. All tasks, habits, notebooks, journal entries, contacts, and settings sync through Firebase. The sync system uses one-time reads (no real-time listeners) with debounced writes for reliability.
-
-### Installable PWA
-Install the app on your home screen (phone) or taskbar (desktop) for a native app-like experience.
+---
 
 ## Tech Stack
 
-- **Frontend:** React (Vite), inline styles with CSS variables, no external UI library
-- **Backend:** Firebase Authentication, Firestore
-- **Hosting:** Vercel (free tier)
-- **PWA:** vite-plugin-pwa with service worker
+| Layer | Technology |
+|:---|:---|
+| Frontend | React 18 (Vite), inline styles, CSS variables |
+| Backend | Firebase Auth + Firestore |
+| Hosting | Vercel (free tier, auto-deploy from GitHub) |
+| PWA | vite-plugin-pwa, service worker |
+| Fonts | DM Sans (body), JetBrains Mono (labels) |
+| External Libraries | None (no UI framework, no CSS library) |
 
-## Getting Started
+---
 
-### Prerequisites
-- Node.js 18+
-- A Firebase project with Authentication and Firestore enabled
-
-### Running locally
-
-```
-npm install
-npm run dev
-```
-
-This starts a local dev server at `http://localhost:5173`.
-
-### Deploying
-
-Push to GitHub and Vercel auto-deploys within a minute.
-
-```
-git add .
-git commit -m "description of changes"
-git push
-```
-
-If the deployed version doesn't update, hard refresh with `Ctrl + Shift + R`.
-
-### Project structure
+## Project Structure
 
 ```
 src/
-  App.jsx              - Auth wrapper, error state, passes data to Planner
-  Planner.jsx          - Main app: tasks, habits, archive, settings, search, drag-and-drop
-  usePlannerData.js    - Firebase data layer, sync, carry-forward, backups, recurring rules
-  NotebooksSidebar.jsx - Rich text notebooks with toolbar, tables, context menu
-  JournalPanel.jsx     - Daily journal with calendar, editor, and feed views
-  ContactsPanel.jsx    - People/relationships tracker
-  LoginScreen.jsx      - Email/password auth screen
-  useAuth.js           - Firebase auth hook
-  firebase.js          - Firebase config
-  main.jsx             - Entry point
-index.html             - HTML shell, global styles, portrait lock
-vite.config.js         - Vite + PWA plugin config
-ARCHITECTURE.md        - Detailed technical architecture guide
+  Planner.jsx          ~2300 lines   Main app: tasks, habits, archive, settings, search, drag-and-drop
+  usePlannerData.js     ~640 lines   Firebase data layer, sync, carry-forward, backups, recurring rules
+  NotebooksSidebar.jsx  ~640 lines   Rich text editor, toolbar, tables, context menu
+  JournalPanel.jsx      ~370 lines   Journal with calendar, editor, and feed views
+  ContactsPanel.jsx     ~130 lines   People/relationships tracker
+  App.jsx                ~80 lines   Auth wrapper, error state
+  LoginScreen.jsx       ~110 lines   Email/password auth
+  useAuth.js             ~35 lines   Firebase auth hook
+  firebase.js            ~40 lines   Firebase config
+  main.jsx                ~8 lines   Entry point
+index.html                           HTML shell, global CSS, portrait lock
+vite.config.js                       Vite + PWA config
+ARCHITECTURE.md                      Detailed technical architecture guide
 ```
 
-See [ARCHITECTURE.md](ARCHITECTURE.md) for an in-depth technical guide covering the data model, sync architecture, component hierarchy, and coding conventions.
+See [ARCHITECTURE.md](ARCHITECTURE.md) for the full technical deep-dive: data model, sync architecture, component hierarchy, and coding conventions.
 
-## Adding Screenshots
+---
 
-Create a `screenshots/` folder in the project root and save images as:
+## Quick Start
 
-- `planner-view.png` (main weekly view with tasks)
-- `tasks-categories.png` (tasks showing category colors)
-- `habits.png` (habits tracker section)
-- `notebooks.png` (notebooks panel with editor)
-- `journal.png` (journal with calendar or feed view)
-- `dark-mode.png` (app in dark mode)
-- `mobile.png` (app on a phone screen)
+```bash
+# Install dependencies
+npm install
+
+# Run locally
+npm run dev
+
+# Deploy (auto-deploys via Vercel on push)
+git add . && git commit -m "changes" && git push
+```
+
+Requires Node.js 18+, a Firebase project with Auth and Firestore, and a Vercel account connected to GitHub.
+
+---
+
+## Screenshots
+
+Create a `screenshots/` folder and add:
+
+| Filename | Content |
+|:---|:---|
+| `planner-view.png` | Main weekly view with tasks |
+| `tasks-categories.png` | Tasks showing category colors |
+| `habits.png` | Habits tracker section |
+| `notebooks.png` | Notebooks with editor open |
+| `journal.png` | Journal (calendar or feed view) |
+| `dark-mode.png` | App in dark mode |
+| `mobile.png` | App on a phone screen |
+
+---
 
 ## License
 
