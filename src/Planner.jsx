@@ -805,15 +805,22 @@ function TaskCard({ task, columnId, categories, onDragStart, onToggle, onDelete,
       onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}
       onContextMenu={handleContextMenu}
       style={{
-        display: "flex", alignItems: "flex-start", gap: isMobile ? 10 : 6, padding: isMobile ? "8px 12px" : "3px 6px",
-        borderLeft: `4px solid ${catColor}`,
+        display: "flex", alignItems: "flex-start", gap: isMobile ? 10 : 4, padding: isMobile ? "8px 12px" : "2px 4px",
+        borderLeft: `3px solid ${catColor}`,
         background: hover ? "var(--bg-hover)" : `${catColor}18`,
         cursor: editing ? "text" : "grab",
         opacity: task.done ? 0.45 : 1, transition: "opacity 0.2s, background 0.15s",
-        fontSize: isMobile ? 16 : 13, lineHeight: 1.4, userSelect: "none", position: "relative",
+        fontSize: isMobile ? 16 : 11, lineHeight: isMobile ? 1.4 : 1.35, userSelect: "none", position: "relative",
       }}>
-      <input type="checkbox" checked={task.done} onChange={() => onToggle(columnId, task.id)}
-        style={{ cursor: "pointer", accentColor: "#5a5a5a", flexShrink: 0, width: isMobile ? 20 : 14, height: isMobile ? 20 : 14, marginTop: isMobile ? 2 : 2 }} />
+      {isMobile ? (
+        <input type="checkbox" checked={task.done} onChange={() => onToggle(columnId, task.id)}
+          style={{ cursor: "pointer", accentColor: "#5a5a5a", flexShrink: 0, width: 20, height: 20, marginTop: 2 }} />
+      ) : (
+        <div onClick={() => onToggle(columnId, task.id)}
+          style={{ width: 12, height: 12, flexShrink: 0, marginTop: 1, borderRadius: 2, border: task.done ? "none" : "1.5px solid var(--text-faint)", background: task.done ? "#6a9955" : "transparent", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 8, color: "#fff", lineHeight: 1 }}>
+          {task.done && "\u2713"}
+        </div>
+      )}
       {editing ? (
         <input ref={inputRef} value={editText} onChange={(e) => setEditText(e.target.value)} onBlur={save}
           onKeyDown={(e) => { if (e.key === "Enter") save(); if (e.key === "Escape") setEditing(false); }}
@@ -1029,8 +1036,23 @@ function DaySection({ dayInfo, columnId, tasks, categories, onDragStart, onDrop,
 }
 
 /* ─── Day Column (horizontal layout) ─── */
-function DayColumn({ dayInfo, columnId, tasks, categories, onDragStart, onDrop, onToggle, onDelete, onEdit, onAdd, onChangeCategory, colWidth, onMove, onSetRecurring, highlightQuery }) {
-  const [dragOver, setDragOver] = useState(false);
+function DoneCollapse({ doneTasks, columnId, categories, onDragStart, onToggle, onDelete, onEdit, onChangeCategory, onMove, onSetRecurring, highlightQuery, isToday }) {
+  const [expanded, setExpanded] = useState(false);
+  if (doneTasks.length === 0) return null;
+  return (
+    <>
+      <div onClick={() => setExpanded(!expanded)} style={{ borderTop: "1px dashed var(--border)", margin: "3px 2px 1px", padding: "2px 0", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 3 }}>
+        <span style={{ fontSize: 8, color: "var(--text-faint)", transform: expanded ? "rotate(90deg)" : "rotate(0deg)", transition: "transform 0.15s", display: "inline-block" }}>{"\u25B6"}</span>
+        <span style={{ fontSize: 8, color: "var(--text-faint)" }}>{doneTasks.length} done</span>
+      </div>
+      {expanded && doneTasks.map((task) => (
+        <TaskCard key={task.id} task={task} columnId={columnId} categories={categories} onDragStart={onDragStart} onToggle={onToggle} onDelete={onDelete} onEdit={onEdit} onChangeCategory={onChangeCategory} onMove={onMove} onSetRecurring={onSetRecurring} highlightQuery={highlightQuery} />
+      ))}
+    </>
+  );
+}
+
+function DayColumn({ dayInfo, columnId, tasks, categories, onDragStart, onDrop, onToggle, onDelete, onEdit, onAdd, onChangeCategory, colWidth, onMove, onSetRecurring, highlightQuery }) {  const [dragOver, setDragOver] = useState(false);
   const [adding, setAdding] = useState(false);
   const [newText, setNewText] = useState("");
   const [newCat, setNewCat] = useState("cat_none");
@@ -1060,12 +1082,12 @@ function DayColumn({ dayInfo, columnId, tasks, categories, onDragStart, onDrop, 
         borderRadius: 8, padding: "6px 2px", transition: "background 0.2s", display: "flex", flexDirection: "column",
         border: isToday ? "1.5px solid rgba(180,140,80,0.25)" : dragOver ? "1.5px dashed rgba(139,105,20,0.3)" : "1.5px solid transparent",
       }}>
-      <div style={{ flexShrink: 0, marginBottom: 4, padding: "0 2px" }}>
-        <div style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, fontSize: "clamp(9px, 1.1vw, 12px)", color: isToday ? "#8B6914" : "var(--text)", letterSpacing: 0.5 }}>
+      <div style={{ flexShrink: 0, marginBottom: 2, padding: "0 2px", display: "flex", alignItems: "baseline", gap: 4 }}>
+        <span style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, fontSize: "clamp(9px, 1.1vw, 11px)", color: isToday ? "#8B6914" : "var(--text)", letterSpacing: 0.5 }}>
           {isLater ? "LATER" : dayInfo?.label}
-        </div>
-        {!isLater && <div style={{ fontSize: "clamp(8px, 0.9vw, 10px)", color: "var(--text-muted)", fontWeight: 400 }}>{dayInfo?.date}</div>}
-        {isToday && <span style={{ fontSize: 7, background: "#8B6914", color: "#fff", padding: "1px 3px", borderRadius: 2, fontWeight: 600 }}>TODAY</span>}
+        </span>
+        {!isLater && <span style={{ fontSize: "clamp(7px, 0.8vw, 9px)", color: "var(--text-muted)", fontWeight: 400 }}>{dayInfo?.date}</span>}
+        {isToday && <span style={{ fontSize: 6, background: "#8B6914", color: "#fff", padding: "1px 3px", borderRadius: 2, fontWeight: 600 }}>TODAY</span>}
       </div>
       <div style={{ flex: 1 }}>
         {incompleteTasks.map((task, idx) => (
@@ -1075,16 +1097,7 @@ function DayColumn({ dayInfo, columnId, tasks, categories, onDragStart, onDrop, 
           </div>
         ))}
         <DropZone onDrop={(e) => handleDropAtIndex(e, null)} />
-        {doneTasks.length > 0 && (
-          <>
-            <div style={{ borderTop: "1px dashed var(--border)", margin: "4px 4px 2px", fontSize: 8, color: "var(--text-faint)", textAlign: "center", position: "relative" }}>
-              <span style={{ background: isToday ? "rgba(180,140,80,0.06)" : "var(--bg)", padding: "0 3px", position: "relative", top: -5 }}>done</span>
-            </div>
-            {doneTasks.map((task) => (
-              <TaskCard key={task.id} task={task} columnId={columnId} categories={categories} onDragStart={onDragStart} onToggle={onToggle} onDelete={onDelete} onEdit={onEdit} onChangeCategory={onChangeCategory} onMove={onMove} onSetRecurring={onSetRecurring} highlightQuery={highlightQuery} />
-            ))}
-          </>
-        )}
+        <DoneCollapse doneTasks={doneTasks} columnId={columnId} categories={categories} onDragStart={onDragStart} onToggle={onToggle} onDelete={onDelete} onEdit={onEdit} onChangeCategory={onChangeCategory} onMove={onMove} onSetRecurring={onSetRecurring} highlightQuery={highlightQuery} isToday={isToday} />
       </div>
       {adding ? (
         <div style={{ marginTop: 2, flexShrink: 0 }}>
