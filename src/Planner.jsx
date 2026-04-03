@@ -825,22 +825,15 @@ function TaskCard({ task, columnId, categories, onDragStart, onToggle, onDelete,
       onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}
       onContextMenu={handleContextMenu}
       style={{
-        display: "flex", alignItems: "flex-start", gap: isMobile ? 10 : 4, padding: isMobile ? "8px 12px" : "2px 4px",
+        padding: isMobile ? "8px 12px" : "2px 4px",
         borderLeft: `3px solid ${catColor}`,
         background: hover ? "var(--bg-hover)" : `${catColor}18`,
         cursor: editing ? "text" : "grab",
         opacity: task.done ? 0.45 : 1, transition: "opacity 0.2s, background 0.15s",
         fontSize: isMobile ? 16 : (taskFontSize || 13), lineHeight: 1.4, userSelect: "none", position: "relative",
       }}>
-      {isMobile ? (
-        <input type="checkbox" checked={task.done} onChange={() => onToggle(columnId, task.id)}
-          style={{ cursor: "pointer", accentColor: "#5a5a5a", flexShrink: 0, width: 20, height: 20, marginTop: 2 }} />
-      ) : (
-        <div onClick={() => onToggle(columnId, task.id)}
-          style={{ width: 12, height: 12, flexShrink: 0, marginTop: 1, borderRadius: 2, border: task.done ? "none" : "1.5px solid var(--text-faint)", background: task.done ? "#6a9955" : "transparent", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 8, color: "#fff", lineHeight: 1 }}>
-          {task.done && "\u2713"}
-        </div>
-      )}
+      <input type="checkbox" checked={task.done} onChange={() => onToggle(columnId, task.id)}
+        style={{ cursor: "pointer", accentColor: "#5a5a5a", float: "left", width: isMobile ? 20 : 15, height: isMobile ? 20 : 15, marginRight: isMobile ? 10 : 5, marginTop: 2 }} />
       {editing ? (
         <input ref={inputRef} value={editText} onChange={(e) => setEditText(e.target.value)} onBlur={save}
           onKeyDown={(e) => { if (e.key === "Enter") save(); if (e.key === "Escape") setEditing(false); }}
@@ -853,7 +846,7 @@ function TaskCard({ task, columnId, categories, onDragStart, onToggle, onDelete,
         </span>
       )}
       {(hover || showCatPicker) && !editing && (
-        <div style={{ display: "flex", gap: 2, flexShrink: 0, alignItems: "center" }}>
+        <div style={{ position: "absolute", top: 1, right: 2, display: "flex", gap: 2, alignItems: "center", background: hover ? "var(--bg-hover)" : `${catColor}18`, padding: "0 2px" }}>
           <button onClick={() => setShowCatPicker(!showCatPicker)} title="Change category"
             style={{ background: "none", border: "none", cursor: "pointer", fontSize: 11, padding: 0, lineHeight: 1, color: "var(--text-muted)" }}>{"\u{1F3A8}"}</button>
           <button onClick={() => onDelete(columnId, task.id)} title="Remove"
