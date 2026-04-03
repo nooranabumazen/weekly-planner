@@ -1856,7 +1856,7 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
                     )}
                   </div>
                 ) : (
-                  <div style={{ overflow: "auto", padding: "8px 6px" }}>
+                  <div style={{ overflowX: "auto", overflowY: "visible", padding: "8px 6px", flex: "none" }}>
                     <div style={{ display: "flex", gap: 0, minWidth: colWidth * 7 + 30, alignItems: "flex-start" }}>
                       {DAYS.map((day, i) => (
                         <div key={day} style={{ display: "flex" }}>
