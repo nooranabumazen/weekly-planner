@@ -1882,30 +1882,76 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
                     </div>
                   </div>
                 )}
+                {/* Below day columns: 2-column layout for horizontal mode */}
+                {!isMobile && layout === "horizontal" && (
+                  <div style={{ display: "flex", borderTop: "1px solid var(--border)", flexShrink: 0 }}>
+                    {/* Left: Later, Notes, Habits */}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      {/* Later */}
+                      <div style={{ background: "var(--bg-surface)" }}>
+                        <button onClick={() => setLaterOpen(!laterOpen)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", fontSize: 10, padding: "6px 12px", display: "flex", alignItems: "center", gap: 4, width: "100%", textAlign: "left" }}>
+                          <span style={{ fontSize: 8, transition: "transform 0.2s", transform: laterOpen ? "rotate(90deg)" : "rotate(0deg)", display: "inline-block" }}>{"\u25B6"}</span>
+                          <span style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, fontSize: 9, letterSpacing: 1, textTransform: "uppercase" }}>Later</span>
+                          <span style={{ fontSize: 9, color: "var(--text-faint)" }}>({tasks.later?.length || 0})</span>
+                        </button>
+                        {laterOpen && (
+                          <div style={{ padding: "0px 8px 6px" }}>
+                            <DaySection dayInfo={null} columnId="later" tasks={tasks.later} categories={categories} onDragStart={() => {}} onDrop={handleDrop}
+                              onToggle={toggleDone} onDelete={deleteTask} onEdit={editTask} onAdd={addTask} onChangeCategory={changeCategory} onMove={moveTask} onSetRecurring={setRecurring} highlightQuery={highlightQuery} taskFontSize={taskFontSize} />
+                          </div>
+                        )}
+                      </div>
+                      {/* Quick Notes */}
+                      <div style={{ borderTop: "1px solid var(--border)" }}>
+                        <button onClick={() => setNotesOpen(!notesOpen)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", fontSize: 10, padding: "6px 12px", display: "flex", alignItems: "center", gap: 4, width: "100%", textAlign: "left" }}>
+                          <span style={{ fontSize: 8, transition: "transform 0.2s", transform: notesOpen ? "rotate(90deg)" : "rotate(0deg)", display: "inline-block" }}>{"\u25B6"}</span>
+                          <span style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, fontSize: 9, letterSpacing: 1, textTransform: "uppercase" }}>Quick Notes</span>
+                        </button>
+                        {notesOpen && (
+                          <div style={{ padding: "0 12px 12px" }}>
+                            <textarea value={notes} onChange={(e) => { const val = e.target.value; update({ notes: val }); onSaveSettings({ categories, layout, notes: val, darkMode, taskFontSize }); }} placeholder="Quick notes..."
+                              style={{ width: "100%", minHeight: 50, border: "1px solid var(--border)", borderRadius: 6, padding: "6px 10px", fontSize: 12, lineHeight: 1.5, outline: "none", background: "var(--input-bg)", color: "var(--text)", fontFamily: "'DM Sans', sans-serif", resize: "none", boxSizing: "border-box", overflow: "hidden", height: "auto" }}
+                              ref={(el) => { if (el) { el.style.height = "auto"; el.style.height = Math.max(50, el.scrollHeight) + "px"; } }} />
+                          </div>
+                        )}
+                      </div>
+                      {/* Habits */}
+                      <div style={{ borderTop: "1px solid var(--border)" }}>
+                        <div style={{ display: "flex", alignItems: "center", padding: "0 12px" }}>
+                          <button onClick={() => setHabitsOpen(!habitsOpen)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", fontSize: 10, padding: "6px 0", display: "flex", alignItems: "center", gap: 4 }}>
+                            <span style={{ fontSize: 8, transition: "transform 0.2s", transform: habitsOpen ? "rotate(90deg)" : "rotate(0deg)", display: "inline-block" }}>{"\u25B6"}</span>
+                            <span style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, fontSize: 9, letterSpacing: 1, textTransform: "uppercase" }}>Habits</span>
+                          </button>
+                        </div>
+                        {habitsOpen && (
+                          <HabitsTracker dailyHabits={dailyHabits} weeklyHabits={weeklyHabits} habitHistory={habitHistory || {}} onToggleDaily={toggleDaily} onToggleWeekly={toggleWeekly}
+                            onAddDaily={addDailyHabit} onAddWeekly={addWeeklyHabit} onDeleteDaily={deleteDaily} onDeleteWeekly={deleteWeekly} onEditDaily={editDaily} onEditWeekly={editWeekly} onReorderDaily={reorderDaily} onReorderWeekly={reorderWeekly} />
+                        )}
+                      </div>
+                    </div>
+                    {/* Right: Upcoming */}
+                    <FutureSidebar futureTasks={futureTasks} onAddFuture={addFuture} onDeleteFuture={deleteFuture} onEditFuture={editFuture} highlightQuery={highlightQuery} taskFontSize={taskFontSize} />
+                  </div>
+                )}
+                {/* Vertical layout: Later, Notes as before */}
+                {!isMobile && layout !== "horizontal" && (
+                  <>
                 {/* Collapsible Later section */}
-                {!isMobile && (
-                  <div style={{ borderTop: "1px solid var(--border)", background: "var(--bg-surface)", flexShrink: 0 }}>
+                <div style={{ borderTop: "1px solid var(--border)", background: "var(--bg-surface)", flexShrink: 0 }}>
                     <button onClick={() => setLaterOpen(!laterOpen)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", fontSize: 10, padding: "6px 12px", display: "flex", alignItems: "center", gap: 4, width: "100%", textAlign: "left" }}>
                       <span style={{ fontSize: 8, transition: "transform 0.2s", transform: laterOpen ? "rotate(90deg)" : "rotate(0deg)", display: "inline-block" }}>{"\u25B6"}</span>
                       <span style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, fontSize: 9, letterSpacing: 1, textTransform: "uppercase" }}>Later</span>
                       <span style={{ fontSize: 9, color: "var(--text-faint)" }}>({tasks.later?.length || 0})</span>
                     </button>
                     {laterOpen && (
-                      <div style={{ display: "flex" }}>
-                        <div style={{ flex: 1, padding: "0px 8px 6px" }}>
-                          <DaySection dayInfo={null} columnId="later" tasks={tasks.later} categories={categories} onDragStart={() => {}} onDrop={handleDrop}
-                            onToggle={toggleDone} onDelete={deleteTask} onEdit={editTask} onAdd={addTask} onChangeCategory={changeCategory} onMove={moveTask} onSetRecurring={setRecurring} highlightQuery={highlightQuery} taskFontSize={taskFontSize} />
-                        </div>
-                        {layout === "horizontal" && (
-                          <FutureSidebar futureTasks={futureTasks} onAddFuture={addFuture} onDeleteFuture={deleteFuture} onEditFuture={editFuture} highlightQuery={highlightQuery} taskFontSize={taskFontSize} />
-                        )}
+                      <div style={{ padding: "0px 8px 6px" }}>
+                        <DaySection dayInfo={null} columnId="later" tasks={tasks.later} categories={categories} onDragStart={() => {}} onDrop={handleDrop}
+                          onToggle={toggleDone} onDelete={deleteTask} onEdit={editTask} onAdd={addTask} onChangeCategory={changeCategory} onMove={moveTask} onSetRecurring={setRecurring} highlightQuery={highlightQuery} taskFontSize={taskFontSize} />
                       </div>
                     )}
-                  </div>
-                )}
+                </div>
                 {/* Collapsible Quick Notes */}
-                {!isMobile && (
-                  <div style={{ borderTop: "1px solid var(--border)" }}>
+                <div style={{ borderTop: "1px solid var(--border)" }}>
                     <button onClick={() => setNotesOpen(!notesOpen)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", fontSize: 10, padding: "6px 12px", display: "flex", alignItems: "center", gap: 4, width: "100%", textAlign: "left" }}>
                       <span style={{ fontSize: 8, transition: "transform 0.2s", transform: notesOpen ? "rotate(90deg)" : "rotate(0deg)", display: "inline-block" }}>{"\u25B6"}</span>
                       <span style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, fontSize: 9, letterSpacing: 1, textTransform: "uppercase" }}>Quick Notes</span>
@@ -1917,22 +1963,8 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
                           ref={(el) => { if (el) { el.style.height = "auto"; el.style.height = Math.max(50, el.scrollHeight) + "px"; } }} />
                       </div>
                     )}
-                  </div>
-                )}
-                {/* Habits at bottom for horizontal layout */}
-                {!isMobile && layout === "horizontal" && (
-                  <div style={{ borderTop: "1px solid var(--border)", flexShrink: 0 }}>
-                    <div style={{ display: "flex", alignItems: "center", padding: "0 12px" }}>
-                      <button onClick={() => setHabitsOpen(!habitsOpen)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", fontSize: 10, padding: "6px 0", display: "flex", alignItems: "center", gap: 4 }}>
-                        <span style={{ fontSize: 8, transition: "transform 0.2s", transform: habitsOpen ? "rotate(90deg)" : "rotate(0deg)", display: "inline-block" }}>{"\u25B6"}</span>
-                        <span style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, fontSize: 9, letterSpacing: 1, textTransform: "uppercase" }}>Habits</span>
-                      </button>
-                    </div>
-                    {habitsOpen && (
-                      <HabitsTracker dailyHabits={dailyHabits} weeklyHabits={weeklyHabits} habitHistory={habitHistory || {}} onToggleDaily={toggleDaily} onToggleWeekly={toggleWeekly}
-                        onAddDaily={addDailyHabit} onAddWeekly={addWeeklyHabit} onDeleteDaily={deleteDaily} onDeleteWeekly={deleteWeekly} onEditDaily={editDaily} onEditWeekly={editWeekly} onReorderDaily={reorderDaily} onReorderWeekly={reorderWeekly} />
-                    )}
-                  </div>
+                </div>
+                  </>
                 )}
               </div>
               {!isMobile && layout !== "horizontal" && <FutureSidebar futureTasks={futureTasks} onAddFuture={addFuture} onDeleteFuture={deleteFuture} onEditFuture={editFuture} highlightQuery={highlightQuery} taskFontSize={taskFontSize} />}
