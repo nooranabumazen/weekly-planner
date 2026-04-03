@@ -835,9 +835,11 @@ function TaskCard({ task, columnId, categories, onDragStart, onToggle, onDelete,
       <input type="checkbox" checked={task.done} onChange={() => onToggle(columnId, task.id)}
         style={{ cursor: "pointer", accentColor: "#5a5a5a", float: "left", width: isMobile ? 20 : 15, height: isMobile ? 20 : 15, marginRight: isMobile ? 10 : 5, marginTop: 2 }} />
       {editing ? (
-        <input ref={inputRef} value={editText} onChange={(e) => setEditText(e.target.value)} onBlur={save}
-          onKeyDown={(e) => { if (e.key === "Enter") save(); if (e.key === "Escape") setEditing(false); }}
-          style={{ flex: 1, border: "none", background: "transparent", font: "inherit", outline: "none", padding: 0, fontSize: 13 }} />
+        <textarea ref={inputRef} value={editText} onChange={(e) => { setEditText(e.target.value); e.target.style.height = "auto"; e.target.style.height = e.target.scrollHeight + "px"; }}
+          onBlur={save}
+          onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); save(); } if (e.key === "Escape") setEditing(false); }}
+          style={{ width: "100%", border: "1px solid var(--border)", background: "var(--input-bg)", font: "inherit", outline: "none", padding: "2px 4px", fontSize: isMobile ? 16 : (taskFontSize || 13), lineHeight: 1.4, resize: "none", overflow: "hidden", borderRadius: 3, color: "var(--text)", boxSizing: "border-box", minHeight: 20 }}
+          onFocus={(e) => { e.target.style.height = "auto"; e.target.style.height = e.target.scrollHeight + "px"; }} />
       ) : (
         <span onDoubleClick={() => { setEditing(true); setEditText(task.text); }}
           style={{ flex: 1, textDecoration: task.done ? "line-through" : "none", cursor: "pointer", color: task.done ? "var(--text-muted)" : "var(--text)" }}>
