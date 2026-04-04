@@ -1092,7 +1092,11 @@ function DayColumn({ dayInfo, columnId, tasks, categories, onDragStart, onDrop, 
       onDragLeave={(e) => { dragCounter.current--; if (dragCounter.current <= 0) { dragCounter.current = 0; setDragOver(false); } }}
       onDrop={handleDropEnd}
       style={{
-        width: isLater ? "100%" : colWidth, minWidth: isLater ? "auto" : colWidth, flexShrink: 0,
+        width: isLater ? "100%" : colWidth === "100%" ? "100%" : colWidth,
+        minWidth: isLater ? "auto" : colWidth === "100%" ? 0 : colWidth,
+        flex: colWidth === "100%" && !isLater ? 1 : undefined,
+        flexShrink: colWidth === "100%" ? 1 : 0,
+        overflow: "hidden",
         background: dragOver ? "rgba(139,105,20,0.04)" : isToday ? "rgba(180,140,80,0.06)" : "transparent",
         borderRadius: 8, padding: "6px 2px", transition: "background 0.2s", display: "flex", flexDirection: "column",
         border: isToday ? "1.5px solid rgba(180,140,80,0.25)" : dragOver ? "1.5px dashed rgba(139,105,20,0.3)" : "1.5px solid transparent",
@@ -1858,39 +1862,202 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
                     )}
                   </div>
                 ) : (
-                  <div style={{ overflowX: "auto", overflowY: "visible", padding: "8px 6px", flex: "none" }}>
-                    <div style={{ display: "flex", gap: 0, minWidth: colWidth * 7 + 30, alignItems: "flex-start" }}>
-                      {DAYS.map((day, i) => (
-                        <div key={day} style={{ display: "flex" }}>
-                          <DayColumn dayInfo={weekDates[i]} columnId={day.toLowerCase()} tasks={tasks[day.toLowerCase()]} categories={categories}
-                            onDragStart={() => {}} onDrop={handleDrop} onToggle={toggleDone} onDelete={deleteTask} onEdit={editTask} onAdd={addTask} onChangeCategory={changeCategory} colWidth={colWidth} onMove={moveTask} onSetRecurring={setRecurring} highlightQuery={highlightQuery} taskFontSize={taskFontSize} />
-                          {i < 6 && (
-                            <div onMouseDown={(e) => {
-                              e.preventDefault();
-                              const startX = e.clientX;
-                              const startW = colWidth;
-                              const onMoveCol = (e2) => { setColWidth(Math.max(100, Math.min(400, startW + (e2.clientX - startX) / 7))); };
-                              const onUp = () => { document.removeEventListener("mousemove", onMoveCol); document.removeEventListener("mouseup", onUp); document.body.style.cursor = ""; document.body.style.userSelect = ""; };
-                              document.addEventListener("mousemove", onMoveCol);
-                              document.addEventListener("mouseup", onUp);
-                              document.body.style.cursor = "col-resize";
-                              document.body.style.userSelect = "none";
-                            }} style={{ width: 5, cursor: "col-resize", flexShrink: 0, background: "transparent" }}
-                              onMouseEnter={(e) => e.currentTarget.style.background = "var(--border)"}
-                              onMouseLeave={(e) => e.currentTarget.style.background = "transparent"} />
-                          )}
+                  <>
+                  {/* Time Block Calendar View */}
+                  {(() => {
+                    const HOURS = Array.from({ length: 18 }, (_, i) => i + 6); // 6 AM to 11 PM
+                    const HOUR_HEIGHT = 48;
+                    const dayKeys = ["mon","tue","wed","thu","fri","sat","sun"];
+                    const [dragTime, setDragTime] = React.useState(null);
+
+                    const getTasksForDay = (col) => {
+                      const timed = (tasks[col] || []).filter((t) => t.startTime && !t.done);
+                      const untimed = (tasks[col] || []).filter((t) => !t.startTime && !t.done);
+                      const done = (tasks[col] || []).filter((t) => t.done);
+                      return { timed, untimed, done };
+                    };
+
+                    const handleTimeDrop = (e, col, hour) => {
+                      e.preventDefault();
+                      try {
+                        const d = JSON.parse(e.dataTransfer.getData("text/plain"));
+                        if (!d) return;
+                        const timeStr = `${String(hour).padStart(2, "0")}:00`;
+                        if (d.from === col) {
+                          // Same day: just update time
+                          const t = dataRef.current.tasks;
+                          update({ tasks: { ...t, [col]: t[col].map((x) => x.id === d.taskId ? { ...x, startTime: timeStr } : x) } });
+                        } else {
+                          // Move between days with time
+                          handleDrop(d.from, col, d.taskId, null);
+                          setTimeout(() => {
+                            const t = dataRef.current.tasks;
+                            update({ tasks: { ...t, [col]: t[col].map((x) => x.id === d.taskId ? { ...x, startTime: timeStr } : x) } });
+                          }, 50);
+                        }
+                      } catch {}
+                      setDragTime(null);
+                    };
+
+                    const handleUntimedDrop = (e, col) => {
+                      e.preventDefault();
+                      try {
+                        const d = JSON.parse(e.dataTransfer.getData("text/plain"));
+                        if (!d) return;
+                        if (d.from === col) {
+                          const t = dataRef.current.tasks;
+                          update({ tasks: { ...t, [col]: t[col].map((x) => x.id === d.taskId ? { ...x, startTime: undefined } : x) } });
+                        } else {
+                          handleDrop(d.from, col, d.taskId, null);
+                          setTimeout(() => {
+                            const t = dataRef.current.tasks;
+                            update({ tasks: { ...t, [col]: t[col].map((x) => x.id === d.taskId ? { ...x, startTime: undefined } : x) } });
+                          }, 50);
+                        }
+                      } catch {}
+                    };
+
+                    const removeTime = (col, taskId) => {
+                      const t = dataRef.current.tasks;
+                      update({ tasks: { ...t, [col]: t[col].map((x) => x.id === taskId ? { ...x, startTime: undefined } : x) } });
+                    };
+
+                    return (
+                      <div style={{ flex: "none" }}>
+                        {/* Day headers */}
+                        <div style={{ display: "flex", borderBottom: "1px solid var(--border)", position: "sticky", top: 0, zIndex: 5, background: "var(--bg)" }}>
+                          <div style={{ width: 44, flexShrink: 0 }} />
+                          {DAYS.map((day, i) => {
+                            const info = weekDates[i];
+                            const isToday = info?.isToday;
+                            return (
+                              <div key={day} style={{ flex: 1, textAlign: "center", padding: "6px 2px 4px", borderLeft: "1px solid var(--border-light)" }}>
+                                <div style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, fontSize: 9, color: isToday ? "var(--accent)" : "var(--text-muted)", letterSpacing: 0.5 }}>{day}</div>
+                                <div style={{ fontSize: isToday ? 18 : 14, fontWeight: isToday ? 700 : 400, color: isToday ? "var(--accent)" : "var(--text)", lineHeight: 1.2 }}>{info?.date?.split(" ")[1]}</div>
+                              </div>
+                            );
+                          })}
                         </div>
-                      ))}
-                    </div>
-                  </div>
+                        {/* Time grid */}
+                        <div style={{ display: "flex", position: "relative" }}>
+                          {/* Hour labels */}
+                          <div style={{ width: 44, flexShrink: 0 }}>
+                            {HOURS.map((h) => (
+                              <div key={h} style={{ height: HOUR_HEIGHT, fontSize: 9, color: "var(--text-faint)", textAlign: "right", paddingRight: 6, paddingTop: 0, fontFamily: "'JetBrains Mono', monospace", borderTop: "1px solid var(--border-light)" }}>
+                                {h === 0 ? "12 AM" : h < 12 ? `${h} AM` : h === 12 ? "12 PM" : `${h - 12} PM`}
+                              </div>
+                            ))}
+                          </div>
+                          {/* Day columns */}
+                          {dayKeys.map((col, di) => {
+                            const { timed } = getTasksForDay(col);
+                            const catColors = categories;
+                            return (
+                              <div key={col} style={{ flex: 1, position: "relative", borderLeft: "1px solid var(--border-light)", minWidth: 0 }}>
+                                {HOURS.map((h) => (
+                                  <div key={h}
+                                    onDragOver={(e) => { e.preventDefault(); setDragTime({ col, hour: h }); }}
+                                    onDragLeave={() => setDragTime(null)}
+                                    onDrop={(e) => handleTimeDrop(e, col, h)}
+                                    style={{
+                                      height: HOUR_HEIGHT, borderTop: "1px solid var(--border-light)",
+                                      background: dragTime?.col === col && dragTime?.hour === h ? "rgba(139,105,20,0.1)" : "transparent",
+                                    }} />
+                                ))}
+                                {/* Positioned task blocks */}
+                                {timed.map((task) => {
+                                  const [hStr, mStr] = (task.startTime || "09:00").split(":");
+                                  const h = parseInt(hStr), m = parseInt(mStr || 0);
+                                  const top = (h - 6) * HOUR_HEIGHT + (m / 60) * HOUR_HEIGHT;
+                                  const catColor = getCatColor(catColors, task.category);
+                                  return (
+                                    <div key={task.id} draggable
+                                      onDragStart={(e) => { e.dataTransfer.setData("text/plain", JSON.stringify({ taskId: task.id, from: col })); }}
+                                      onContextMenu={(e) => { e.preventDefault(); removeTime(col, task.id); }}
+                                      style={{
+                                        position: "absolute", top, left: 2, right: 2, minHeight: HOUR_HEIGHT - 4,
+                                        background: `${catColor}40`, borderLeft: `3px solid ${catColor}`, borderRadius: 4,
+                                        padding: "2px 4px", fontSize: taskFontSize ? taskFontSize - 2 : 11, lineHeight: 1.3,
+                                        cursor: "grab", overflow: "hidden", color: "var(--text)", zIndex: 2,
+                                      }}>
+                                      <div style={{ fontSize: 8, color: "var(--text-muted)", fontFamily: "'JetBrains Mono', monospace" }}>{task.startTime}</div>
+                                      <div style={{ wordBreak: "break-word" }}>{task.text}</div>
+                                    </div>
+                                  );
+                                })}
+                                {/* Current time indicator */}
+                                {weekDates[di]?.isToday && (() => {
+                                  const now = new Date();
+                                  const nowH = now.getHours(), nowM = now.getMinutes();
+                                  if (nowH < 6 || nowH > 23) return null;
+                                  const top = (nowH - 6) * HOUR_HEIGHT + (nowM / 60) * HOUR_HEIGHT;
+                                  return <div style={{ position: "absolute", top, left: 0, right: 0, height: 2, background: "#c44", zIndex: 3, borderRadius: 1 }}>
+                                    <div style={{ position: "absolute", left: -4, top: -3, width: 8, height: 8, borderRadius: "50%", background: "#c44" }} />
+                                  </div>;
+                                })()}
+                              </div>
+                            );
+                          })}
+                        </div>
+                        {/* Unscheduled tasks section */}
+                        <div style={{ borderTop: "2px solid var(--border)", padding: "0 0 4px" }}>
+                          <div style={{ padding: "4px 8px 2px", fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, fontSize: 8, color: "var(--text-muted)", letterSpacing: 1, textTransform: "uppercase" }}>Unscheduled</div>
+                          <div style={{ display: "flex" }}>
+                            <div style={{ width: 44, flexShrink: 0 }} />
+                            {dayKeys.map((col, di) => {
+                              const { untimed, done } = getTasksForDay(col);
+                              return (
+                                <div key={col} style={{ flex: 1, minWidth: 0, borderLeft: "1px solid var(--border-light)", padding: "2px 2px" }}
+                                  onDragOver={(e) => e.preventDefault()} onDrop={(e) => handleUntimedDrop(e, col)}>
+                                  {untimed.map((task) => {
+                                    const catColor = getCatColor(categories, task.category);
+                                    return (
+                                      <div key={task.id} draggable
+                                        onDragStart={(e) => { e.dataTransfer.setData("text/plain", JSON.stringify({ taskId: task.id, from: col })); }}
+                                        style={{ padding: "2px 4px", borderLeft: `3px solid ${catColor}`, background: `${catColor}18`, marginBottom: 2, fontSize: taskFontSize ? taskFontSize - 2 : 11, lineHeight: 1.3, cursor: "grab", borderRadius: 2, overflow: "hidden" }}>
+                                        <input type="checkbox" checked={task.done} onChange={() => toggleDone(col, task.id)}
+                                          style={{ float: "left", width: 13, height: 13, marginRight: 4, marginTop: 1, cursor: "pointer", accentColor: "#5a5a5a" }} />
+                                        <span style={{ wordBreak: "break-word", color: "var(--text)" }}>{task.text}</span>
+                                      </div>
+                                    );
+                                  })}
+                                  {done.length > 0 && (
+                                    <div style={{ fontSize: 8, color: "var(--text-faint)", textAlign: "center", padding: "1px 0" }}>{done.length} done</div>
+                                  )}
+                                  <div onClick={() => { const text = prompt("New task:"); if (text?.trim()) addTask(col, text.trim(), autoDetectCategory(text, categories)); }}
+                                    style={{ fontSize: 9, color: "var(--text-faint)", cursor: "pointer", textAlign: "center", padding: "2px 0" }}
+                                    onMouseEnter={(e) => e.currentTarget.style.color = "var(--text-muted)"} onMouseLeave={(e) => e.currentTarget.style.color = "var(--text-faint)"}>
+                                    + Add
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
+                  </>
                 )}
-                {/* Below day columns: 2-column layout for horizontal mode */}
+                {/* Below time grid: 2-column layout for horizontal mode */}
                 {!isMobile && layout === "horizontal" && (
                   <div style={{ display: "flex", borderTop: "1px solid var(--border)", flexShrink: 0 }}>
-                    {/* Left: Later, Notes, Habits */}
                     <div style={{ flex: 1, minWidth: 0 }}>
+                      {/* Habits */}
+                      <div style={{ borderBottom: "1px solid var(--border)" }}>
+                        <div style={{ display: "flex", alignItems: "center", padding: "0 12px" }}>
+                          <button onClick={() => setHabitsOpen(!habitsOpen)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", fontSize: 10, padding: "6px 0", display: "flex", alignItems: "center", gap: 4 }}>
+                            <span style={{ fontSize: 8, transition: "transform 0.2s", transform: habitsOpen ? "rotate(90deg)" : "rotate(0deg)", display: "inline-block" }}>{"\u25B6"}</span>
+                            <span style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, fontSize: 9, letterSpacing: 1, textTransform: "uppercase" }}>Habits</span>
+                          </button>
+                        </div>
+                        {habitsOpen && (
+                          <HabitsTracker dailyHabits={dailyHabits} weeklyHabits={weeklyHabits} habitHistory={habitHistory || {}} onToggleDaily={toggleDaily} onToggleWeekly={toggleWeekly}
+                            onAddDaily={addDailyHabit} onAddWeekly={addWeeklyHabit} onDeleteDaily={deleteDaily} onDeleteWeekly={deleteWeekly} onEditDaily={editDaily} onEditWeekly={editWeekly} onReorderDaily={reorderDaily} onReorderWeekly={reorderWeekly} />
+                        )}
+                      </div>
                       {/* Later */}
-                      <div style={{ background: "var(--bg-surface)" }}>
+                      <div style={{ background: "var(--bg-surface)", borderBottom: "1px solid var(--border)" }}>
                         <button onClick={() => setLaterOpen(!laterOpen)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", fontSize: 10, padding: "6px 12px", display: "flex", alignItems: "center", gap: 4, width: "100%", textAlign: "left" }}>
                           <span style={{ fontSize: 8, transition: "transform 0.2s", transform: laterOpen ? "rotate(90deg)" : "rotate(0deg)", display: "inline-block" }}>{"\u25B6"}</span>
                           <span style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, fontSize: 9, letterSpacing: 1, textTransform: "uppercase" }}>Later</span>
@@ -1904,7 +2071,7 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
                         )}
                       </div>
                       {/* Quick Notes */}
-                      <div style={{ borderTop: "1px solid var(--border)" }}>
+                      <div>
                         <button onClick={() => setNotesOpen(!notesOpen)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", fontSize: 10, padding: "6px 12px", display: "flex", alignItems: "center", gap: 4, width: "100%", textAlign: "left" }}>
                           <span style={{ fontSize: 8, transition: "transform 0.2s", transform: notesOpen ? "rotate(90deg)" : "rotate(0deg)", display: "inline-block" }}>{"\u25B6"}</span>
                           <span style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, fontSize: 9, letterSpacing: 1, textTransform: "uppercase" }}>Quick Notes</span>
@@ -1917,21 +2084,7 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
                           </div>
                         )}
                       </div>
-                      {/* Habits */}
-                      <div style={{ borderTop: "1px solid var(--border)" }}>
-                        <div style={{ display: "flex", alignItems: "center", padding: "0 12px" }}>
-                          <button onClick={() => setHabitsOpen(!habitsOpen)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", fontSize: 10, padding: "6px 0", display: "flex", alignItems: "center", gap: 4 }}>
-                            <span style={{ fontSize: 8, transition: "transform 0.2s", transform: habitsOpen ? "rotate(90deg)" : "rotate(0deg)", display: "inline-block" }}>{"\u25B6"}</span>
-                            <span style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, fontSize: 9, letterSpacing: 1, textTransform: "uppercase" }}>Habits</span>
-                          </button>
-                        </div>
-                        {habitsOpen && (
-                          <HabitsTracker dailyHabits={dailyHabits} weeklyHabits={weeklyHabits} habitHistory={habitHistory || {}} onToggleDaily={toggleDaily} onToggleWeekly={toggleWeekly}
-                            onAddDaily={addDailyHabit} onAddWeekly={addWeeklyHabit} onDeleteDaily={deleteDaily} onDeleteWeekly={deleteWeekly} onEditDaily={editDaily} onEditWeekly={editWeekly} onReorderDaily={reorderDaily} onReorderWeekly={reorderWeekly} />
-                        )}
-                      </div>
                     </div>
-                    {/* Right: Upcoming */}
                     <FutureSidebar futureTasks={futureTasks} onAddFuture={addFuture} onDeleteFuture={deleteFuture} onEditFuture={editFuture} highlightQuery={highlightQuery} taskFontSize={taskFontSize} />
                   </div>
                 )}
