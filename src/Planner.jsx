@@ -2007,13 +2007,23 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
                       const [expanded, setExpanded] = React.useState(false);
                       const [editing, setEditing] = React.useState(false);
                       const [editText, setEditText] = React.useState(task.text);
+                      const [ctxMenu, setCtxMenu] = React.useState(null);
+                      const [showCatPicker, setShowCatPicker] = React.useState(false);
+                      const [repeatMenu, setRepeatMenu] = React.useState(false);
                       const startMin = timeToMin(task.startTime);
                       const endMin = task.endTime ? timeToMin(task.endTime) : startMin + 30;
                       const top = minToTop(startMin);
                       const height = Math.max(16, ((endMin - startMin) / 60) * HOUR_HEIGHT);
                       const catColor = getCatColor(categories, task.category);
 
-                      const saveEdit = () => { if (editText.trim()) editTask(col, task.id, editText.trim()); setEditing(false); };
+                      const saveEdit = () => { if (editText.trim()) editTask(col, task.id, editText.trim()); setEditing(false); setExpanded(false); };
+
+                      React.useEffect(() => {
+                        if (!ctxMenu) return;
+                        const close = () => { setCtxMenu(null); setRepeatMenu(false); setShowCatPicker(false); };
+                        document.addEventListener("mousedown", close);
+                        return () => document.removeEventListener("mousedown", close);
+                      }, [ctxMenu]);
 
                       const startResize = (e) => {
                         e.preventDefault();
@@ -2033,16 +2043,16 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
                       };
 
                       return (
-                        <div draggable={!editing}
+                        <div draggable={!editing && !ctxMenu}
                           onDragStart={(e) => { e.dataTransfer.setData("text/plain", JSON.stringify({ taskId: task.id, from: col })); }}
-                          onContextMenu={(e) => { e.preventDefault(); removeTime(col, task.id); }}
-                          onClick={() => { if (!editing) setExpanded(!expanded); }}
+                          onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); setCtxMenu({ x: e.clientX, y: e.clientY }); setExpanded(true); }}
+                          onClick={() => { if (!editing && !ctxMenu) setExpanded(!expanded); }}
                           style={{
                             position: "absolute", top, left: 1, right: 1, height: expanded ? "auto" : height,
                             minHeight: 16, maxHeight: expanded ? "none" : height,
                             background: `${catColor}${task.done ? "20" : "40"}`, borderLeft: `3px solid ${catColor}`, borderRadius: 3,
                             padding: "1px 3px", fontSize: taskFontSize ? taskFontSize - 2 : 11, lineHeight: 1.2,
-                            cursor: editing ? "text" : "grab", overflow: "hidden", color: "var(--text)", zIndex: expanded ? 10 : 2,
+                            cursor: editing ? "text" : "grab", overflow: expanded ? "visible" : "hidden", color: "var(--text)", zIndex: expanded ? 10 : 2,
                             boxShadow: expanded ? "0 2px 8px rgba(0,0,0,0.2)" : "none",
                             opacity: task.done ? 0.5 : 1,
                           }}>
@@ -2051,19 +2061,81 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
                               style={{ width: 12, height: 12, marginTop: 1, cursor: "pointer", accentColor: "#5a5a5a", flexShrink: 0 }} />
                             {editing ? (
                               <textarea value={editText} onChange={(e) => { setEditText(e.target.value); e.target.style.height = "auto"; e.target.style.height = e.target.scrollHeight + "px"; }}
-                                onBlur={saveEdit} onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); saveEdit(); } if (e.key === "Escape") setEditing(false); }}
+                                onBlur={saveEdit} onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); saveEdit(); } if (e.key === "Escape") { setEditing(false); setExpanded(false); } }}
                                 onClick={(e) => e.stopPropagation()}
                                 autoFocus
-                                style={{ flex: 1, border: "1px solid var(--border)", background: "var(--input-bg)", font: "inherit", outline: "none", padding: "1px 3px", fontSize: "inherit", lineHeight: "inherit", resize: "none", overflow: "hidden", borderRadius: 2, color: "var(--text)", boxSizing: "border-box", minHeight: 16 }} />
+                                style={{ width: "100%", border: "1px solid var(--border)", background: "var(--input-bg)", font: "inherit", outline: "none", padding: "2px 4px", fontSize: taskFontSize ? taskFontSize - 2 : 11, lineHeight: 1.4, resize: "none", overflow: "hidden", borderRadius: 2, color: "var(--text)", boxSizing: "border-box", minHeight: 20 }}
+                                ref={(el) => { if (el) { el.style.height = "auto"; el.style.height = el.scrollHeight + "px"; } }} />
                             ) : (
                               <span onDoubleClick={(e) => { e.stopPropagation(); setEditing(true); setEditText(task.text); setExpanded(true); }}
-                                style={{ wordBreak: "break-word", textDecoration: task.done ? "line-through" : "none", color: task.done ? "var(--text-muted)" : "var(--text)" }}>{task.text}</span>
+                                style={{ wordBreak: "break-word", textDecoration: task.done ? "line-through" : "none", color: task.done ? "var(--text-muted)" : "var(--text)" }}>
+                                {task.text}
+                                {task.recurring && <span style={{ fontSize: 8, marginLeft: 3, color: "var(--text-faint)" }}>{"\uD83D\uDD01"}</span>}
+                              </span>
                             )}
                           </div>
                           {!expanded && (
                             <div onMouseDown={startResize}
                               style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 6, cursor: "ns-resize", borderRadius: "0 0 3px 3px" }}
                               onClick={(e) => e.stopPropagation()} />
+                          )}
+                          {ctxMenu && (
+                            <div onMouseDown={(e) => e.stopPropagation()} ref={(el) => { if (el) { const r = el.getBoundingClientRect(); if (r.bottom > window.innerHeight - 8) el.style.top = Math.max(8, ctxMenu.y - r.height) + "px"; if (r.right > window.innerWidth - 8) el.style.left = Math.max(8, ctxMenu.x - r.width) + "px"; } }}
+                              style={{ position: "fixed", left: ctxMenu.x, top: ctxMenu.y, zIndex: 1000, background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 6, boxShadow: "0 4px 16px rgba(0,0,0,0.18)", padding: "4px 0", minWidth: 160, maxHeight: "calc(100vh - 16px)", overflowY: "auto" }}>
+                              <div onMouseDown={(e) => { e.preventDefault(); setEditing(true); setEditText(task.text); setCtxMenu(null); }}
+                                style={{ padding: "5px 12px", cursor: "pointer", fontSize: 11, color: "var(--text)" }}
+                                onMouseEnter={(e) => e.currentTarget.style.background = "var(--bg-hover)"} onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}>Edit</div>
+                              <div onMouseDown={(e) => { e.preventDefault(); setShowCatPicker(!showCatPicker); }}
+                                style={{ padding: "5px 12px", cursor: "pointer", fontSize: 11, color: "var(--text)" }}
+                                onMouseEnter={(e) => e.currentTarget.style.background = "var(--bg-hover)"} onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}>Category</div>
+                              {showCatPicker && (
+                                <div style={{ padding: "4px 12px", display: "flex", gap: 3, flexWrap: "wrap" }}>
+                                  {categories.map((cat) => (
+                                    <div key={cat.id} onMouseDown={(e) => { e.preventDefault(); changeCategory(col, task.id, cat.id); setCtxMenu(null); }}
+                                      title={cat.name} style={{ width: 16, height: 16, borderRadius: 3, background: cat.color, cursor: "pointer", border: task.category === cat.id ? "2px solid #555" : "1px solid rgba(0,0,0,0.1)" }} />
+                                  ))}
+                                </div>
+                              )}
+                              <div onMouseDown={(e) => { e.preventDefault(); setRepeatMenu(!repeatMenu); }}
+                                style={{ padding: "5px 12px", cursor: "pointer", fontSize: 11, color: "var(--text)", display: "flex", justifyContent: "space-between" }}
+                                onMouseEnter={(e) => e.currentTarget.style.background = "var(--bg-hover)"} onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}>
+                                <span>{task.recurring ? "Change repeat" : "Repeat"}</span><span style={{ fontSize: 9, color: "var(--text-faint)" }}>{"\u25B6"}</span>
+                              </div>
+                              {repeatMenu && (
+                                <div style={{ padding: "4px 12px 6px", borderTop: "1px solid var(--border)" }}>
+                                  <div style={{ fontSize: 8, color: "var(--text-muted)", fontWeight: 600, marginBottom: 3, fontFamily: "'JetBrains Mono', monospace", textTransform: "uppercase" }}>Weekly</div>
+                                  {[2, 4, 8, 12].map((n) => (
+                                    <div key={n} onMouseDown={(e) => { e.preventDefault(); setRecurring(col, task.id, { type: "weeks", count: n, day: col }); setCtxMenu(null); }}
+                                      style={{ padding: "2px 0", cursor: "pointer", fontSize: 10, color: "var(--text)" }}
+                                      onMouseEnter={(e) => e.currentTarget.style.color = "var(--accent)"} onMouseLeave={(e) => e.currentTarget.style.color = "var(--text)"}>
+                                      Every week for {n} weeks</div>
+                                  ))}
+                                  <div style={{ fontSize: 8, color: "var(--text-muted)", fontWeight: 600, marginTop: 4, marginBottom: 3, fontFamily: "'JetBrains Mono', monospace", textTransform: "uppercase" }}>Monthly</div>
+                                  {(() => { const today = new Date(); const dow = today.getDay(); const wn = Math.ceil(today.getDate() / 7); const wdN = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"]; const ords = ["","1st","2nd","3rd","4th","5th"];
+                                    return [
+                                      { label: `${ords[wn]} ${wdN[dow]}`, rule: { type: "monthly", pattern: "nth_weekday", weekday: dow, nth: wn, day: col } },
+                                      { label: "1st of month", rule: { type: "monthly", pattern: "day_of_month", dayOfMonth: 1, day: col } },
+                                      { label: "Last day of month", rule: { type: "monthly", pattern: "last_day", day: col } },
+                                    ].map((o, i) => (
+                                      <div key={i} onMouseDown={(e) => { e.preventDefault(); setRecurring(col, task.id, o.rule); setCtxMenu(null); }}
+                                        style={{ padding: "2px 0", cursor: "pointer", fontSize: 10, color: "var(--text)" }}
+                                        onMouseEnter={(e) => e.currentTarget.style.color = "var(--accent)"} onMouseLeave={(e) => e.currentTarget.style.color = "var(--text)"}>
+                                        {o.label}</div>
+                                    ));
+                                  })()}
+                                  {task.recurring && (
+                                    <div onMouseDown={(e) => { e.preventDefault(); setRecurring(col, task.id, null); setCtxMenu(null); }}
+                                      style={{ padding: "3px 0 0", cursor: "pointer", fontSize: 9, color: "#c44", marginTop: 3 }}>Remove repeat</div>
+                                  )}
+                                </div>
+                              )}
+                              <div onMouseDown={(e) => { e.preventDefault(); removeTime(col, task.id); setCtxMenu(null); }}
+                                style={{ padding: "5px 12px", cursor: "pointer", fontSize: 11, color: "var(--text)" }}
+                                onMouseEnter={(e) => e.currentTarget.style.background = "var(--bg-hover)"} onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}>Remove time</div>
+                              <div onMouseDown={(e) => { e.preventDefault(); deleteTask(col, task.id); setCtxMenu(null); }}
+                                style={{ padding: "5px 12px", cursor: "pointer", fontSize: 11, color: "#c44" }}
+                                onMouseEnter={(e) => e.currentTarget.style.background = "var(--bg-hover)"} onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}>Delete</div>
+                            </div>
                           )}
                         </div>
                       );
