@@ -2120,10 +2120,14 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
                           style={{
                             position: "absolute", top, left: expanded ? 0 : `calc(${(colIndex / totalCols) * 100}% + 1px)`, width: expanded ? "calc(100% - 1px)" : `calc(${100 / totalCols}% - 2px)`, height: expanded ? "auto" : height,
                             minHeight: 16, maxHeight: expanded ? "none" : height,
-                            background: expanded ? (catColor + "ee") : `${catColor}${task.done ? "20" : "40"}`, borderLeft: `3px solid ${catColor}`, borderRadius: 3,
+                            background: expanded ? "var(--bg-card)" : `${catColor}${task.done ? "20" : "40"}`,
+                            borderLeft: `3px solid ${catColor}`, borderRadius: 3,
+                            borderTop: `1px solid ${expanded ? catColor : "rgba(255,255,255,0.08)"}`,
+                            borderRight: expanded ? `1px solid ${catColor}` : "1px solid rgba(255,255,255,0.05)",
+                            borderBottom: `1px solid ${expanded ? catColor : "rgba(255,255,255,0.08)"}`,
                             padding: "1px 3px", fontSize: taskFontSize ? taskFontSize - 2 : 11, lineHeight: 1.2,
                             cursor: editing ? "text" : "grab", overflow: expanded ? "visible" : "hidden", color: "var(--text)", zIndex: expanded ? 10 : 2,
-                            boxShadow: expanded ? "0 2px 8px rgba(0,0,0,0.2)" : "none",
+                            boxShadow: expanded ? "0 2px 8px rgba(0,0,0,0.3)" : "none",
                             opacity: task.done ? 0.5 : 1,
                           }}>
                           <div style={{ display: "flex", alignItems: "flex-start", gap: 3 }}>
