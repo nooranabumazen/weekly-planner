@@ -2096,8 +2096,9 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
                         <div id={"timed-task-" + task.id} draggable={!editing && !ctxMenu}
                           onDragStart={(e) => { e.dataTransfer.setData("text/plain", JSON.stringify({ taskId: task.id, from: col })); }}
                           onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); setCtxMenu({ x: e.clientX, y: e.clientY }); setExpanded(true); }}
+                          onDoubleClick={() => { if (!editing) { setEditing(true); setEditText(task.text); setExpanded(true); } }}
                           tabIndex={-1}
-                          onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget)) { if (!editing && !ctxMenu) setExpanded(false); } }}
+                          onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget) && !editing && !ctxMenu) setExpanded(false); }}
                           style={{
                             position: "absolute", top, left: expanded ? 0 : `calc(${(colIndex / totalCols) * 100}% + 1px)`, width: expanded ? "calc(100% - 1px)" : `calc(${100 / totalCols}% - 2px)`, height: expanded ? "auto" : height,
                             minHeight: 16, maxHeight: expanded ? "none" : height,
@@ -2120,10 +2121,7 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
                                 style={{ flex: 1, minWidth: 0, border: "1px solid var(--border)", background: "var(--input-bg)", font: "inherit", outline: "none", padding: "1px 3px", fontSize: taskFontSize ? taskFontSize - 2 : 11, lineHeight: 1.4, resize: "none", overflow: "hidden", borderRadius: 2, color: "var(--text)", boxSizing: "border-box", minHeight: 18 }}
                                 ref={(el) => { if (el) { el.style.height = "auto"; el.style.height = el.scrollHeight + "px"; el.focus(); el.setSelectionRange(el.value.length, el.value.length); } }} />
                             ) : (
-                              <span
-                                onClick={(e) => { e.stopPropagation(); setExpanded(!expanded); e.currentTarget.closest("[tabindex]")?.focus(); }}
-                                onDoubleClick={(e) => { e.stopPropagation(); e.preventDefault(); setEditing(true); setEditText(task.text); setExpanded(true); }}
-                                style={{ wordBreak: "break-word", textDecoration: task.done ? "line-through" : "none", color: task.done ? "var(--text-muted)" : "var(--text)", cursor: "pointer" }}>
+                              <span style={{ wordBreak: "break-word", textDecoration: task.done ? "line-through" : "none", color: task.done ? "var(--text-muted)" : "var(--text)" }}>
                                 {task.text}
                                 {task.recurring && <span style={{ fontSize: 8, marginLeft: 3, color: "var(--text-faint)" }}>{"\uD83D\uDD01"}</span>}
                               </span>
