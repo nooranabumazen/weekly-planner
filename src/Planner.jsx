@@ -2096,7 +2096,8 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
                         <div id={"timed-task-" + task.id} draggable={!editing && !ctxMenu}
                           onDragStart={(e) => { e.dataTransfer.setData("text/plain", JSON.stringify({ taskId: task.id, from: col })); }}
                           onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); setCtxMenu({ x: e.clientX, y: e.clientY }); setExpanded(true); }}
-                          onDoubleClick={(e) => { if (!editing) { e.stopPropagation(); setEditing(true); setEditText(task.text); setExpanded(true); } }}
+                          tabIndex={-1}
+                          onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget)) { if (!editing && !ctxMenu) setExpanded(false); } }}
                           style={{
                             position: "absolute", top, left: expanded ? 0 : `calc(${(colIndex / totalCols) * 100}% + 1px)`, width: expanded ? "calc(100% - 1px)" : `calc(${100 / totalCols}% - 2px)`, height: expanded ? "auto" : height,
                             minHeight: 16, maxHeight: expanded ? "none" : height,
@@ -2108,19 +2109,20 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
                             padding: "1px 3px", fontSize: taskFontSize ? taskFontSize - 2 : 11, lineHeight: 1.2,
                             cursor: editing ? "text" : "grab", overflow: expanded ? "visible" : "hidden", color: "var(--text)", zIndex: expanded ? 10 : 2,
                             boxShadow: expanded ? "0 2px 8px rgba(0,0,0,0.3)" : "none",
-                            opacity: task.done ? 0.5 : 1,
+                            opacity: task.done ? 0.5 : 1, outline: "none",
                           }}>
                           <div style={{ display: "flex", alignItems: "flex-start", gap: 3 }}>
-                            <input type="checkbox" checked={task.done} onChange={(e) => { e.stopPropagation(); toggleDone(col, task.id); }}
+                            <input type="checkbox" checked={task.done} onChange={() => toggleDone(col, task.id)}
                               style={{ width: 12, height: 12, marginTop: 1, cursor: "pointer", accentColor: "#5a5a5a", flexShrink: 0 }} />
                             {editing ? (
                               <textarea value={editText} onChange={(e) => { setEditText(e.target.value); e.target.style.height = "auto"; e.target.style.height = e.target.scrollHeight + "px"; }}
                                 onBlur={saveEdit} onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); saveEdit(); } if (e.key === "Escape") { setEditing(false); setExpanded(false); } }}
-                                onClick={(e) => e.stopPropagation()}
                                 style={{ flex: 1, minWidth: 0, border: "1px solid var(--border)", background: "var(--input-bg)", font: "inherit", outline: "none", padding: "1px 3px", fontSize: taskFontSize ? taskFontSize - 2 : 11, lineHeight: 1.4, resize: "none", overflow: "hidden", borderRadius: 2, color: "var(--text)", boxSizing: "border-box", minHeight: 18 }}
                                 ref={(el) => { if (el) { el.style.height = "auto"; el.style.height = el.scrollHeight + "px"; el.focus(); el.setSelectionRange(el.value.length, el.value.length); } }} />
                             ) : (
-                              <span onClick={(e) => { e.stopPropagation(); if (!editing) setExpanded(!expanded); }}
+                              <span
+                                onClick={(e) => { e.stopPropagation(); setExpanded(!expanded); e.currentTarget.closest("[tabindex]")?.focus(); }}
+                                onDoubleClick={(e) => { e.stopPropagation(); e.preventDefault(); setEditing(true); setEditText(task.text); setExpanded(true); }}
                                 style={{ wordBreak: "break-word", textDecoration: task.done ? "line-through" : "none", color: task.done ? "var(--text-muted)" : "var(--text)", cursor: "pointer" }}>
                                 {task.text}
                                 {task.recurring && <span style={{ fontSize: 8, marginLeft: 3, color: "var(--text-faint)" }}>{"\uD83D\uDD01"}</span>}
@@ -2129,8 +2131,7 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
                           </div>
                           {!expanded && (
                             <div onMouseDown={startResize}
-                              style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 6, cursor: "ns-resize", borderRadius: "0 0 3px 3px" }}
-                              onClick={(e) => e.stopPropagation()} />
+                              style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 6, cursor: "ns-resize", borderRadius: "0 0 3px 3px" }} />
                           )}
                           {ctxMenu && (
                             <div onMouseDown={(e) => e.stopPropagation()} ref={(el) => { if (el) { const r = el.getBoundingClientRect(); if (r.bottom > window.innerHeight - 8) el.style.top = Math.max(8, ctxMenu.y - r.height) + "px"; if (r.right > window.innerWidth - 8) el.style.left = Math.max(8, ctxMenu.x - r.width) + "px"; } }}
