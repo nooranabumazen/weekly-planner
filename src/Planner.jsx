@@ -1073,17 +1073,17 @@ function UnscheduledCol({ col, untimed, done, categories, taskFontSize, toggleDo
           <div key={task.id} draggable={!isEditing}
             onDragStart={(e) => { e.dataTransfer.setData("text/plain", JSON.stringify({ taskId: task.id, from: col })); }}
             onDoubleClick={() => { if (!isEditing) startEdit(task); }}
-            style={{ padding: "2px 4px", borderLeft: `3px solid ${catColor}`, background: `${catColor}18`, marginBottom: 2, fontSize: taskFontSize ? taskFontSize - 2 : 11, lineHeight: 1.3, cursor: isEditing ? "text" : "grab", borderRadius: 2 }}>
+            style={{ padding: "2px 4px", borderLeft: `3px solid ${catColor}`, background: `${catColor}18`, marginBottom: 2, fontSize: taskFontSize ? taskFontSize - 2 : 11, lineHeight: 1.3, cursor: isEditing ? "text" : "grab", borderRadius: 2, display: "flex", alignItems: "flex-start", gap: 4 }}>
             <input type="checkbox" checked={task.done} onChange={() => toggleDone(col, task.id)}
-              style={{ float: "left", width: 13, height: 13, marginRight: 4, marginTop: 1, cursor: "pointer", accentColor: "#5a5a5a" }} />
+              style={{ width: 13, height: 13, marginTop: 1, cursor: "pointer", accentColor: "#5a5a5a", flexShrink: 0 }} />
             {isEditing ? (
               <textarea value={editText} onChange={(e) => { setEditText(e.target.value); e.target.style.height = "auto"; e.target.style.height = e.target.scrollHeight + "px"; }}
                 onBlur={() => saveEdit(task.id)}
                 onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); saveEdit(task.id); } if (e.key === "Escape") setEditingId(null); }}
                 ref={(el) => { if (el) { el.style.height = "auto"; el.style.height = el.scrollHeight + "px"; el.focus(); el.setSelectionRange(el.value.length, el.value.length); } }}
-                style={{ width: "100%", border: "1px solid var(--border)", background: "var(--input-bg)", outline: "none", padding: "2px 4px", fontSize: "inherit", lineHeight: 1.4, color: "var(--text)", boxSizing: "border-box", borderRadius: 2, resize: "none", overflow: "hidden", minHeight: 18, font: "inherit" }} />
+                style={{ flex: 1, minWidth: 0, border: "1px solid var(--border)", background: "var(--input-bg)", outline: "none", padding: "1px 3px", fontSize: "inherit", lineHeight: 1.4, color: "var(--text)", boxSizing: "border-box", borderRadius: 2, resize: "none", overflow: "hidden", minHeight: 18, font: "inherit" }} />
             ) : (
-              <span style={{ wordBreak: "break-word", color: "var(--text)" }}>{task.text}</span>
+              <span style={{ wordBreak: "break-word", color: "var(--text)", flex: 1, minWidth: 0 }}>{task.text}</span>
             )}
           </div>
         );
@@ -1096,10 +1096,10 @@ function UnscheduledCol({ col, untimed, done, categories, taskFontSize, toggleDo
           {showDone && done.map((task) => {
             const catColor = getCatColor(categories, task.category);
             return (
-              <div key={task.id} style={{ padding: "2px 4px", borderLeft: `3px solid ${catColor}`, background: `${catColor}10`, marginBottom: 1, fontSize: taskFontSize ? taskFontSize - 2 : 11, lineHeight: 1.3, borderRadius: 2, opacity: 0.5 }}>
+              <div key={task.id} style={{ padding: "2px 4px", borderLeft: `3px solid ${catColor}`, background: `${catColor}10`, marginBottom: 1, fontSize: taskFontSize ? taskFontSize - 2 : 11, lineHeight: 1.3, borderRadius: 2, opacity: 0.5, display: "flex", alignItems: "flex-start", gap: 4 }}>
                 <input type="checkbox" checked={true} onChange={() => toggleDone(col, task.id)}
-                  style={{ float: "left", width: 13, height: 13, marginRight: 4, marginTop: 1, cursor: "pointer", accentColor: "#5a5a5a" }} />
-                <span style={{ wordBreak: "break-word", color: "var(--text-muted)", textDecoration: "line-through" }}>{task.text}</span>
+                  style={{ width: 13, height: 13, marginTop: 1, cursor: "pointer", accentColor: "#5a5a5a", flexShrink: 0 }} />
+                <span style={{ wordBreak: "break-word", color: "var(--text-muted)", textDecoration: "line-through", flex: 1, minWidth: 0 }}>{task.text}</span>
               </div>
             );
           })}
@@ -1110,7 +1110,7 @@ function UnscheduledCol({ col, untimed, done, categories, taskFontSize, toggleDo
           onKeyDown={(e) => { if (e.key === "Enter") submitAdd(); if (e.key === "Escape") setAdding(false); }}
           onBlur={submitAdd}
           placeholder="Task..."
-          style={{ width: "100%", border: "1px solid var(--border)", borderRadius: 2, padding: "2px 4px", fontSize: 9, outline: "none", background: "var(--input-bg)", color: "var(--text)", boxSizing: "border-box" }} />
+          style={{ width: "100%", border: "1px solid var(--border)", borderRadius: 2, padding: "2px 4px", fontSize: taskFontSize ? taskFontSize - 2 : 11, outline: "none", background: "var(--input-bg)", color: "var(--text)", boxSizing: "border-box" }} />
       ) : (
         <div onClick={() => setAdding(true)}
           style={{ fontSize: 9, color: "var(--text-faint)", cursor: "pointer", textAlign: "center", padding: "2px 0" }}
@@ -1983,14 +1983,15 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
                       try {
                         const d = JSON.parse(e.dataTransfer.getData("text/plain"));
                         if (!d) return;
+                        const clearTime = (x) => { const c = { ...x }; delete c.startTime; delete c.endTime; return c; };
                         if (d.from === col) {
                           const t = dataRef.current.tasks;
-                          update({ tasks: { ...t, [col]: t[col].map((x) => x.id === d.taskId ? { ...x, startTime: undefined, endTime: undefined } : x) } });
+                          update({ tasks: { ...t, [col]: t[col].map((x) => x.id === d.taskId ? clearTime(x) : x) } });
                         } else {
                           handleDrop(d.from, col, d.taskId, null);
                           setTimeout(() => {
                             const t = dataRef.current.tasks;
-                            update({ tasks: { ...t, [col]: t[col].map((x) => x.id === d.taskId ? { ...x, startTime: undefined, endTime: undefined } : x) } });
+                            update({ tasks: { ...t, [col]: t[col].map((x) => x.id === d.taskId ? clearTime(x) : x) } });
                           }, 50);
                         }
                       } catch {}
@@ -1998,7 +1999,8 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
 
                     const removeTime = (col, taskId) => {
                       const t = dataRef.current.tasks;
-                      update({ tasks: { ...t, [col]: t[col].map((x) => x.id === taskId ? { ...x, startTime: undefined, endTime: undefined } : x) } });
+                      const clearTime = (x) => { const c = { ...x }; delete c.startTime; delete c.endTime; return c; };
+                      update({ tasks: { ...t, [col]: t[col].map((x) => x.id === taskId ? clearTime(x) : x) } });
                     };
 
                     const resizeTask = (col, taskId, newEndMin) => {
@@ -2079,7 +2081,7 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
                               <textarea value={editText} onChange={(e) => { setEditText(e.target.value); e.target.style.height = "auto"; e.target.style.height = e.target.scrollHeight + "px"; }}
                                 onBlur={saveEdit} onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); saveEdit(); } if (e.key === "Escape") { setEditing(false); setExpanded(false); } }}
                                 onClick={(e) => e.stopPropagation()}
-                                style={{ width: "100%", border: "1px solid var(--border)", background: "var(--input-bg)", font: "inherit", outline: "none", padding: "2px 4px", fontSize: taskFontSize ? taskFontSize - 2 : 11, lineHeight: 1.4, resize: "none", overflow: "hidden", borderRadius: 2, color: "var(--text)", boxSizing: "border-box", minHeight: 20 }}
+                                style={{ flex: 1, minWidth: 0, border: "1px solid var(--border)", background: "var(--input-bg)", font: "inherit", outline: "none", padding: "1px 3px", fontSize: taskFontSize ? taskFontSize - 2 : 11, lineHeight: 1.4, resize: "none", overflow: "hidden", borderRadius: 2, color: "var(--text)", boxSizing: "border-box", minHeight: 18 }}
                                 ref={(el) => { if (el) { el.style.height = "auto"; el.style.height = el.scrollHeight + "px"; el.focus(); el.setSelectionRange(el.value.length, el.value.length); } }} />
                             ) : (
                               <span style={{ wordBreak: "break-word", textDecoration: task.done ? "line-through" : "none", color: task.done ? "var(--text-muted)" : "var(--text)" }}>
