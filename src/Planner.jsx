@@ -798,7 +798,7 @@ function TaskCard({ task, columnId, categories, onDragStart, onToggle, onDelete,
   const [repeatDate, setRepeatDate] = useState("");
   const inputRef = useRef(null);
   const pickerRef = useRef(null);
-  useEffect(() => { if (editing && inputRef.current) inputRef.current.focus(); }, [editing]);
+  useEffect(() => { if (editing && inputRef.current) { inputRef.current.focus(); inputRef.current.setSelectionRange(inputRef.current.value.length, inputRef.current.value.length); inputRef.current.style.height = "auto"; inputRef.current.style.height = inputRef.current.scrollHeight + "px"; } }, [editing]);
   useEffect(() => {
     if (!showCatPicker) return;
     const close = (e) => { if (pickerRef.current && !pickerRef.current.contains(e.target)) setShowCatPicker(false); };
@@ -1061,25 +1061,29 @@ function UnscheduledCol({ col, untimed, done, categories, taskFontSize, toggleDo
   useEffect(() => { if (adding && addRef.current) addRef.current.focus(); }, [adding]);
   const submitAdd = () => { if (newText.trim()) { addTask(col, newText.trim(), autoDetectCategory(newText, categories)); setNewText(""); } setAdding(false); };
   const saveEdit = (taskId) => { if (editText.trim()) editTask(col, taskId, editText.trim()); setEditingId(null); };
+  const startEdit = (task) => { setEditingId(task.id); setEditText(task.text); };
 
   return (
     <div style={{ flex: 1, minWidth: 0, borderLeft: "1px solid var(--border-light)", padding: "2px 2px" }}
       onDragOver={(e) => e.preventDefault()} onDrop={(e) => handleUntimedDrop(e, col)}>
       {untimed.map((task) => {
         const catColor = getCatColor(categories, task.category);
+        const isEditing = editingId === task.id;
         return (
-          <div key={task.id} draggable={editingId !== task.id}
+          <div key={task.id} draggable={!isEditing}
             onDragStart={(e) => { e.dataTransfer.setData("text/plain", JSON.stringify({ taskId: task.id, from: col })); }}
-            style={{ padding: "2px 4px", borderLeft: `3px solid ${catColor}`, background: `${catColor}18`, marginBottom: 2, fontSize: taskFontSize ? taskFontSize - 2 : 11, lineHeight: 1.3, cursor: editingId === task.id ? "text" : "grab", borderRadius: 2 }}>
+            onDoubleClick={() => { if (!isEditing) startEdit(task); }}
+            style={{ padding: "2px 4px", borderLeft: `3px solid ${catColor}`, background: `${catColor}18`, marginBottom: 2, fontSize: taskFontSize ? taskFontSize - 2 : 11, lineHeight: 1.3, cursor: isEditing ? "text" : "grab", borderRadius: 2 }}>
             <input type="checkbox" checked={task.done} onChange={() => toggleDone(col, task.id)}
               style={{ float: "left", width: 13, height: 13, marginRight: 4, marginTop: 1, cursor: "pointer", accentColor: "#5a5a5a" }} />
-            {editingId === task.id ? (
-              <input value={editText} onChange={(e) => setEditText(e.target.value)} onBlur={() => saveEdit(task.id)}
-                onKeyDown={(e) => { if (e.key === "Enter") saveEdit(task.id); if (e.key === "Escape") setEditingId(null); }}
-                autoFocus style={{ border: "1px solid var(--border)", background: "var(--input-bg)", outline: "none", padding: "0 2px", fontSize: "inherit", color: "var(--text)", width: "calc(100% - 20px)", boxSizing: "border-box", borderRadius: 2 }} />
+            {isEditing ? (
+              <textarea value={editText} onChange={(e) => { setEditText(e.target.value); e.target.style.height = "auto"; e.target.style.height = e.target.scrollHeight + "px"; }}
+                onBlur={() => saveEdit(task.id)}
+                onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); saveEdit(task.id); } if (e.key === "Escape") setEditingId(null); }}
+                ref={(el) => { if (el) { el.style.height = "auto"; el.style.height = el.scrollHeight + "px"; el.focus(); el.setSelectionRange(el.value.length, el.value.length); } }}
+                style={{ width: "100%", border: "1px solid var(--border)", background: "var(--input-bg)", outline: "none", padding: "2px 4px", fontSize: "inherit", lineHeight: 1.4, color: "var(--text)", boxSizing: "border-box", borderRadius: 2, resize: "none", overflow: "hidden", minHeight: 18, font: "inherit" }} />
             ) : (
-              <span onDoubleClick={() => { setEditingId(task.id); setEditText(task.text); }}
-                style={{ wordBreak: "break-word", color: "var(--text)" }}>{task.text}</span>
+              <span style={{ wordBreak: "break-word", color: "var(--text)" }}>{task.text}</span>
             )}
           </div>
         );
@@ -2042,11 +2046,23 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
                         document.body.style.cursor = "ns-resize";
                       };
 
+                      React.useEffect(() => {
+                        if (expanded && !editing && !ctxMenu) {
+                          const handler = (e) => {
+                            const el = document.getElementById("timed-task-" + task.id);
+                            if (el && !el.contains(e.target)) setExpanded(false);
+                          };
+                          document.addEventListener("mousedown", handler);
+                          return () => document.removeEventListener("mousedown", handler);
+                        }
+                      }, [expanded, editing, ctxMenu]);
+
                       return (
-                        <div draggable={!editing && !ctxMenu}
+                        <div id={"timed-task-" + task.id} draggable={!editing && !ctxMenu}
                           onDragStart={(e) => { e.dataTransfer.setData("text/plain", JSON.stringify({ taskId: task.id, from: col })); }}
                           onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); setCtxMenu({ x: e.clientX, y: e.clientY }); setExpanded(true); }}
                           onClick={() => { if (!editing && !ctxMenu) setExpanded(!expanded); }}
+                          onDoubleClick={(e) => { if (!editing) { e.stopPropagation(); setEditing(true); setEditText(task.text); setExpanded(true); } }}
                           style={{
                             position: "absolute", top, left: 1, right: 1, height: expanded ? "auto" : height,
                             minHeight: 16, maxHeight: expanded ? "none" : height,
@@ -2063,12 +2079,10 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
                               <textarea value={editText} onChange={(e) => { setEditText(e.target.value); e.target.style.height = "auto"; e.target.style.height = e.target.scrollHeight + "px"; }}
                                 onBlur={saveEdit} onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); saveEdit(); } if (e.key === "Escape") { setEditing(false); setExpanded(false); } }}
                                 onClick={(e) => e.stopPropagation()}
-                                autoFocus
                                 style={{ width: "100%", border: "1px solid var(--border)", background: "var(--input-bg)", font: "inherit", outline: "none", padding: "2px 4px", fontSize: taskFontSize ? taskFontSize - 2 : 11, lineHeight: 1.4, resize: "none", overflow: "hidden", borderRadius: 2, color: "var(--text)", boxSizing: "border-box", minHeight: 20 }}
-                                ref={(el) => { if (el) { el.style.height = "auto"; el.style.height = el.scrollHeight + "px"; } }} />
+                                ref={(el) => { if (el) { el.style.height = "auto"; el.style.height = el.scrollHeight + "px"; el.focus(); el.setSelectionRange(el.value.length, el.value.length); } }} />
                             ) : (
-                              <span onDoubleClick={(e) => { e.stopPropagation(); setEditing(true); setEditText(task.text); setExpanded(true); }}
-                                style={{ wordBreak: "break-word", textDecoration: task.done ? "line-through" : "none", color: task.done ? "var(--text-muted)" : "var(--text)" }}>
+                              <span style={{ wordBreak: "break-word", textDecoration: task.done ? "line-through" : "none", color: task.done ? "var(--text-muted)" : "var(--text)" }}>
                                 {task.text}
                                 {task.recurring && <span style={{ fontSize: 8, marginLeft: 3, color: "var(--text-faint)" }}>{"\uD83D\uDD01"}</span>}
                               </span>
