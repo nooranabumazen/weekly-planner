@@ -2222,7 +2222,8 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
                             const { timed } = getTasksForDay(col);
                             return (
                               <div key={col} style={{ flex: 1, position: "relative", borderLeft: "1px solid var(--border-light)", minWidth: 0 }}>
-                                {/* Half-hour drop zones */}
+                                {/* Half-hour drop zones - pointer-events only during drag */}
+                                <div style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, pointerEvents: isDragging ? "auto" : "none", zIndex: 1 }}>
                                 {HOURS.map((h) => (
                                   <div key={h} style={{ height: HOUR_HEIGHT, borderTop: "1px solid var(--border-light)", display: "flex", flexDirection: "column" }}>
                                     {[0, 30].map((halfMin) => {
@@ -2239,6 +2240,13 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
                                           }} />
                                       );
                                     })}
+                                  </div>
+                                ))}
+                                </div>
+                                {/* Grid lines (visual only) */}
+                                {HOURS.map((h) => (
+                                  <div key={h} style={{ height: HOUR_HEIGHT, borderTop: "1px solid var(--border-light)", pointerEvents: "none" }}>
+                                    <div style={{ height: "50%", borderBottom: "1px dashed var(--border-light)" }} />
                                   </div>
                                 ))}
                                 {/* Positioned task blocks */}
