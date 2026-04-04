@@ -445,7 +445,8 @@ function HabitsTracker({ dailyHabits, weeklyHabits, habitHistory, onToggleDaily,
   const [newWeekly, setNewWeekly] = useState("");
   const [editingHabit, setEditingHabit] = useState(null);
   const [editText, setEditText] = useState("");
-  const [splitPct, setSplitPct] = useState(55);
+  const [splitPct, setSplitPctState] = useState(() => { try { const v = localStorage.getItem("planner_habitSplit"); return v ? parseFloat(v) : 55; } catch { return 55; } });
+  const setSplitPct = (v) => { setSplitPctState(v); try { localStorage.setItem("planner_habitSplit", v); } catch {} };
   const [dragHabit, setDragHabit] = useState(null);
   const [showStats, setShowStats] = useState(false);
   const dailyRef = useRef(null);
@@ -2111,11 +2112,22 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
                         }
                       }, [expanded, editing, ctxMenu]);
 
+                      const dragStartPos = React.useRef(null);
+
                       return (
                         <div id={"timed-task-" + task.id} draggable={!editing && !ctxMenu}
                           onDragStart={(e) => { e.dataTransfer.setData("text/plain", JSON.stringify({ taskId: task.id, from: col })); }}
                           onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); setCtxMenu({ x: e.clientX, y: e.clientY }); setExpanded(true); }}
-                          onClick={() => { if (!editing && !ctxMenu) setExpanded(!expanded); }}
+                          onMouseDown={(e) => { dragStartPos.current = { x: e.clientX, y: e.clientY }; }}
+                          onClick={(e) => {
+                            if (editing || ctxMenu) return;
+                            if (dragStartPos.current) {
+                              const dx = Math.abs(e.clientX - dragStartPos.current.x);
+                              const dy = Math.abs(e.clientY - dragStartPos.current.y);
+                              if (dx > 3 || dy > 3) return; // was a drag attempt
+                            }
+                            setExpanded(!expanded);
+                          }}
                           onDoubleClick={(e) => { if (!editing) { e.stopPropagation(); setEditing(true); setEditText(task.text); setExpanded(true); } }}
                           style={{
                             position: "absolute", top, left: expanded ? 0 : `calc(${(colIndex / totalCols) * 100}% + 1px)`, width: expanded ? "calc(100% - 1px)" : `calc(${100 / totalCols}% - 2px)`, height: expanded ? "auto" : height,
