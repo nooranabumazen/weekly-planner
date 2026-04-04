@@ -2085,32 +2085,12 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
                       }, [ctxMenu]);
 
                       const startResize = (e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        const startY = e.clientY;
-                        const startEndMin = endMin;
-                        const onMove = (e2) => {
-                          const dy = e2.clientY - startY;
-                          const deltaMin = Math.round((dy / HOUR_HEIGHT) * 60 / 15) * 15;
-                          const newEnd = Math.max(startMin + 15, startEndMin + deltaMin);
-                          resizeTask(col, task.id, newEnd);
-                        };
+                        e.preventDefault(); e.stopPropagation();
+                        const startY = e.clientY; const startEndMin = endMin;
+                        const onMove = (e2) => { const dy = e2.clientY - startY; const deltaMin = Math.round((dy / HOUR_HEIGHT) * 60 / 15) * 15; resizeTask(col, task.id, Math.max(startMin + 15, startEndMin + deltaMin)); };
                         const onUp = () => { document.removeEventListener("mousemove", onMove); document.removeEventListener("mouseup", onUp); document.body.style.cursor = ""; };
-                        document.addEventListener("mousemove", onMove);
-                        document.addEventListener("mouseup", onUp);
-                        document.body.style.cursor = "ns-resize";
+                        document.addEventListener("mousemove", onMove); document.addEventListener("mouseup", onUp); document.body.style.cursor = "ns-resize";
                       };
-
-                      React.useEffect(() => {
-                        if (expanded && !editing && !ctxMenu) {
-                          const handler = (e) => {
-                            const el = document.getElementById("timed-task-" + task.id);
-                            if (el && !el.contains(e.target)) setExpanded(false);
-                          };
-                          document.addEventListener("mousedown", handler);
-                          return () => document.removeEventListener("mousedown", handler);
-                        }
-                      }, [expanded, editing, ctxMenu]);
 
                       return (
                         <div id={"timed-task-" + task.id} draggable={!editing && !ctxMenu}
