@@ -1051,6 +1051,73 @@ function DaySection({ dayInfo, columnId, tasks, categories, onDragStart, onDrop,
 }
 
 /* ─── Day Column (horizontal layout) ─── */
+function UnscheduledCol({ col, untimed, done, categories, taskFontSize, toggleDone, addTask, editTask, deleteTask, autoDetectCategory, handleUntimedDrop }) {
+  const [adding, setAdding] = useState(false);
+  const [newText, setNewText] = useState("");
+  const [showDone, setShowDone] = useState(false);
+  const [editingId, setEditingId] = useState(null);
+  const [editText, setEditText] = useState("");
+  const addRef = useRef(null);
+  useEffect(() => { if (adding && addRef.current) addRef.current.focus(); }, [adding]);
+  const submitAdd = () => { if (newText.trim()) { addTask(col, newText.trim(), autoDetectCategory(newText, categories)); setNewText(""); } setAdding(false); };
+  const saveEdit = (taskId) => { if (editText.trim()) editTask(col, taskId, editText.trim()); setEditingId(null); };
+
+  return (
+    <div style={{ flex: 1, minWidth: 0, borderLeft: "1px solid var(--border-light)", padding: "2px 2px" }}
+      onDragOver={(e) => e.preventDefault()} onDrop={(e) => handleUntimedDrop(e, col)}>
+      {untimed.map((task) => {
+        const catColor = getCatColor(categories, task.category);
+        return (
+          <div key={task.id} draggable={editingId !== task.id}
+            onDragStart={(e) => { e.dataTransfer.setData("text/plain", JSON.stringify({ taskId: task.id, from: col })); }}
+            style={{ padding: "2px 4px", borderLeft: `3px solid ${catColor}`, background: `${catColor}18`, marginBottom: 2, fontSize: taskFontSize ? taskFontSize - 2 : 11, lineHeight: 1.3, cursor: editingId === task.id ? "text" : "grab", borderRadius: 2 }}>
+            <input type="checkbox" checked={task.done} onChange={() => toggleDone(col, task.id)}
+              style={{ float: "left", width: 13, height: 13, marginRight: 4, marginTop: 1, cursor: "pointer", accentColor: "#5a5a5a" }} />
+            {editingId === task.id ? (
+              <input value={editText} onChange={(e) => setEditText(e.target.value)} onBlur={() => saveEdit(task.id)}
+                onKeyDown={(e) => { if (e.key === "Enter") saveEdit(task.id); if (e.key === "Escape") setEditingId(null); }}
+                autoFocus style={{ border: "1px solid var(--border)", background: "var(--input-bg)", outline: "none", padding: "0 2px", fontSize: "inherit", color: "var(--text)", width: "calc(100% - 20px)", boxSizing: "border-box", borderRadius: 2 }} />
+            ) : (
+              <span onDoubleClick={() => { setEditingId(task.id); setEditText(task.text); }}
+                style={{ wordBreak: "break-word", color: "var(--text)" }}>{task.text}</span>
+            )}
+          </div>
+        );
+      })}
+      {done.length > 0 && (
+        <>
+          <div onClick={() => setShowDone(!showDone)} style={{ fontSize: 8, color: "var(--text-faint)", textAlign: "center", padding: "1px 0", cursor: "pointer" }}>
+            <span style={{ fontSize: 7, transform: showDone ? "rotate(90deg)" : "rotate(0deg)", display: "inline-block", transition: "transform 0.15s" }}>{"\u25B6"}</span> {done.length} done
+          </div>
+          {showDone && done.map((task) => {
+            const catColor = getCatColor(categories, task.category);
+            return (
+              <div key={task.id} style={{ padding: "2px 4px", borderLeft: `3px solid ${catColor}`, background: `${catColor}10`, marginBottom: 1, fontSize: taskFontSize ? taskFontSize - 2 : 11, lineHeight: 1.3, borderRadius: 2, opacity: 0.5 }}>
+                <input type="checkbox" checked={true} onChange={() => toggleDone(col, task.id)}
+                  style={{ float: "left", width: 13, height: 13, marginRight: 4, marginTop: 1, cursor: "pointer", accentColor: "#5a5a5a" }} />
+                <span style={{ wordBreak: "break-word", color: "var(--text-muted)", textDecoration: "line-through" }}>{task.text}</span>
+              </div>
+            );
+          })}
+        </>
+      )}
+      {adding ? (
+        <input ref={addRef} value={newText} onChange={(e) => setNewText(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter") submitAdd(); if (e.key === "Escape") setAdding(false); }}
+          onBlur={submitAdd}
+          placeholder="Task..."
+          style={{ width: "100%", border: "1px solid var(--border)", borderRadius: 2, padding: "2px 4px", fontSize: 9, outline: "none", background: "var(--input-bg)", color: "var(--text)", boxSizing: "border-box" }} />
+      ) : (
+        <div onClick={() => setAdding(true)}
+          style={{ fontSize: 9, color: "var(--text-faint)", cursor: "pointer", textAlign: "center", padding: "2px 0" }}
+          onMouseEnter={(e) => e.currentTarget.style.color = "var(--text-muted)"} onMouseLeave={(e) => e.currentTarget.style.color = "var(--text-faint)"}>
+          + Add
+        </div>
+      )}
+    </div>
+  );
+}
+
 function DoneCollapse({ doneTasks, columnId, categories, onDragStart, onToggle, onDelete, onEdit, onChangeCategory, onMove, onSetRecurring, highlightQuery, isToday, taskFontSize }) {
   const [expanded, setExpanded] = useState(false);
   if (doneTasks.length === 0) return null;
@@ -1872,9 +1939,10 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
                     const dayKeys = ["mon","tue","wed","thu","fri","sat","sun"];
 
                     const getTasksForDay = (col) => {
-                      const timed = (tasks[col] || []).filter((t) => t.startTime && !t.done);
-                      const untimed = (tasks[col] || []).filter((t) => !t.startTime && !t.done);
-                      const done = (tasks[col] || []).filter((t) => t.done);
+                      const allTasks = tasks[col] || [];
+                      const timed = allTasks.filter((t) => t.startTime); // include done tasks in grid
+                      const untimed = allTasks.filter((t) => !t.startTime && !t.done);
+                      const done = allTasks.filter((t) => !t.startTime && t.done);
                       return { timed, untimed, done };
                     };
 
@@ -1937,12 +2005,15 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
 
                     const TimedTask = ({ task, col }) => {
                       const [expanded, setExpanded] = React.useState(false);
+                      const [editing, setEditing] = React.useState(false);
+                      const [editText, setEditText] = React.useState(task.text);
                       const startMin = timeToMin(task.startTime);
                       const endMin = task.endTime ? timeToMin(task.endTime) : startMin + 30;
                       const top = minToTop(startMin);
                       const height = Math.max(16, ((endMin - startMin) / 60) * HOUR_HEIGHT);
                       const catColor = getCatColor(categories, task.category);
-                      const endLabel = task.endTime || minToTime(startMin + 30);
+
+                      const saveEdit = () => { if (editText.trim()) editTask(col, task.id, editText.trim()); setEditing(false); };
 
                       const startResize = (e) => {
                         e.preventDefault();
@@ -1962,22 +2033,33 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
                       };
 
                       return (
-                        <div draggable
+                        <div draggable={!editing}
                           onDragStart={(e) => { e.dataTransfer.setData("text/plain", JSON.stringify({ taskId: task.id, from: col })); }}
                           onContextMenu={(e) => { e.preventDefault(); removeTime(col, task.id); }}
-                          onClick={() => setExpanded(!expanded)}
+                          onClick={() => { if (!editing) setExpanded(!expanded); }}
                           style={{
                             position: "absolute", top, left: 1, right: 1, height: expanded ? "auto" : height,
                             minHeight: 16, maxHeight: expanded ? "none" : height,
-                            background: `${catColor}40`, borderLeft: `3px solid ${catColor}`, borderRadius: 3,
+                            background: `${catColor}${task.done ? "20" : "40"}`, borderLeft: `3px solid ${catColor}`, borderRadius: 3,
                             padding: "1px 3px", fontSize: taskFontSize ? taskFontSize - 2 : 11, lineHeight: 1.2,
-                            cursor: "grab", overflow: "hidden", color: "var(--text)", zIndex: expanded ? 10 : 2,
+                            cursor: editing ? "text" : "grab", overflow: "hidden", color: "var(--text)", zIndex: expanded ? 10 : 2,
                             boxShadow: expanded ? "0 2px 8px rgba(0,0,0,0.2)" : "none",
+                            opacity: task.done ? 0.5 : 1,
                           }}>
-                          <div style={{ fontSize: 7, color: "var(--text-muted)", fontFamily: "'JetBrains Mono', monospace", whiteSpace: "nowrap" }}>{task.startTime} - {endLabel}</div>
-                          <div style={{ wordBreak: "break-word" }}>{task.text}</div>
-                          {task.done && <span style={{ fontSize: 8, color: "var(--text-faint)" }}>(done)</span>}
-                          {/* Resize handle */}
+                          <div style={{ display: "flex", alignItems: "flex-start", gap: 3 }}>
+                            <input type="checkbox" checked={task.done} onChange={(e) => { e.stopPropagation(); toggleDone(col, task.id); }}
+                              style={{ width: 12, height: 12, marginTop: 1, cursor: "pointer", accentColor: "#5a5a5a", flexShrink: 0 }} />
+                            {editing ? (
+                              <textarea value={editText} onChange={(e) => { setEditText(e.target.value); e.target.style.height = "auto"; e.target.style.height = e.target.scrollHeight + "px"; }}
+                                onBlur={saveEdit} onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); saveEdit(); } if (e.key === "Escape") setEditing(false); }}
+                                onClick={(e) => e.stopPropagation()}
+                                autoFocus
+                                style={{ flex: 1, border: "1px solid var(--border)", background: "var(--input-bg)", font: "inherit", outline: "none", padding: "1px 3px", fontSize: "inherit", lineHeight: "inherit", resize: "none", overflow: "hidden", borderRadius: 2, color: "var(--text)", boxSizing: "border-box", minHeight: 16 }} />
+                            ) : (
+                              <span onDoubleClick={(e) => { e.stopPropagation(); setEditing(true); setEditText(task.text); setExpanded(true); }}
+                                style={{ wordBreak: "break-word", textDecoration: task.done ? "line-through" : "none", color: task.done ? "var(--text-muted)" : "var(--text)" }}>{task.text}</span>
+                            )}
+                          </div>
                           {!expanded && (
                             <div onMouseDown={startResize}
                               style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 6, cursor: "ns-resize", borderRadius: "0 0 3px 3px" }}
@@ -2061,29 +2143,8 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
                             {dayKeys.map((col) => {
                               const { untimed, done } = getTasksForDay(col);
                               return (
-                                <div key={col} style={{ flex: 1, minWidth: 0, borderLeft: "1px solid var(--border-light)", padding: "2px 2px" }}
-                                  onDragOver={(e) => e.preventDefault()} onDrop={(e) => handleUntimedDrop(e, col)}>
-                                  {untimed.map((task) => {
-                                    const catColor = getCatColor(categories, task.category);
-                                    return (
-                                      <div key={task.id} draggable
-                                        onDragStart={(e) => { e.dataTransfer.setData("text/plain", JSON.stringify({ taskId: task.id, from: col })); }}
-                                        style={{ padding: "2px 4px", borderLeft: `3px solid ${catColor}`, background: `${catColor}18`, marginBottom: 2, fontSize: taskFontSize ? taskFontSize - 2 : 11, lineHeight: 1.3, cursor: "grab", borderRadius: 2, overflow: "hidden" }}>
-                                        <input type="checkbox" checked={task.done} onChange={() => toggleDone(col, task.id)}
-                                          style={{ float: "left", width: 13, height: 13, marginRight: 4, marginTop: 1, cursor: "pointer", accentColor: "#5a5a5a" }} />
-                                        <span style={{ wordBreak: "break-word", color: "var(--text)" }}>{task.text}</span>
-                                      </div>
-                                    );
-                                  })}
-                                  {done.length > 0 && (
-                                    <div style={{ fontSize: 8, color: "var(--text-faint)", textAlign: "center", padding: "1px 0" }}>{done.length} done</div>
-                                  )}
-                                  <div onClick={() => { const text = prompt("New task:"); if (text?.trim()) addTask(col, text.trim(), autoDetectCategory(text, categories)); }}
-                                    style={{ fontSize: 9, color: "var(--text-faint)", cursor: "pointer", textAlign: "center", padding: "2px 0" }}
-                                    onMouseEnter={(e) => e.currentTarget.style.color = "var(--text-muted)"} onMouseLeave={(e) => e.currentTarget.style.color = "var(--text-faint)"}>
-                                    + Add
-                                  </div>
-                                </div>
+                                <UnscheduledCol key={col} col={col} untimed={untimed} done={done} categories={categories} taskFontSize={taskFontSize}
+                                  toggleDone={toggleDone} addTask={addTask} editTask={editTask} deleteTask={deleteTask} autoDetectCategory={autoDetectCategory} handleUntimedDrop={handleUntimedDrop} />
                               );
                             })}
                           </div>
