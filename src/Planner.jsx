@@ -2079,7 +2079,7 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
 
                       React.useEffect(() => {
                         if (!ctxMenu) return;
-                        const close = () => { setCtxMenu(null); setRepeatMenu(false); setShowCatPicker(false); };
+                        const close = () => { setCtxMenu(null); setRepeatMenu(false); setShowCatPicker(false); setExpanded(false); };
                         document.addEventListener("mousedown", close);
                         return () => document.removeEventListener("mousedown", close);
                       }, [ctxMenu]);
@@ -2093,12 +2093,10 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
                       };
 
                       return (
-                        <div id={"timed-task-" + task.id} draggable={!editing && !ctxMenu}
+                        <div draggable={!editing}
                           onDragStart={(e) => { e.dataTransfer.setData("text/plain", JSON.stringify({ taskId: task.id, from: col })); }}
-                          onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); setCtxMenu({ x: e.clientX, y: e.clientY }); setExpanded(true); }}
                           onDoubleClick={() => { if (!editing) { setEditing(true); setEditText(task.text); setExpanded(true); } }}
-                          tabIndex={-1}
-                          onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget) && !editing && !ctxMenu) setExpanded(false); }}
+                          onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); setCtxMenu({ x: e.clientX, y: e.clientY }); setExpanded(true); }}
                           style={{
                             position: "absolute", top, left: expanded ? 0 : `calc(${(colIndex / totalCols) * 100}% + 1px)`, width: expanded ? "calc(100% - 1px)" : `calc(${100 / totalCols}% - 2px)`, height: expanded ? "auto" : height,
                             minHeight: 16, maxHeight: expanded ? "none" : height,
@@ -2110,7 +2108,7 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
                             padding: "1px 3px", fontSize: taskFontSize ? taskFontSize - 2 : 11, lineHeight: 1.2,
                             cursor: editing ? "text" : "grab", overflow: expanded ? "visible" : "hidden", color: "var(--text)", zIndex: expanded ? 10 : 2,
                             boxShadow: expanded ? "0 2px 8px rgba(0,0,0,0.3)" : "none",
-                            opacity: task.done ? 0.5 : 1, outline: "none",
+                            opacity: task.done ? 0.5 : 1,
                           }}>
                           <div style={{ display: "flex", alignItems: "flex-start", gap: 3 }}>
                             <input type="checkbox" checked={task.done} onChange={() => toggleDone(col, task.id)}
