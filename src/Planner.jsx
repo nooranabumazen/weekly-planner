@@ -1332,6 +1332,7 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
   const dataRef = useRef(data);
   const scrollRef = useRef(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [dragTime, setDragTime] = useState(null);
   dataRef.current = data;
 
   // Track global drag state for DropZone sizing
@@ -1868,7 +1869,6 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
                     const HOURS = Array.from({ length: 18 }, (_, i) => i + 6); // 6 AM to 11 PM
                     const HOUR_HEIGHT = 48;
                     const dayKeys = ["mon","tue","wed","thu","fri","sat","sun"];
-                    const [dragTime, setDragTime] = React.useState(null);
 
                     const getTasksForDay = (col) => {
                       const timed = (tasks[col] || []).filter((t) => t.startTime && !t.done);
