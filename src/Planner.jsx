@@ -831,18 +831,19 @@ function TaskCard({ task, columnId, categories, onDragStart, onToggle, onDelete,
         cursor: editing ? "text" : "grab",
         opacity: task.done ? 0.45 : 1, transition: "opacity 0.2s, background 0.15s",
         fontSize: isMobile ? 16 : (taskFontSize || 13), lineHeight: 1.4, userSelect: "none", position: "relative",
+        display: "flex", alignItems: "flex-start", gap: isMobile ? 10 : 5,
       }}>
       <input type="checkbox" checked={task.done} onChange={() => onToggle(columnId, task.id)}
-        style={{ cursor: "pointer", accentColor: "#5a5a5a", float: "left", width: isMobile ? 20 : 15, height: isMobile ? 20 : 15, marginRight: isMobile ? 10 : 5, marginTop: 2 }} />
+        style={{ cursor: "pointer", accentColor: "#5a5a5a", width: isMobile ? 20 : 15, height: isMobile ? 20 : 15, marginTop: 2, flexShrink: 0 }} />
       {editing ? (
         <textarea ref={inputRef} value={editText} onChange={(e) => { setEditText(e.target.value); e.target.style.height = "auto"; e.target.style.height = e.target.scrollHeight + "px"; }}
           onBlur={save}
           onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); save(); } if (e.key === "Escape") setEditing(false); }}
-          style={{ width: "100%", border: "1px solid var(--border)", background: "var(--input-bg)", font: "inherit", outline: "none", padding: "2px 4px", fontSize: isMobile ? 16 : (taskFontSize || 13), lineHeight: 1.4, resize: "none", overflow: "hidden", borderRadius: 3, color: "var(--text)", boxSizing: "border-box", minHeight: 20 }}
+          style={{ flex: 1, minWidth: 0, border: "1px solid var(--border)", background: "var(--input-bg)", font: "inherit", outline: "none", padding: "2px 4px", fontSize: isMobile ? 16 : (taskFontSize || 13), lineHeight: 1.4, resize: "none", overflow: "hidden", borderRadius: 3, color: "var(--text)", boxSizing: "border-box", minHeight: 20 }}
           onFocus={(e) => { e.target.style.height = "auto"; e.target.style.height = e.target.scrollHeight + "px"; }} />
       ) : (
         <span onDoubleClick={() => { setEditing(true); setEditText(task.text); }}
-          style={{ flex: 1, textDecoration: task.done ? "line-through" : "none", cursor: "pointer", color: task.done ? "var(--text-muted)" : "var(--text)" }}>
+          style={{ flex: 1, minWidth: 0, textDecoration: task.done ? "line-through" : "none", cursor: "pointer", color: task.done ? "var(--text-muted)" : "var(--text)", wordBreak: "break-word" }}>
           <HighlightText text={task.text} query={highlightQuery} />
           {task.recurring && <span title={`Repeats ${task.recurring.type === "weeks" ? task.recurring.count + " weeks" : task.recurring.type === "monthly" ? "monthly" : "until " + task.recurring.until}`} style={{ fontSize: 9, marginLeft: 4, color: "var(--text-faint)" }}>{"\uD83D\uDD01"}</span>}
         </span>
@@ -1051,14 +1052,19 @@ function DaySection({ dayInfo, columnId, tasks, categories, onDragStart, onDrop,
 }
 
 /* ─── Day Column (horizontal layout) ─── */
-function UnscheduledCol({ col, untimed, done, categories, taskFontSize, toggleDone, addTask, editTask, deleteTask, autoDetectCategory, handleUntimedDrop }) {
+function UnscheduledCol({ col, untimed, done, categories, taskFontSize, toggleDone, addTask, editTask, deleteTask, changeCategory, setRecurring, autoDetectCategory, handleUntimedDrop }) {
   const [adding, setAdding] = useState(false);
   const [newText, setNewText] = useState("");
   const [showDone, setShowDone] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [editText, setEditText] = useState("");
+  const [ctxMenu, setCtxMenu] = useState(null);
+  const [ctxTask, setCtxTask] = useState(null);
+  const [showCatPicker, setShowCatPicker] = useState(false);
+  const [repeatMenu, setRepeatMenu] = useState(false);
   const addRef = useRef(null);
   useEffect(() => { if (adding && addRef.current) addRef.current.focus(); }, [adding]);
+  useEffect(() => { if (!ctxMenu) return; const close = () => { setCtxMenu(null); setCtxTask(null); setShowCatPicker(false); setRepeatMenu(false); }; document.addEventListener("mousedown", close); return () => document.removeEventListener("mousedown", close); }, [ctxMenu]);
   const submitAdd = () => { if (newText.trim()) { addTask(col, newText.trim(), autoDetectCategory(newText, categories)); setNewText(""); } setAdding(false); };
   const saveEdit = (taskId) => { if (editText.trim()) editTask(col, taskId, editText.trim()); setEditingId(null); };
   const startEdit = (task) => { setEditingId(task.id); setEditText(task.text); };
@@ -1073,7 +1079,8 @@ function UnscheduledCol({ col, untimed, done, categories, taskFontSize, toggleDo
           <div key={task.id} draggable={!isEditing}
             onDragStart={(e) => { e.dataTransfer.setData("text/plain", JSON.stringify({ taskId: task.id, from: col })); }}
             onDoubleClick={() => { if (!isEditing) startEdit(task); }}
-            style={{ padding: "2px 4px", borderLeft: `3px solid ${catColor}`, background: `${catColor}18`, marginBottom: 2, fontSize: taskFontSize ? taskFontSize - 2 : 11, lineHeight: 1.3, cursor: isEditing ? "text" : "grab", borderRadius: 2, display: "flex", alignItems: "flex-start", gap: 4 }}>
+            onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); setCtxMenu({ x: e.clientX, y: e.clientY }); setCtxTask(task); }}
+            style={{ padding: "2px 4px", borderLeft: `3px solid ${catColor}`, background: `${catColor}18`, marginBottom: 2, fontSize: taskFontSize ? taskFontSize - 2 : 11, lineHeight: 1.3, cursor: isEditing ? "text" : "grab", borderRadius: 2, display: "flex", alignItems: "flex-start", gap: 4, position: "relative" }}>
             <input type="checkbox" checked={task.done} onChange={() => toggleDone(col, task.id)}
               style={{ width: 13, height: 13, marginTop: 1, cursor: "pointer", accentColor: "#5a5a5a", flexShrink: 0 }} />
             {isEditing ? (
@@ -1083,11 +1090,56 @@ function UnscheduledCol({ col, untimed, done, categories, taskFontSize, toggleDo
                 ref={(el) => { if (el) { el.style.height = "auto"; el.style.height = el.scrollHeight + "px"; el.focus(); el.setSelectionRange(el.value.length, el.value.length); } }}
                 style={{ flex: 1, minWidth: 0, border: "1px solid var(--border)", background: "var(--input-bg)", outline: "none", padding: "1px 3px", fontSize: "inherit", lineHeight: 1.4, color: "var(--text)", boxSizing: "border-box", borderRadius: 2, resize: "none", overflow: "hidden", minHeight: 18, font: "inherit" }} />
             ) : (
-              <span style={{ wordBreak: "break-word", color: "var(--text)", flex: 1, minWidth: 0 }}>{task.text}</span>
+              <span style={{ wordBreak: "break-word", color: "var(--text)", flex: 1, minWidth: 0 }}>
+                {task.text}
+                {task.recurring && <span style={{ fontSize: 8, marginLeft: 3, color: "var(--text-faint)" }}>{"\uD83D\uDD01"}</span>}
+              </span>
             )}
           </div>
         );
       })}
+      {/* Context menu for unscheduled tasks */}
+      {ctxMenu && ctxTask && (
+        <div onMouseDown={(e) => e.stopPropagation()} ref={(el) => { if (el) { const r = el.getBoundingClientRect(); if (r.bottom > window.innerHeight - 8) el.style.top = Math.max(8, ctxMenu.y - r.height) + "px"; if (r.right > window.innerWidth - 8) el.style.left = Math.max(8, ctxMenu.x - r.width) + "px"; } }}
+          style={{ position: "fixed", left: ctxMenu.x, top: ctxMenu.y, zIndex: 1000, background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 6, boxShadow: "0 4px 16px rgba(0,0,0,0.18)", padding: "4px 0", minWidth: 160 }}>
+          <div onMouseDown={(e) => { e.preventDefault(); startEdit(ctxTask); setCtxMenu(null); }} style={{ padding: "5px 12px", cursor: "pointer", fontSize: 11, color: "var(--text)" }} onMouseEnter={(e) => e.currentTarget.style.background = "var(--bg-hover)"} onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}>Edit</div>
+          <div onMouseDown={(e) => { e.preventDefault(); setShowCatPicker(!showCatPicker); }} style={{ padding: "5px 12px", cursor: "pointer", fontSize: 11, color: "var(--text)" }} onMouseEnter={(e) => e.currentTarget.style.background = "var(--bg-hover)"} onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}>Category</div>
+          {showCatPicker && (
+            <div style={{ padding: "4px 12px", display: "flex", gap: 3, flexWrap: "wrap" }}>
+              {categories.map((cat) => (
+                <div key={cat.id} onMouseDown={(e) => { e.preventDefault(); changeCategory(col, ctxTask.id, cat.id); setCtxMenu(null); }}
+                  title={cat.name} style={{ width: 16, height: 16, borderRadius: 3, background: cat.color, cursor: "pointer", border: ctxTask.category === cat.id ? "2px solid #555" : "1px solid rgba(0,0,0,0.1)" }} />
+              ))}
+            </div>
+          )}
+          <div onMouseDown={(e) => { e.preventDefault(); setRepeatMenu(!repeatMenu); }} style={{ padding: "5px 12px", cursor: "pointer", fontSize: 11, color: "var(--text)", display: "flex", justifyContent: "space-between" }} onMouseEnter={(e) => e.currentTarget.style.background = "var(--bg-hover)"} onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}>
+            <span>{ctxTask.recurring ? "Change repeat" : "Repeat"}</span><span style={{ fontSize: 9, color: "var(--text-faint)" }}>{"\u25B6"}</span>
+          </div>
+          {repeatMenu && (
+            <div style={{ padding: "4px 12px 6px", borderTop: "1px solid var(--border)" }}>
+              <div style={{ fontSize: 8, color: "var(--text-muted)", fontWeight: 600, marginBottom: 3, fontFamily: "'JetBrains Mono', monospace", textTransform: "uppercase" }}>Weekly</div>
+              {[2, 4, 8, 12].map((n) => (
+                <div key={n} onMouseDown={(e) => { e.preventDefault(); setRecurring(col, ctxTask.id, { type: "weeks", count: n, day: col }); setCtxMenu(null); }}
+                  style={{ padding: "2px 0", cursor: "pointer", fontSize: 10, color: "var(--text)" }} onMouseEnter={(e) => e.currentTarget.style.color = "var(--accent)"} onMouseLeave={(e) => e.currentTarget.style.color = "var(--text)"}>Every week for {n} weeks</div>
+              ))}
+              <div style={{ fontSize: 8, color: "var(--text-muted)", fontWeight: 600, marginTop: 4, marginBottom: 3, fontFamily: "'JetBrains Mono', monospace", textTransform: "uppercase" }}>Monthly</div>
+              {(() => { const today = new Date(); const dow = today.getDay(); const wn = Math.ceil(today.getDate() / 7); const wdN = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"]; const ords = ["","1st","2nd","3rd","4th","5th"];
+                return [
+                  { label: `${ords[wn]} ${wdN[dow]}`, rule: { type: "monthly", pattern: "nth_weekday", weekday: dow, nth: wn, day: col } },
+                  { label: "1st of month", rule: { type: "monthly", pattern: "day_of_month", dayOfMonth: 1, day: col } },
+                  { label: "Last day of month", rule: { type: "monthly", pattern: "last_day", day: col } },
+                ].map((o, i) => (
+                  <div key={i} onMouseDown={(e) => { e.preventDefault(); setRecurring(col, ctxTask.id, o.rule); setCtxMenu(null); }}
+                    style={{ padding: "2px 0", cursor: "pointer", fontSize: 10, color: "var(--text)" }} onMouseEnter={(e) => e.currentTarget.style.color = "var(--accent)"} onMouseLeave={(e) => e.currentTarget.style.color = "var(--text)"}>
+                    {o.label}</div>
+                ));
+              })()}
+              {ctxTask.recurring && <div onMouseDown={(e) => { e.preventDefault(); setRecurring(col, ctxTask.id, null); setCtxMenu(null); }} style={{ padding: "3px 0 0", cursor: "pointer", fontSize: 9, color: "#c44", marginTop: 3 }}>Remove repeat</div>}
+            </div>
+          )}
+          <div onMouseDown={(e) => { e.preventDefault(); deleteTask(col, ctxTask.id); setCtxMenu(null); }} style={{ padding: "5px 12px", cursor: "pointer", fontSize: 11, color: "#c44" }} onMouseEnter={(e) => e.currentTarget.style.background = "var(--bg-hover)"} onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}>Delete</div>
+        </div>
+      )}
       {done.length > 0 && (
         <>
           <div onClick={() => setShowDone(!showDone)} style={{ fontSize: 8, color: "var(--text-faint)", textAlign: "center", padding: "1px 0", cursor: "pointer" }}>
@@ -2009,7 +2061,7 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
                       update({ tasks: { ...t, [col]: t[col].map((x) => x.id === taskId ? { ...x, endTime: endStr } : x) } });
                     };
 
-                    const TimedTask = ({ task, col }) => {
+                    const TimedTask = ({ task, col, colIndex = 0, totalCols = 1 }) => {
                       const [expanded, setExpanded] = React.useState(false);
                       const [editing, setEditing] = React.useState(false);
                       const [editText, setEditText] = React.useState(task.text);
@@ -2066,9 +2118,9 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
                           onClick={() => { if (!editing && !ctxMenu) setExpanded(!expanded); }}
                           onDoubleClick={(e) => { if (!editing) { e.stopPropagation(); setEditing(true); setEditText(task.text); setExpanded(true); } }}
                           style={{
-                            position: "absolute", top, left: 1, right: 1, height: expanded ? "auto" : height,
+                            position: "absolute", top, left: expanded ? 0 : `calc(${(colIndex / totalCols) * 100}% + 1px)`, width: expanded ? "calc(100% - 1px)" : `calc(${100 / totalCols}% - 2px)`, height: expanded ? "auto" : height,
                             minHeight: 16, maxHeight: expanded ? "none" : height,
-                            background: `${catColor}${task.done ? "20" : "40"}`, borderLeft: `3px solid ${catColor}`, borderRadius: 3,
+                            background: expanded ? (catColor + "ee") : `${catColor}${task.done ? "20" : "40"}`, borderLeft: `3px solid ${catColor}`, borderRadius: 3,
                             padding: "1px 3px", fontSize: taskFontSize ? taskFontSize - 2 : 11, lineHeight: 1.2,
                             cursor: editing ? "text" : "grab", overflow: expanded ? "visible" : "hidden", color: "var(--text)", zIndex: expanded ? 10 : 2,
                             boxShadow: expanded ? "0 2px 8px rgba(0,0,0,0.2)" : "none",
@@ -2208,7 +2260,43 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
                                   </div>
                                 ))}
                                 {/* Positioned task blocks */}
-                                {timed.map((task) => <TimedTask key={task.id} task={task} col={col} />)}
+                                {(() => {
+                                  // Calculate overlap columns for timed tasks
+                                  const sorted = [...timed].sort((a, b) => timeToMin(a.startTime) - timeToMin(b.startTime));
+                                  const cols = []; // array of { taskId, end }
+                                  const layout = {}; // taskId -> { colIndex, totalCols }
+                                  const groups = []; // groups of overlapping task ids
+
+                                  sorted.forEach((task) => {
+                                    const s = timeToMin(task.startTime);
+                                    const e = task.endTime ? timeToMin(task.endTime) : s + 30;
+                                    // Find first available column
+                                    let placed = -1;
+                                    for (let c = 0; c < cols.length; c++) {
+                                      if (cols[c].end <= s) { cols[c] = { taskId: task.id, end: e }; placed = c; break; }
+                                    }
+                                    if (placed === -1) { placed = cols.length; cols.push({ taskId: task.id, end: e }); }
+                                    layout[task.id] = { colIndex: placed };
+                                  });
+
+                                  // Determine max columns for each task by checking overlaps
+                                  sorted.forEach((task) => {
+                                    const s = timeToMin(task.startTime);
+                                    const e = task.endTime ? timeToMin(task.endTime) : s + 30;
+                                    let maxCol = layout[task.id].colIndex;
+                                    sorted.forEach((other) => {
+                                      const os = timeToMin(other.startTime);
+                                      const oe = other.endTime ? timeToMin(other.endTime) : os + 30;
+                                      if (s < oe && e > os) { maxCol = Math.max(maxCol, layout[other.id].colIndex); }
+                                    });
+                                    layout[task.id].totalCols = maxCol + 1;
+                                  });
+
+                                  return timed.map((task) => {
+                                    const l = layout[task.id] || { colIndex: 0, totalCols: 1 };
+                                    return <TimedTask key={task.id} task={task} col={col} colIndex={l.colIndex} totalCols={l.totalCols} />;
+                                  });
+                                })()}
                                 {/* Current time indicator */}
                                 {weekDates[di]?.isToday && (() => {
                                   const now = new Date();
@@ -2232,7 +2320,7 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
                               const { untimed, done } = getTasksForDay(col);
                               return (
                                 <UnscheduledCol key={col} col={col} untimed={untimed} done={done} categories={categories} taskFontSize={taskFontSize}
-                                  toggleDone={toggleDone} addTask={addTask} editTask={editTask} deleteTask={deleteTask} autoDetectCategory={autoDetectCategory} handleUntimedDrop={handleUntimedDrop} />
+                                  toggleDone={toggleDone} addTask={addTask} editTask={editTask} deleteTask={deleteTask} changeCategory={changeCategory} setRecurring={setRecurring} autoDetectCategory={autoDetectCategory} handleUntimedDrop={handleUntimedDrop} />
                               );
                             })}
                           </div>
