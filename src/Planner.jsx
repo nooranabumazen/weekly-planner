@@ -1866,8 +1866,9 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
                   <>
                   {/* Time Block Calendar View */}
                   {(() => {
-                    const HOURS = Array.from({ length: 18 }, (_, i) => i + 6); // 6 AM to 11 PM
+                    const HOURS = Array.from({ length: 18 }, (_, i) => i + 6);
                     const HOUR_HEIGHT = 48;
+                    const HALF = HOUR_HEIGHT / 2;
                     const dayKeys = ["mon","tue","wed","thu","fri","sat","sun"];
 
                     const getTasksForDay = (col) => {
@@ -1877,22 +1878,28 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
                       return { timed, untimed, done };
                     };
 
-                    const handleTimeDrop = (e, col, hour) => {
+                    const timeToMin = (t) => { const [h, m] = (t || "09:00").split(":").map(Number); return h * 60 + (m || 0); };
+                    const minToTime = (m) => `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
+                    const minToTop = (m) => ((m / 60) - 6) * HOUR_HEIGHT;
+
+                    const handleTimeDrop = (e, col, minuteOfDay) => {
                       e.preventDefault();
                       try {
                         const d = JSON.parse(e.dataTransfer.getData("text/plain"));
                         if (!d) return;
-                        const timeStr = `${String(hour).padStart(2, "0")}:00`;
+                        const startMin = Math.round(minuteOfDay / 15) * 15;
+                        const timeStr = minToTime(startMin);
+                        const task = (dataRef.current.tasks[d.from] || []).find((x) => x.id === d.taskId);
+                        const duration = task?.endTime ? timeToMin(task.endTime) - timeToMin(task.startTime) : 30;
+                        const endStr = minToTime(startMin + Math.max(15, duration));
                         if (d.from === col) {
-                          // Same day: just update time
                           const t = dataRef.current.tasks;
-                          update({ tasks: { ...t, [col]: t[col].map((x) => x.id === d.taskId ? { ...x, startTime: timeStr } : x) } });
+                          update({ tasks: { ...t, [col]: t[col].map((x) => x.id === d.taskId ? { ...x, startTime: timeStr, endTime: endStr } : x) } });
                         } else {
-                          // Move between days with time
                           handleDrop(d.from, col, d.taskId, null);
                           setTimeout(() => {
                             const t = dataRef.current.tasks;
-                            update({ tasks: { ...t, [col]: t[col].map((x) => x.id === d.taskId ? { ...x, startTime: timeStr } : x) } });
+                            update({ tasks: { ...t, [col]: t[col].map((x) => x.id === d.taskId ? { ...x, startTime: timeStr, endTime: endStr } : x) } });
                           }, 50);
                         }
                       } catch {}
@@ -1906,12 +1913,12 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
                         if (!d) return;
                         if (d.from === col) {
                           const t = dataRef.current.tasks;
-                          update({ tasks: { ...t, [col]: t[col].map((x) => x.id === d.taskId ? { ...x, startTime: undefined } : x) } });
+                          update({ tasks: { ...t, [col]: t[col].map((x) => x.id === d.taskId ? { ...x, startTime: undefined, endTime: undefined } : x) } });
                         } else {
                           handleDrop(d.from, col, d.taskId, null);
                           setTimeout(() => {
                             const t = dataRef.current.tasks;
-                            update({ tasks: { ...t, [col]: t[col].map((x) => x.id === d.taskId ? { ...x, startTime: undefined } : x) } });
+                            update({ tasks: { ...t, [col]: t[col].map((x) => x.id === d.taskId ? { ...x, startTime: undefined, endTime: undefined } : x) } });
                           }, 50);
                         }
                       } catch {}
@@ -1919,7 +1926,65 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
 
                     const removeTime = (col, taskId) => {
                       const t = dataRef.current.tasks;
-                      update({ tasks: { ...t, [col]: t[col].map((x) => x.id === taskId ? { ...x, startTime: undefined } : x) } });
+                      update({ tasks: { ...t, [col]: t[col].map((x) => x.id === taskId ? { ...x, startTime: undefined, endTime: undefined } : x) } });
+                    };
+
+                    const resizeTask = (col, taskId, newEndMin) => {
+                      const t = dataRef.current.tasks;
+                      const endStr = minToTime(Math.max(newEndMin, timeToMin(t[col].find((x) => x.id === taskId)?.startTime || "09:00") + 15));
+                      update({ tasks: { ...t, [col]: t[col].map((x) => x.id === taskId ? { ...x, endTime: endStr } : x) } });
+                    };
+
+                    const TimedTask = ({ task, col }) => {
+                      const [expanded, setExpanded] = React.useState(false);
+                      const startMin = timeToMin(task.startTime);
+                      const endMin = task.endTime ? timeToMin(task.endTime) : startMin + 30;
+                      const top = minToTop(startMin);
+                      const height = Math.max(16, ((endMin - startMin) / 60) * HOUR_HEIGHT);
+                      const catColor = getCatColor(categories, task.category);
+                      const endLabel = task.endTime || minToTime(startMin + 30);
+
+                      const startResize = (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        const startY = e.clientY;
+                        const startEndMin = endMin;
+                        const onMove = (e2) => {
+                          const dy = e2.clientY - startY;
+                          const deltaMin = Math.round((dy / HOUR_HEIGHT) * 60 / 15) * 15;
+                          const newEnd = Math.max(startMin + 15, startEndMin + deltaMin);
+                          resizeTask(col, task.id, newEnd);
+                        };
+                        const onUp = () => { document.removeEventListener("mousemove", onMove); document.removeEventListener("mouseup", onUp); document.body.style.cursor = ""; };
+                        document.addEventListener("mousemove", onMove);
+                        document.addEventListener("mouseup", onUp);
+                        document.body.style.cursor = "ns-resize";
+                      };
+
+                      return (
+                        <div draggable
+                          onDragStart={(e) => { e.dataTransfer.setData("text/plain", JSON.stringify({ taskId: task.id, from: col })); }}
+                          onContextMenu={(e) => { e.preventDefault(); removeTime(col, task.id); }}
+                          onClick={() => setExpanded(!expanded)}
+                          style={{
+                            position: "absolute", top, left: 1, right: 1, height: expanded ? "auto" : height,
+                            minHeight: 16, maxHeight: expanded ? "none" : height,
+                            background: `${catColor}40`, borderLeft: `3px solid ${catColor}`, borderRadius: 3,
+                            padding: "1px 3px", fontSize: taskFontSize ? taskFontSize - 2 : 11, lineHeight: 1.2,
+                            cursor: "grab", overflow: "hidden", color: "var(--text)", zIndex: expanded ? 10 : 2,
+                            boxShadow: expanded ? "0 2px 8px rgba(0,0,0,0.2)" : "none",
+                          }}>
+                          <div style={{ fontSize: 7, color: "var(--text-muted)", fontFamily: "'JetBrains Mono', monospace", whiteSpace: "nowrap" }}>{task.startTime} - {endLabel}</div>
+                          <div style={{ wordBreak: "break-word" }}>{task.text}</div>
+                          {task.done && <span style={{ fontSize: 8, color: "var(--text-faint)" }}>(done)</span>}
+                          {/* Resize handle */}
+                          {!expanded && (
+                            <div onMouseDown={startResize}
+                              style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 6, cursor: "ns-resize", borderRadius: "0 0 3px 3px" }}
+                              onClick={(e) => e.stopPropagation()} />
+                          )}
+                        </div>
+                      );
                     };
 
                     return (
@@ -1951,47 +2016,36 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
                           {/* Day columns */}
                           {dayKeys.map((col, di) => {
                             const { timed } = getTasksForDay(col);
-                            const catColors = categories;
                             return (
                               <div key={col} style={{ flex: 1, position: "relative", borderLeft: "1px solid var(--border-light)", minWidth: 0 }}>
+                                {/* Half-hour drop zones */}
                                 {HOURS.map((h) => (
-                                  <div key={h}
-                                    onDragOver={(e) => { e.preventDefault(); setDragTime({ col, hour: h }); }}
-                                    onDragLeave={() => setDragTime(null)}
-                                    onDrop={(e) => handleTimeDrop(e, col, h)}
-                                    style={{
-                                      height: HOUR_HEIGHT, borderTop: "1px solid var(--border-light)",
-                                      background: dragTime?.col === col && dragTime?.hour === h ? "rgba(139,105,20,0.1)" : "transparent",
-                                    }} />
+                                  <div key={h} style={{ height: HOUR_HEIGHT, borderTop: "1px solid var(--border-light)", display: "flex", flexDirection: "column" }}>
+                                    {[0, 30].map((halfMin) => {
+                                      const totalMin = h * 60 + halfMin;
+                                      const isOver = dragTime?.col === col && dragTime?.min === totalMin;
+                                      return (
+                                        <div key={halfMin}
+                                          onDragOver={(e) => { e.preventDefault(); setDragTime({ col, min: totalMin }); }}
+                                          onDragLeave={() => setDragTime(null)}
+                                          onDrop={(e) => handleTimeDrop(e, col, totalMin)}
+                                          style={{
+                                            flex: 1, background: isOver ? "rgba(139,105,20,0.12)" : "transparent",
+                                            borderTop: halfMin === 30 ? "1px dashed var(--border-light)" : "none",
+                                          }} />
+                                      );
+                                    })}
+                                  </div>
                                 ))}
                                 {/* Positioned task blocks */}
-                                {timed.map((task) => {
-                                  const [hStr, mStr] = (task.startTime || "09:00").split(":");
-                                  const h = parseInt(hStr), m = parseInt(mStr || 0);
-                                  const top = (h - 6) * HOUR_HEIGHT + (m / 60) * HOUR_HEIGHT;
-                                  const catColor = getCatColor(catColors, task.category);
-                                  return (
-                                    <div key={task.id} draggable
-                                      onDragStart={(e) => { e.dataTransfer.setData("text/plain", JSON.stringify({ taskId: task.id, from: col })); }}
-                                      onContextMenu={(e) => { e.preventDefault(); removeTime(col, task.id); }}
-                                      style={{
-                                        position: "absolute", top, left: 2, right: 2, minHeight: HOUR_HEIGHT - 4,
-                                        background: `${catColor}40`, borderLeft: `3px solid ${catColor}`, borderRadius: 4,
-                                        padding: "2px 4px", fontSize: taskFontSize ? taskFontSize - 2 : 11, lineHeight: 1.3,
-                                        cursor: "grab", overflow: "hidden", color: "var(--text)", zIndex: 2,
-                                      }}>
-                                      <div style={{ fontSize: 8, color: "var(--text-muted)", fontFamily: "'JetBrains Mono', monospace" }}>{task.startTime}</div>
-                                      <div style={{ wordBreak: "break-word" }}>{task.text}</div>
-                                    </div>
-                                  );
-                                })}
+                                {timed.map((task) => <TimedTask key={task.id} task={task} col={col} />)}
                                 {/* Current time indicator */}
                                 {weekDates[di]?.isToday && (() => {
                                   const now = new Date();
                                   const nowH = now.getHours(), nowM = now.getMinutes();
                                   if (nowH < 6 || nowH > 23) return null;
-                                  const top = (nowH - 6) * HOUR_HEIGHT + (nowM / 60) * HOUR_HEIGHT;
-                                  return <div style={{ position: "absolute", top, left: 0, right: 0, height: 2, background: "#c44", zIndex: 3, borderRadius: 1 }}>
+                                  const top = minToTop(nowH * 60 + nowM);
+                                  return <div style={{ position: "absolute", top, left: 0, right: 0, height: 2, background: "#c44", zIndex: 3, borderRadius: 1, pointerEvents: "none" }}>
                                     <div style={{ position: "absolute", left: -4, top: -3, width: 8, height: 8, borderRadius: "50%", background: "#c44" }} />
                                   </div>;
                                 })()}
@@ -2004,7 +2058,7 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
                           <div style={{ padding: "4px 8px 2px", fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, fontSize: 8, color: "var(--text-muted)", letterSpacing: 1, textTransform: "uppercase" }}>Unscheduled</div>
                           <div style={{ display: "flex" }}>
                             <div style={{ width: 44, flexShrink: 0 }} />
-                            {dayKeys.map((col, di) => {
+                            {dayKeys.map((col) => {
                               const { untimed, done } = getTasksForDay(col);
                               return (
                                 <div key={col} style={{ flex: 1, minWidth: 0, borderLeft: "1px solid var(--border-light)", padding: "2px 2px" }}
