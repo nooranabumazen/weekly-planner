@@ -2112,22 +2112,10 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
                         }
                       }, [expanded, editing, ctxMenu]);
 
-                      const dragStartPos = React.useRef(null);
-
                       return (
                         <div id={"timed-task-" + task.id} draggable={!editing && !ctxMenu}
                           onDragStart={(e) => { e.dataTransfer.setData("text/plain", JSON.stringify({ taskId: task.id, from: col })); }}
                           onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); setCtxMenu({ x: e.clientX, y: e.clientY }); setExpanded(true); }}
-                          onMouseDown={(e) => { dragStartPos.current = { x: e.clientX, y: e.clientY }; }}
-                          onClick={(e) => {
-                            if (editing || ctxMenu) return;
-                            if (dragStartPos.current) {
-                              const dx = Math.abs(e.clientX - dragStartPos.current.x);
-                              const dy = Math.abs(e.clientY - dragStartPos.current.y);
-                              if (dx > 3 || dy > 3) return; // was a drag attempt
-                            }
-                            setExpanded(!expanded);
-                          }}
                           onDoubleClick={(e) => { if (!editing) { e.stopPropagation(); setEditing(true); setEditText(task.text); setExpanded(true); } }}
                           style={{
                             position: "absolute", top, left: expanded ? 0 : `calc(${(colIndex / totalCols) * 100}% + 1px)`, width: expanded ? "calc(100% - 1px)" : `calc(${100 / totalCols}% - 2px)`, height: expanded ? "auto" : height,
@@ -2152,7 +2140,8 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
                                 style={{ flex: 1, minWidth: 0, border: "1px solid var(--border)", background: "var(--input-bg)", font: "inherit", outline: "none", padding: "1px 3px", fontSize: taskFontSize ? taskFontSize - 2 : 11, lineHeight: 1.4, resize: "none", overflow: "hidden", borderRadius: 2, color: "var(--text)", boxSizing: "border-box", minHeight: 18 }}
                                 ref={(el) => { if (el) { el.style.height = "auto"; el.style.height = el.scrollHeight + "px"; el.focus(); el.setSelectionRange(el.value.length, el.value.length); } }} />
                             ) : (
-                              <span style={{ wordBreak: "break-word", textDecoration: task.done ? "line-through" : "none", color: task.done ? "var(--text-muted)" : "var(--text)" }}>
+                              <span onClick={(e) => { e.stopPropagation(); if (!editing) setExpanded(!expanded); }}
+                                style={{ wordBreak: "break-word", textDecoration: task.done ? "line-through" : "none", color: task.done ? "var(--text-muted)" : "var(--text)", cursor: "pointer" }}>
                                 {task.text}
                                 {task.recurring && <span style={{ fontSize: 8, marginLeft: 3, color: "var(--text-faint)" }}>{"\uD83D\uDD01"}</span>}
                               </span>
