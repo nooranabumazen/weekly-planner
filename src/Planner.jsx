@@ -1062,6 +1062,7 @@ function TimedTaskBlock({ task, col, colIndex, totalCols, categories, taskFontSi
   const [ctxMenu, setCtxMenu] = useState(null);
   const [showCatPicker, setShowCatPicker] = useState(false);
   const [repeatMenu, setRepeatMenu] = useState(false);
+  const blockRef = useRef(null);
 
   const timeToMin = (t) => { const [h, m] = (t || "09:00").split(":").map(Number); return h * 60 + (m || 0); };
   const minToTop = (m) => ((m / 60) - 6) * TIMED_HOUR_HEIGHT;
@@ -1074,12 +1075,23 @@ function TimedTaskBlock({ task, col, colIndex, totalCols, categories, taskFontSi
 
   const saveEdit = () => { if (editText.trim()) editTask(col, task.id, editText.trim()); setEditing(false); setExpanded(false); };
 
+  // Close context menu on click-away
   useEffect(() => {
     if (!ctxMenu) return;
     const close = () => { setCtxMenu(null); setRepeatMenu(false); setShowCatPicker(false); setExpanded(false); };
     document.addEventListener("mousedown", close);
     return () => document.removeEventListener("mousedown", close);
   }, [ctxMenu]);
+
+  // Collapse on click-away (only when expanded, not editing, no context menu)
+  useEffect(() => {
+    if (!expanded || editing || ctxMenu) return;
+    const handler = (e) => {
+      if (blockRef.current && !blockRef.current.contains(e.target)) setExpanded(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [expanded, editing, ctxMenu]);
 
   const startResize = (e) => {
     e.preventDefault(); e.stopPropagation();
@@ -1090,7 +1102,7 @@ function TimedTaskBlock({ task, col, colIndex, totalCols, categories, taskFontSi
   };
 
   return (
-    <div draggable={!editing}
+    <div ref={blockRef} draggable={!editing}
       onDragStart={(e) => { e.dataTransfer.setData("text/plain", JSON.stringify({ taskId: task.id, from: col })); }}
       onDoubleClick={() => { if (!editing) { setEditing(true); setEditText(task.text); setExpanded(true); } }}
       onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); setCtxMenu({ x: e.clientX, y: e.clientY }); setExpanded(true); }}
@@ -1116,7 +1128,8 @@ function TimedTaskBlock({ task, col, colIndex, totalCols, categories, taskFontSi
             style={{ flex: 1, minWidth: 0, border: "1px solid var(--border)", background: "var(--input-bg)", font: "inherit", outline: "none", padding: "1px 3px", fontSize: taskFontSize ? taskFontSize - 2 : 11, lineHeight: 1.4, resize: "none", overflow: "hidden", borderRadius: 2, color: "var(--text)", boxSizing: "border-box", minHeight: 18 }}
             ref={(el) => { if (el) { el.style.height = "auto"; el.style.height = el.scrollHeight + "px"; el.focus(); el.setSelectionRange(el.value.length, el.value.length); } }} />
         ) : (
-          <span style={{ wordBreak: "break-word", textDecoration: task.done ? "line-through" : "none", color: task.done ? "var(--text-muted)" : "var(--text)" }}>
+          <span onClick={(e) => { e.stopPropagation(); setExpanded(!expanded); }}
+            style={{ wordBreak: "break-word", textDecoration: task.done ? "line-through" : "none", color: task.done ? "var(--text-muted)" : "var(--text)", cursor: "pointer" }}>
             {task.text}
             {task.recurring && <span style={{ fontSize: 8, marginLeft: 3, color: "var(--text-faint)" }}>{"\uD83D\uDD01"}</span>}
           </span>
