@@ -840,7 +840,8 @@ function TaskCard({ task, columnId, categories, onDragStart, onToggle, onDelete,
         <textarea ref={inputRef} value={editText} onChange={(e) => { setEditText(e.target.value); e.target.style.height = "auto"; e.target.style.height = e.target.scrollHeight + "px"; }}
           onBlur={save}
           onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); save(); } if (e.key === "Escape") setEditing(false); }}
-          style={{ flex: 1, minWidth: 0, border: "1px solid var(--border)", background: "var(--input-bg)", font: "inherit", outline: "none", padding: "2px 4px", fontSize: isMobile ? 16 : (taskFontSize || 13), lineHeight: 1.4, resize: "none", overflow: "hidden", borderRadius: 3, color: "var(--text)", boxSizing: "border-box", minHeight: 20 }}
+          rows={1}
+          style={{ flex: 1, minWidth: 0, border: "none", background: "transparent", font: "inherit", outline: "none", padding: 0, fontSize: isMobile ? 16 : (taskFontSize || 13), lineHeight: 1.4, resize: "none", overflow: "hidden", color: "var(--text)", boxSizing: "border-box" }}
           onFocus={(e) => { e.target.style.height = "auto"; e.target.style.height = e.target.scrollHeight + "px"; }} />
       ) : (
         <span onDoubleClick={() => { setEditing(true); setEditText(task.text); }}
@@ -984,7 +985,14 @@ function DaySection({ dayInfo, columnId, tasks, categories, onDragStart, onDrop,
   const handleTextChange = (e) => { const val = e.target.value; setNewText(val); if (!catManuallySet) setNewCat(autoDetectCategory(val, categories)); };
   const handleManualCat = (catId) => { setNewCat(catId); setCatManuallySet(true); };
   const isToday = dayInfo?.isToday;
-  const incompleteTasks = tasks.filter((t) => !t.done);
+  const timeToMin = (t) => { if (!t) return 99999; const [h, m] = t.split(":").map(Number); return h * 60 + (m || 0); };
+  const incompleteTasks = tasks.filter((t) => !t.done).sort((a, b) => {
+    const aHasTime = a.startTime ? 0 : 1;
+    const bHasTime = b.startTime ? 0 : 1;
+    if (aHasTime !== bHasTime) return aHasTime - bHasTime;
+    if (a.startTime && b.startTime) return timeToMin(a.startTime) - timeToMin(b.startTime);
+    return 0;
+  });
   const doneTasks = tasks.filter((t) => t.done);
 
   const dayLabel = isLater ? "LATER" : (dayInfo?.label === "MON" ? "MONDAY" : dayInfo?.label === "TUE" ? "TUESDAY" : dayInfo?.label === "WED" ? "WEDNESDAY" : dayInfo?.label === "THU" ? "THURSDAY" : dayInfo?.label === "FRI" ? "FRIDAY" : dayInfo?.label === "SAT" ? "SATURDAY" : dayInfo?.label === "SUN" ? "SUNDAY" : dayInfo?.label);
