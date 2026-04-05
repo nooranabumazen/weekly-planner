@@ -159,6 +159,16 @@ function JournalEditor({ content, onChange, userId }) {
             }
             handleInput();
           }
+          if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === "8" || e.key === "*")) {
+            e.preventDefault();
+            document.execCommand("insertUnorderedList");
+            handleInput();
+          }
+          if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === "7" || e.key === "&")) {
+            e.preventDefault();
+            document.execCommand("insertOrderedList");
+            handleInput();
+          }
         }}
         suppressContentEditableWarning
         style={{ flex: 1, overflowY: "auto", padding: "14px 24px 14px 48px", fontSize: 13, lineHeight: 1.7, outline: "none", color: "var(--text)", fontFamily: "'DM Sans', sans-serif" }} />
