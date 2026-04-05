@@ -1055,7 +1055,7 @@ function DaySection({ dayInfo, columnId, tasks, categories, onDragStart, onDrop,
 /* ─── Day Column (horizontal layout) ─── */
 const TIMED_HOUR_HEIGHT = 48;
 
-function TimedTaskBlock({ task, col, colIndex, totalCols, categories, taskFontSize, editTask, toggleDone, changeCategory, setRecurring, removeTime, deleteTask, resizeTask }) {
+function TimedTaskBlock({ task, col, colIndex, totalCols, categories, taskFontSize, gridStartHour, editTask, toggleDone, changeCategory, setRecurring, removeTime, deleteTask, resizeTask }) {
   const [expanded, setExpanded] = useState(false);
   const [editing, setEditing] = useState(false);
   const [editText, setEditText] = useState(task.text);
@@ -1065,7 +1065,7 @@ function TimedTaskBlock({ task, col, colIndex, totalCols, categories, taskFontSi
   const blockRef = useRef(null);
 
   const timeToMin = (t) => { const [h, m] = (t || "09:00").split(":").map(Number); return h * 60 + (m || 0); };
-  const minToTop = (m) => ((m / 60) - 6) * TIMED_HOUR_HEIGHT;
+  const minToTop = (m) => ((m / 60) - (gridStartHour || 6)) * TIMED_HOUR_HEIGHT;
 
   const startMin = timeToMin(task.startTime);
   const endMin = task.endTime ? timeToMin(task.endTime) : startMin + 30;
@@ -1557,6 +1557,10 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
   const setLaterOpen = (v) => { setLaterOpenState(v); try { localStorage.setItem("planner_laterOpen", v); } catch {} };
   const setNotesOpen = (v) => { setNotesOpenState(v); try { localStorage.setItem("planner_notesOpen", v); } catch {} };
   const setHabitsOpen = (v) => { setHabitsOpenState(v); try { localStorage.setItem("planner_habitsOpen", v); } catch {} };
+  const [gridStartHour, setGridStartHourState] = useState(() => { try { const v = localStorage.getItem("planner_gridStartHour"); return v ? parseInt(v) : 6; } catch { return 6; } });
+  const [gridEndHour, setGridEndHourState] = useState(() => { try { const v = localStorage.getItem("planner_gridEndHour"); return v ? parseInt(v) : 23; } catch { return 23; } });
+  const setGridStartHour = (v) => { const h = Math.max(0, Math.min(v, gridEndHour - 2)); setGridStartHourState(h); try { localStorage.setItem("planner_gridStartHour", h); } catch {} };
+  const setGridEndHour = (v) => { const h = Math.max(gridStartHour + 2, Math.min(24, v)); setGridEndHourState(h); try { localStorage.setItem("planner_gridEndHour", h); } catch {} };
   const notebooks = data.notebooks || [];
   const journal = data.journal || {};
   const contacts = data.contacts || [];
@@ -2138,7 +2142,7 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
                   <>
                   {/* Time Block Calendar View */}
                   {(() => {
-                    const HOURS = Array.from({ length: 18 }, (_, i) => i + 6);
+                    const HOURS = Array.from({ length: gridEndHour - gridStartHour }, (_, i) => i + gridStartHour);
                     const HOUR_HEIGHT = 48;
                     const HALF = HOUR_HEIGHT / 2;
                     const dayKeys = ["mon","tue","wed","thu","fri","sat","sun"];
@@ -2153,7 +2157,7 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
 
                     const timeToMin = (t) => { const [h, m] = (t || "09:00").split(":").map(Number); return h * 60 + (m || 0); };
                     const minToTime = (m) => `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
-                    const minToTop = (m) => ((m / 60) - 6) * HOUR_HEIGHT;
+                    const minToTop = (m) => ((m / 60) - gridStartHour) * HOUR_HEIGHT;
 
                     const handleTimeDrop = (e, col, minuteOfDay) => {
                       e.preventDefault();
@@ -2225,6 +2229,23 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
                             );
                           })}
                         </div>
+                        {/* Top drag handle to hide early hours */}
+                        <div onMouseDown={(e) => {
+                          e.preventDefault();
+                          const startY = e.clientY;
+                          const startHour = gridStartHour;
+                          const onMove = (e2) => {
+                            const dy = e2.clientY - startY;
+                            const deltaHours = Math.round(dy / HOUR_HEIGHT);
+                            setGridStartHour(startHour + deltaHours);
+                          };
+                          const onUp = () => { document.removeEventListener("mousemove", onMove); document.removeEventListener("mouseup", onUp); document.body.style.cursor = ""; document.body.style.userSelect = ""; };
+                          document.addEventListener("mousemove", onMove); document.addEventListener("mouseup", onUp);
+                          document.body.style.cursor = "ns-resize"; document.body.style.userSelect = "none";
+                        }} style={{ height: 8, cursor: "ns-resize", display: "flex", alignItems: "center", justifyContent: "center", background: "var(--bg-surface)", borderBottom: "1px solid var(--border)" }}
+                          onMouseEnter={(e) => e.currentTarget.style.background = "var(--bg-hover)"} onMouseLeave={(e) => e.currentTarget.style.background = "var(--bg-surface)"}>
+                          <div style={{ width: 30, height: 2, borderRadius: 1, background: "var(--text-faint)", opacity: 0.5 }} />
+                        </div>
                         {/* Time grid */}
                         <div style={{ display: "flex", position: "relative" }}>
                           {/* Hour labels */}
@@ -2294,7 +2315,7 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
                                   return timed.map((task) => {
                                     const l = layout[task.id] || { colIndex: 0, totalCols: 1 };
                                     return <TimedTaskBlock key={task.id} task={task} col={col} colIndex={l.colIndex} totalCols={l.totalCols}
-                                      categories={categories} taskFontSize={taskFontSize} editTask={editTask} toggleDone={toggleDone}
+                                      categories={categories} taskFontSize={taskFontSize} gridStartHour={gridStartHour} editTask={editTask} toggleDone={toggleDone}
                                       changeCategory={changeCategory} setRecurring={setRecurring} removeTime={removeTime} deleteTask={deleteTask} resizeTask={resizeTask} />;
                                   });
                                 })()}
@@ -2302,7 +2323,7 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
                                 {weekDates[di]?.isToday && (() => {
                                   const now = new Date();
                                   const nowH = now.getHours(), nowM = now.getMinutes();
-                                  if (nowH < 6 || nowH > 23) return null;
+                                  if (nowH < gridStartHour || nowH >= gridEndHour) return null;
                                   const top = minToTop(nowH * 60 + nowM);
                                   return <div style={{ position: "absolute", top, left: 0, right: 0, height: 2, background: "#c44", zIndex: 3, borderRadius: 1, pointerEvents: "none" }}>
                                     <div style={{ position: "absolute", left: -4, top: -3, width: 8, height: 8, borderRadius: "50%", background: "#c44" }} />
@@ -2311,6 +2332,23 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
                               </div>
                             );
                           })}
+                        </div>
+                        {/* Bottom drag handle to hide late hours */}
+                        <div onMouseDown={(e) => {
+                          e.preventDefault();
+                          const startY = e.clientY;
+                          const startHour = gridEndHour;
+                          const onMove = (e2) => {
+                            const dy = e2.clientY - startY;
+                            const deltaHours = Math.round(dy / HOUR_HEIGHT);
+                            setGridEndHour(startHour + deltaHours);
+                          };
+                          const onUp = () => { document.removeEventListener("mousemove", onMove); document.removeEventListener("mouseup", onUp); document.body.style.cursor = ""; document.body.style.userSelect = ""; };
+                          document.addEventListener("mousemove", onMove); document.addEventListener("mouseup", onUp);
+                          document.body.style.cursor = "ns-resize"; document.body.style.userSelect = "none";
+                        }} style={{ height: 8, cursor: "ns-resize", display: "flex", alignItems: "center", justifyContent: "center", background: "var(--bg-surface)", borderTop: "1px solid var(--border)" }}
+                          onMouseEnter={(e) => e.currentTarget.style.background = "var(--bg-hover)"} onMouseLeave={(e) => e.currentTarget.style.background = "var(--bg-surface)"}>
+                          <div style={{ width: 30, height: 2, borderRadius: 1, background: "var(--text-faint)", opacity: 0.5 }} />
                         </div>
                         {/* Unscheduled tasks section */}
                         <div style={{ borderTop: "2px solid var(--border)", padding: "0 0 4px" }}>
