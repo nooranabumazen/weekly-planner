@@ -1516,13 +1516,16 @@ function FutureSidebar({ futureTasks, onAddFuture, onDeleteFuture, onEditFuture,
             {sortedDates.length === 0 && <div style={{ fontSize: 10, color: "var(--text-faint)", textAlign: "center", marginTop: 16 }}>No upcoming</div>}
           </div>
           {adding ? (
-            <div ref={(el) => { if (el) el.scrollIntoView({ behavior: "smooth", block: "nearest" }); }} style={{ padding: "6px 8px", borderTop: "1px solid var(--border)", flexShrink: 0 }}>
-              <input ref={addRef} value={newText} onChange={(e) => setNewText(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") submitAdd(); if (e.key === "Escape") setAdding(false); }} placeholder="Task..." style={{ width: "100%", border: "1px solid var(--border)", borderRadius: 4, padding: "4px 6px", fontSize: 10, outline: "none", marginBottom: 2, background: "var(--bg-card)", color: "var(--text)", boxSizing: "border-box" }} />
-              <input type="date" value={newDate} onChange={(e) => setNewDate(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") submitAdd(); }} style={{ width: "100%", border: "1px solid var(--border)", borderRadius: 4, padding: "4px 6px", fontSize: 10, outline: "none", marginBottom: 2, background: "var(--bg-card)", color: "var(--text)", boxSizing: "border-box" }} />
-              <div style={{ display: "flex", gap: 2 }}>
-                <button onClick={submitAdd} style={{ flex: 1, background: "#555", color: "#fff", border: "none", borderRadius: 4, padding: "3px 0", cursor: "pointer", fontSize: 9 }}>Add</button>
-                <button onClick={() => setAdding(false)} style={{ flex: 1, background: "var(--border)", color: "var(--text-muted)", border: "none", borderRadius: 4, padding: "3px 0", cursor: "pointer", fontSize: 9 }}>Cancel</button>
+            <div style={{ position: "relative", padding: "6px 8px", borderTop: "1px solid var(--border)", flexShrink: 0 }}>
+              <div style={{ position: "absolute", bottom: "100%", left: 0, right: 0, background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 6, padding: "8px", boxShadow: "0 -4px 16px rgba(0,0,0,0.2)", zIndex: 20 }}>
+                <input ref={addRef} value={newText} onChange={(e) => setNewText(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && newDate) submitAdd(); if (e.key === "Escape") setAdding(false); }} placeholder="Task..." style={{ width: "100%", border: "1px solid var(--border)", borderRadius: 4, padding: "4px 6px", fontSize: 10, outline: "none", marginBottom: 4, background: "var(--input-bg)", color: "var(--text)", boxSizing: "border-box" }} />
+                <input type="date" value={newDate} onChange={(e) => setNewDate(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") submitAdd(); }} style={{ width: "100%", border: "1px solid var(--border)", borderRadius: 4, padding: "4px 6px", fontSize: 10, outline: "none", marginBottom: 4, background: "var(--input-bg)", color: "var(--text)", boxSizing: "border-box" }} />
+                <div style={{ display: "flex", gap: 4 }}>
+                  <button onClick={submitAdd} style={{ flex: 1, background: "#555", color: "#fff", border: "none", borderRadius: 4, padding: "4px 0", cursor: "pointer", fontSize: 9 }}>Add</button>
+                  <button onClick={() => setAdding(false)} style={{ flex: 1, background: "var(--border)", color: "var(--text-muted)", border: "none", borderRadius: 4, padding: "4px 0", cursor: "pointer", fontSize: 9 }}>Cancel</button>
+                </div>
               </div>
+              <button onClick={() => setAdding(false)} style={{ background: "none", border: "1px dashed var(--accent)", borderRadius: 4, padding: "4px 0", cursor: "pointer", color: "var(--accent)", fontSize: 10, width: "100%" }}>Scheduling...</button>
             </div>
           ) : (
             <div style={{ padding: "6px 8px", borderTop: "1px solid var(--border)" }}>
