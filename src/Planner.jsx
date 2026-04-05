@@ -1446,7 +1446,7 @@ function FutureSidebar({ futureTasks, onAddFuture, onDeleteFuture, onEditFuture,
   const nextMonth = () => { if (calMonth === 11) { setCalMonth(0); setCalYear(calYear + 1); } else setCalMonth(calMonth + 1); };
 
   return (
-    <div style={{ width: open ? 190 : 36, minWidth: open ? 190 : 36, background: "var(--bg-surface)", borderLeft: "1px solid var(--border)", display: "flex", flexDirection: "column", overflow: "hidden", transition: "width 0.2s ease, min-width 0.2s ease" }}>
+    <div style={{ width: open ? 190 : 36, minWidth: open ? 190 : 36, background: "var(--bg-surface)", borderLeft: "1px solid var(--border)", display: "flex", flexDirection: "column", overflowY: "auto", overflowX: "hidden", transition: "width 0.2s ease, min-width 0.2s ease", maxHeight: "100%" }}>
       <button onClick={() => setOpen(!open)} style={{ background: "none", border: "none", borderBottom: "1px solid var(--border)", cursor: "pointer", padding: "10px 0", display: "flex", flexDirection: "column", alignItems: "center", gap: 2, color: "var(--text-muted)" }}>
         <span style={{ fontSize: 12 }}>{open ? "\u25B6" : "\u25C0"}</span>
         {!open && (<><span style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, fontSize: 7, letterSpacing: 1, textTransform: "uppercase", writingMode: "vertical-lr" }}>Upcoming</span>{count > 0 && <span style={{ fontSize: 9, fontWeight: 600, background: "var(--border)", borderRadius: 8, padding: "1px 4px", marginTop: 4 }}>{count}</span>}</>)}
@@ -1516,7 +1516,7 @@ function FutureSidebar({ futureTasks, onAddFuture, onDeleteFuture, onEditFuture,
             {sortedDates.length === 0 && <div style={{ fontSize: 10, color: "var(--text-faint)", textAlign: "center", marginTop: 16 }}>No upcoming</div>}
           </div>
           {adding ? (
-            <div style={{ padding: "6px 8px", borderTop: "1px solid var(--border)" }}>
+            <div ref={(el) => { if (el) el.scrollIntoView({ behavior: "smooth", block: "nearest" }); }} style={{ padding: "6px 8px", borderTop: "1px solid var(--border)", flexShrink: 0 }}>
               <input ref={addRef} value={newText} onChange={(e) => setNewText(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") submitAdd(); if (e.key === "Escape") setAdding(false); }} placeholder="Task..." style={{ width: "100%", border: "1px solid var(--border)", borderRadius: 4, padding: "4px 6px", fontSize: 10, outline: "none", marginBottom: 2, background: "var(--bg-card)", color: "var(--text)", boxSizing: "border-box" }} />
               <input type="date" value={newDate} onChange={(e) => setNewDate(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") submitAdd(); }} style={{ width: "100%", border: "1px solid var(--border)", borderRadius: 4, padding: "4px 6px", fontSize: 10, outline: "none", marginBottom: 2, background: "var(--bg-card)", color: "var(--text)", boxSizing: "border-box" }} />
               <div style={{ display: "flex", gap: 2 }}>
