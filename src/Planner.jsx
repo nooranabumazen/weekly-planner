@@ -1874,26 +1874,28 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
     update({ tasks: { ...t, [col]: nextList } });
   }, []);
   const changeCategory = useCallback((col, id, catId) => { const t = dataRef.current.tasks; update({ tasks: { ...t, [col]: t[col].map((x) => (x.id === id ? { ...x, category: catId } : x)) } }); }, []);
+  const recurringQueueRef = useRef(Promise.resolve());
+
   const setRecurring = useCallback((col, id, rule) => {
     const t = dataRef.current.tasks;
     const task = t[col]?.find((x) => x.id === id);
     const newTasks = { ...t, [col]: t[col].map((x) => x.id === id ? { ...x, recurring: rule || undefined } : x) };
     update({ tasks: newTasks });
-    // Save to persistent recurring rules immediately
     if (task && onSaveRecurringRules) {
-      import('firebase/firestore').then(({ getDoc: gd, doc: d }) => {
-        gd(d(db, `users/${userId}/meta/recurringRules`)).then((snap) => {
+      // Queue writes sequentially so they never overlap
+      recurringQueueRef.current = recurringQueueRef.current.then(async () => {
+        try {
+          const { getDoc: gd, doc: d } = await import('firebase/firestore');
+          const snap = await gd(d(db, `users/${userId}/meta/recurringRules`));
           const existing = snap.exists() ? (snap.data().items || []) : [];
-          // Remove any old rule for this task text + day
           const filtered = existing.filter((r) => !(r.text === task.text && r.day === (rule?.day || col)));
           if (rule) {
-            // Adding/updating a rule
             filtered.push({ ...rule, text: task.text, category: task.category || "cat_none" });
           }
           onSaveRecurringRules(filtered);
-        }).catch(() => {
-          if (rule) onSaveRecurringRules([{ ...rule, text: task.text, category: task.category || "cat_none" }]);
-        });
+        } catch (err) {
+          console.error("Failed to update recurring rules:", err);
+        }
       });
     }
   }, [userId, onSaveRecurringRules]);
