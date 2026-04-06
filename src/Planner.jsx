@@ -88,8 +88,16 @@ function autoDetectCategory(text, categories) {
       if (kwLower.includes(" ")) {
         if (lower.includes(kwLower)) return cat.id;
       } else {
-        const re = new RegExp("\\b" + kwLower.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "\\b");
+        // Match exact word, plus common plural/verb forms (seeds->seed, planting->plant, cooked->cook)
+        const escaped = kwLower.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        const re = new RegExp("\\b" + escaped + "(s|es|ing|ed)?\\b");
         if (re.test(lower)) return cat.id;
+        // Also try stemming the input: if keyword is "seeds", match "seed" in text
+        const kwStem = kwLower.replace(/(s|es|ing|ed)$/, "");
+        if (kwStem !== kwLower && kwStem.length >= 3) {
+          const reStem = new RegExp("\\b" + kwStem.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "(s|es|ing|ed)?\\b");
+          if (reStem.test(lower)) return cat.id;
+        }
       }
     }
   }
