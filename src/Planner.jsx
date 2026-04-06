@@ -1031,9 +1031,7 @@ function DaySection({ dayInfo, columnId, tasks, categories, onDragStart, onDrop,
           </div>
         ))}
         <DropZone onDrop={(e) => handleDropAtIndex(e, null)} />
-        {doneTasks.length > 0 && doneTasks.map((task) => (
-          <TaskCard key={task.id} task={task} columnId={columnId} categories={categories} onDragStart={onDragStart} onToggle={onToggle} onDelete={onDelete} onEdit={onEdit} onChangeCategory={onChangeCategory} isMobile={isMobile} onMove={onMove} onSetRecurring={onSetRecurring} highlightQuery={highlightQuery} taskFontSize={taskFontSize} />
-        ))}
+        <DoneCollapse doneTasks={doneTasks} columnId={columnId} categories={categories} onDragStart={onDragStart} onToggle={onToggle} onDelete={onDelete} onEdit={onEdit} onChangeCategory={onChangeCategory} onMove={onMove} onSetRecurring={onSetRecurring} highlightQuery={highlightQuery} isMobile={isMobile} taskFontSize={taskFontSize} />
       </div>
 
       {/* Add task */}
@@ -1331,7 +1329,7 @@ function UnscheduledCol({ col, untimed, done, categories, taskFontSize, toggleDo
   );
 }
 
-function DoneCollapse({ doneTasks, columnId, categories, onDragStart, onToggle, onDelete, onEdit, onChangeCategory, onMove, onSetRecurring, highlightQuery, isToday, taskFontSize }) {
+function DoneCollapse({ doneTasks, columnId, categories, onDragStart, onToggle, onDelete, onEdit, onChangeCategory, onMove, onSetRecurring, highlightQuery, isToday, isMobile, taskFontSize }) {
   const [expanded, setExpanded] = useState(false);
   if (doneTasks.length === 0) return null;
   return (
@@ -1341,7 +1339,7 @@ function DoneCollapse({ doneTasks, columnId, categories, onDragStart, onToggle, 
         <span style={{ fontSize: 8, color: "var(--text-faint)" }}>{doneTasks.length} done</span>
       </div>
       {expanded && doneTasks.map((task) => (
-        <TaskCard key={task.id} task={task} columnId={columnId} categories={categories} onDragStart={onDragStart} onToggle={onToggle} onDelete={onDelete} onEdit={onEdit} onChangeCategory={onChangeCategory} onMove={onMove} onSetRecurring={onSetRecurring} highlightQuery={highlightQuery} taskFontSize={taskFontSize} />
+        <TaskCard key={task.id} task={task} columnId={columnId} categories={categories} onDragStart={onDragStart} onToggle={onToggle} onDelete={onDelete} onEdit={onEdit} onChangeCategory={onChangeCategory} isMobile={isMobile} onMove={onMove} onSetRecurring={onSetRecurring} highlightQuery={highlightQuery} taskFontSize={taskFontSize} />
       ))}
     </>
   );
