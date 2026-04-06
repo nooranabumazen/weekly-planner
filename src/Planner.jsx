@@ -1342,7 +1342,7 @@ function DoneCollapse({ doneTasks, columnId, categories, onDragStart, onToggle, 
   if (doneTasks.length === 0) return null;
   return (
     <>
-      <div onClick={() => setExpanded(!expanded)} style={{ borderTop: "1px dashed var(--border)", margin: "3px 2px 1px", padding: "2px 0", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 3 }}>
+      <div onClick={() => setExpanded(!expanded)} style={{ borderTop: "1px dashed var(--border)", margin: "3px 2px 1px", padding: "2px 10px 2px 26px", cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}>
         <span style={{ fontSize: 8, color: "var(--text-faint)", transform: expanded ? "rotate(90deg)" : "rotate(0deg)", transition: "transform 0.15s", display: "inline-block" }}>{"\u25B6"}</span>
         <span style={{ fontSize: 8, color: "var(--text-faint)" }}>{doneTasks.length} done</span>
       </div>
@@ -1628,6 +1628,33 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
   const dragTimeRef = useRef(null);
   dataRef.current = data;
 
+  // Undo stack: snapshots of tasks (and archive) before destructive actions
+  const undoStackRef = useRef([]);
+  const pushUndo = useCallback(() => {
+    const snap = { tasks: JSON.parse(JSON.stringify(dataRef.current.tasks)), archive: dataRef.current.archive ? JSON.parse(JSON.stringify(dataRef.current.archive)) : [], futureTasks: dataRef.current.futureTasks ? JSON.parse(JSON.stringify(dataRef.current.futureTasks)) : [] };
+    undoStackRef.current.push(snap);
+    if (undoStackRef.current.length > 50) undoStackRef.current.shift();
+  }, []);
+  const performUndo = useCallback(() => {
+    const snap = undoStackRef.current.pop();
+    if (!snap) return;
+    update({ tasks: snap.tasks, archive: snap.archive, futureTasks: snap.futureTasks });
+    if (onSaveArchive) onSaveArchive(snap.archive);
+    if (onSaveFuture) onSaveFuture(snap.futureTasks);
+  }, [onSaveArchive, onSaveFuture]);
+  useEffect(() => {
+    const handler = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === "z" && !e.shiftKey) {
+        const tag = e.target.tagName;
+        if (tag === "INPUT" || tag === "TEXTAREA" || e.target.isContentEditable) return;
+        e.preventDefault();
+        performUndo();
+      }
+    };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [performUndo]);
+
   // Track global drag state for DropZone sizing
   useEffect(() => {
     let dragTimeout = null;
@@ -1783,6 +1810,7 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
   }, []);
 
   const toggleDone = useCallback((col, id) => {
+    pushUndo();
     const d = dataRef.current;
     const currentTasks = d.tasks;
     const currentArchive = d.archive || [];
@@ -1851,9 +1879,9 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
       // #endregion
       update({ tasks: newTasks, archive: newArchive }); onSaveArchive(newArchive);
     }
-  }, []);
+  }, [pushUndo, onSaveArchive]);
 
-  const deleteTask = useCallback((col, id) => { const t = dataRef.current.tasks; update({ tasks: { ...t, [col]: t[col].filter((x) => x.id !== id) } }); }, []);
+  const deleteTask = useCallback((col, id) => { pushUndo(); const t = dataRef.current.tasks; update({ tasks: { ...t, [col]: t[col].filter((x) => x.id !== id) } }); }, [pushUndo]);
   const editTask = useCallback((col, id, text) => { const t = dataRef.current.tasks; update({ tasks: { ...t, [col]: t[col].map((x) => (x.id === id ? { ...x, text } : x)) } }); }, []);
   const addTask = useCallback((col, text, catId) => {
     const t = dataRef.current.tasks;
@@ -1916,7 +1944,7 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
   const reorderDaily = (items) => { update({ dailyHabits: items }); onSaveDailyHabits(items); };
   const reorderWeekly = (items) => { update({ weeklyHabits: items }); onSaveWeeklyHabits(items); };
   const addFuture = (text, date) => { const nf = [...futureTasks, { id: "f" + Date.now(), text, date }]; update({ futureTasks: nf }); onSaveFuture(nf); };
-  const deleteFuture = (id) => { const nf = futureTasks.filter((t) => t.id !== id); update({ futureTasks: nf }); onSaveFuture(nf); };
+  const deleteFuture = (id) => { pushUndo(); const nf = futureTasks.filter((t) => t.id !== id); update({ futureTasks: nf }); onSaveFuture(nf); };
   const editFuture = (id, text) => { const nf = futureTasks.map((t) => t.id === id ? { ...t, text } : t); update({ futureTasks: nf }); onSaveFuture(nf); };
   const updateNotebooks = (nbs) => { update({ notebooks: nbs }); onSaveNotebooks(nbs); };
   const updateJournal = (j) => { update({ journal: j }); onSaveJournal(j); };
