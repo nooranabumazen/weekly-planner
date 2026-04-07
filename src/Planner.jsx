@@ -816,9 +816,13 @@ function TaskCard({ task, columnId, categories, onDragStart, onToggle, onDelete,
   }, [showCatPicker]);
   useEffect(() => {
     if (!ctxMenu) return;
-    const close = () => { setCtxMenu(null); setRepeatMenu(false); setRepeatDate(""); };
+    const close = (e) => {
+      if (e.target.closest && e.target.closest("[data-ctx-menu]")) return;
+      setCtxMenu(null); setRepeatMenu(false); setRepeatDate("");
+    };
     document.addEventListener("mousedown", close);
-    return () => document.removeEventListener("mousedown", close);
+    document.addEventListener("touchstart", close);
+    return () => { document.removeEventListener("mousedown", close); document.removeEventListener("touchstart", close); };
   }, [ctxMenu]);
   const save = () => { if (editText.trim()) onEdit(columnId, task.id, editText.trim()); setEditing(false); };
   const catColor = getCatColor(categories, task.category);
@@ -828,11 +832,28 @@ function TaskCard({ task, columnId, categories, onDragStart, onToggle, onDelete,
     setCtxMenu({ x: e.clientX, y: e.clientY });
   };
 
+  const longPressTimerRef = useRef(null);
+  const handleTouchStart = (e) => {
+    const touch = e.touches[0];
+    const x = touch.clientX, y = touch.clientY;
+    longPressTimerRef.current = setTimeout(() => {
+      setCtxMenu({ x, y });
+      longPressTimerRef.current = null;
+    }, 500);
+  };
+  const cancelLongPress = () => {
+    if (longPressTimerRef.current) { clearTimeout(longPressTimerRef.current); longPressTimerRef.current = null; }
+  };
+
   return (
     <div draggable={!editing}
       onDragStart={(e) => { e.dataTransfer.setData("text/plain", JSON.stringify({ taskId: task.id, from: columnId })); e.dataTransfer.effectAllowed = "move"; onDragStart(); }}
       onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}
       onContextMenu={handleContextMenu}
+      onTouchStart={handleTouchStart}
+      onTouchEnd={cancelLongPress}
+      onTouchMove={cancelLongPress}
+      onTouchCancel={cancelLongPress}
       style={{
         padding: isMobile ? "8px 12px" : "2px 4px",
         borderLeft: `3px solid ${catColor}`,
@@ -885,18 +906,18 @@ function TaskCard({ task, columnId, categories, onDragStart, onToggle, onDelete,
             const maxX = window.innerWidth - 8;
             if (rect.right > maxX) el.style.left = Math.max(8, ctxMenu.x - rect.width) + "px";
           }
-        }} onMouseDown={(e) => e.stopPropagation()} style={{
+        }} data-ctx-menu="true" onMouseDown={(e) => e.stopPropagation()} onTouchStart={(e) => e.stopPropagation()} style={{
           position: "fixed", left: ctxMenu.x, top: ctxMenu.y, zIndex: 1000,
           background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 6,
           boxShadow: "0 4px 16px rgba(0,0,0,0.18)", padding: "4px 0", minWidth: 170,
           maxHeight: "calc(100vh - 16px)", overflowY: "auto",
         }}>
-          <div onMouseDown={(e) => { e.preventDefault(); setEditing(true); setEditText(task.text); setCtxMenu(null); }}
+          <div onClick={(e) => { setEditing(true); setEditText(task.text); setCtxMenu(null); }}
             style={{ padding: "6px 14px", cursor: "pointer", fontSize: 12, color: "var(--text)" }}
             onMouseEnter={(e) => e.currentTarget.style.background = "var(--bg-hover)"} onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}>
             Edit
           </div>
-          <div onMouseDown={(e) => { e.preventDefault(); setRepeatMenu(!repeatMenu); }}
+          <div onClick={(e) => { setRepeatMenu(!repeatMenu); }}
             style={{ padding: "6px 14px", cursor: "pointer", fontSize: 12, color: "var(--text)", display: "flex", justifyContent: "space-between" }}
             onMouseEnter={(e) => e.currentTarget.style.background = "var(--bg-hover)"} onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}>
             <span>{task.recurring ? "Change repeat" : "Repeat"}</span><span style={{ fontSize: 10, color: "var(--text-faint)" }}>{"\u25B6"}</span>
@@ -905,7 +926,7 @@ function TaskCard({ task, columnId, categories, onDragStart, onToggle, onDelete,
             <div style={{ padding: "4px 14px 8px", borderTop: "1px solid var(--border)" }}>
               <div style={{ fontSize: 9, color: "var(--text-muted)", fontWeight: 600, marginBottom: 4, fontFamily: "'JetBrains Mono', monospace", textTransform: "uppercase", letterSpacing: 0.5 }}>Weekly</div>
               {[2, 4, 8, 12].map((n) => (
-                <div key={n} onMouseDown={(e) => { e.preventDefault(); onSetRecurring(columnId, task.id, { type: "weeks", count: n, day: columnId }); setCtxMenu(null); }}
+                <div key={n} onClick={(e) => { onSetRecurring(columnId, task.id, { type: "weeks", count: n, day: columnId }); setCtxMenu(null); }}
                   style={{ padding: "3px 0", cursor: "pointer", fontSize: 11, color: "var(--text)" }}
                   onMouseEnter={(e) => e.currentTarget.style.color = "var(--accent)"} onMouseLeave={(e) => e.currentTarget.style.color = "var(--text)"}>
                   Every week for {n} weeks
@@ -915,7 +936,7 @@ function TaskCard({ task, columnId, categories, onDragStart, onToggle, onDelete,
                 <span style={{ fontSize: 10, color: "var(--text-muted)" }}>Until:</span>
                 <input type="date" value={repeatDate} onChange={(e) => setRepeatDate(e.target.value)} onMouseDown={(e) => e.stopPropagation()}
                   style={{ flex: 1, border: "1px solid var(--border)", borderRadius: 3, padding: "2px 4px", fontSize: 10, background: "var(--bg-card)", color: "var(--text)", outline: "none" }} />
-                {repeatDate && <button onMouseDown={(e) => { e.preventDefault(); onSetRecurring(columnId, task.id, { type: "until", until: repeatDate, day: columnId }); setCtxMenu(null); }}
+                {repeatDate && <button onClick={(e) => { onSetRecurring(columnId, task.id, { type: "until", until: repeatDate, day: columnId }); setCtxMenu(null); }}
                   style={{ background: "var(--accent)", color: "#fff", border: "none", borderRadius: 3, padding: "2px 6px", fontSize: 9, cursor: "pointer", fontWeight: 600 }}>Set</button>}
               </div>
               <div style={{ fontSize: 9, color: "var(--text-muted)", fontWeight: 600, marginTop: 8, marginBottom: 4, fontFamily: "'JetBrains Mono', monospace", textTransform: "uppercase", letterSpacing: 0.5 }}>Monthly</div>
@@ -934,7 +955,7 @@ function TaskCard({ task, columnId, categories, onDragStart, onToggle, onDelete,
                   { label: `Last day of month`, rule: { type: "monthly", pattern: "last_day", day: columnId } },
                 ];
                 return monthlyOptions.map((opt, i) => (
-                  <div key={i} onMouseDown={(e) => { e.preventDefault(); onSetRecurring(columnId, task.id, opt.rule); setCtxMenu(null); }}
+                  <div key={i} onClick={(e) => { onSetRecurring(columnId, task.id, opt.rule); setCtxMenu(null); }}
                     style={{ padding: "3px 0", cursor: "pointer", fontSize: 11, color: "var(--text)" }}
                     onMouseEnter={(e) => e.currentTarget.style.color = "var(--accent)"} onMouseLeave={(e) => e.currentTarget.style.color = "var(--text)"}>
                     {opt.label}
@@ -942,14 +963,14 @@ function TaskCard({ task, columnId, categories, onDragStart, onToggle, onDelete,
                 ));
               })()}
               {task.recurring && (
-                <div onMouseDown={(e) => { e.preventDefault(); onSetRecurring(columnId, task.id, null); setCtxMenu(null); }}
+                <div onClick={(e) => { onSetRecurring(columnId, task.id, null); setCtxMenu(null); }}
                   style={{ padding: "4px 0 0", cursor: "pointer", fontSize: 10, color: "#c44", marginTop: 4 }}>
                   Remove repeat
                 </div>
               )}
             </div>
           )}
-          <div onMouseDown={(e) => { e.preventDefault(); onDelete(columnId, task.id); setCtxMenu(null); }}
+          <div onClick={(e) => { onDelete(columnId, task.id); setCtxMenu(null); }}
             style={{ padding: "6px 14px", cursor: "pointer", fontSize: 12, color: "#c44" }}
             onMouseEnter={(e) => e.currentTarget.style.background = "var(--bg-hover)"} onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}>
             Delete
@@ -1092,9 +1113,13 @@ function TimedTaskBlock({ task, col, colIndex, totalCols, categories, taskFontSi
   // Close context menu on click-away
   useEffect(() => {
     if (!ctxMenu) return;
-    const close = () => { setCtxMenu(null); setRepeatMenu(false); setShowCatPicker(false); setExpanded(false); };
+    const close = (e) => {
+      if (e.target.closest && e.target.closest("[data-ctx-menu]")) return;
+      setCtxMenu(null); setRepeatMenu(false); setShowCatPicker(false); setExpanded(false);
+    };
     document.addEventListener("mousedown", close);
-    return () => document.removeEventListener("mousedown", close);
+    document.addEventListener("touchstart", close);
+    return () => { document.removeEventListener("mousedown", close); document.removeEventListener("touchstart", close); };
   }, [ctxMenu]);
 
   // Collapse on click-away (only when expanded, not editing, no context menu)
@@ -1154,23 +1179,23 @@ function TimedTaskBlock({ task, col, colIndex, totalCols, categories, taskFontSi
           style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 6, cursor: "ns-resize", borderRadius: "0 0 3px 3px" }} />
       )}
       {ctxMenu && (
-        <div onMouseDown={(e) => e.stopPropagation()} ref={(el) => { if (el) { const r = el.getBoundingClientRect(); if (r.bottom > window.innerHeight - 8) el.style.top = Math.max(8, ctxMenu.y - r.height) + "px"; if (r.right > window.innerWidth - 8) el.style.left = Math.max(8, ctxMenu.x - r.width) + "px"; } }}
+        <div data-ctx-menu="true" onMouseDown={(e) => e.stopPropagation()} onTouchStart={(e) => e.stopPropagation()} ref={(el) => { if (el) { const r = el.getBoundingClientRect(); if (r.bottom > window.innerHeight - 8) el.style.top = Math.max(8, ctxMenu.y - r.height) + "px"; if (r.right > window.innerWidth - 8) el.style.left = Math.max(8, ctxMenu.x - r.width) + "px"; } }}
           style={{ position: "fixed", left: ctxMenu.x, top: ctxMenu.y, zIndex: 1000, background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 6, boxShadow: "0 4px 16px rgba(0,0,0,0.18)", padding: "4px 0", minWidth: 160, maxHeight: "calc(100vh - 16px)", overflowY: "auto" }}>
-          <div onMouseDown={(e) => { e.preventDefault(); setEditing(true); setEditText(task.text); setCtxMenu(null); }}
+          <div onClick={(e) => { setEditing(true); setEditText(task.text); setCtxMenu(null); }}
             style={{ padding: "5px 12px", cursor: "pointer", fontSize: 11, color: "var(--text)" }}
             onMouseEnter={(e) => e.currentTarget.style.background = "var(--bg-hover)"} onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}>Edit</div>
-          <div onMouseDown={(e) => { e.preventDefault(); setShowCatPicker(!showCatPicker); }}
+          <div onClick={(e) => { setShowCatPicker(!showCatPicker); }}
             style={{ padding: "5px 12px", cursor: "pointer", fontSize: 11, color: "var(--text)" }}
             onMouseEnter={(e) => e.currentTarget.style.background = "var(--bg-hover)"} onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}>Category</div>
           {showCatPicker && (
             <div style={{ padding: "4px 12px", display: "flex", gap: 3, flexWrap: "wrap" }}>
               {categories.map((cat) => (
-                <div key={cat.id} onMouseDown={(e) => { e.preventDefault(); changeCategory(col, task.id, cat.id); setCtxMenu(null); }}
+                <div key={cat.id} onClick={(e) => { changeCategory(col, task.id, cat.id); setCtxMenu(null); }}
                   title={cat.name} style={{ width: 16, height: 16, borderRadius: 3, background: cat.color, cursor: "pointer", border: task.category === cat.id ? "2px solid #555" : "1px solid rgba(0,0,0,0.1)" }} />
               ))}
             </div>
           )}
-          <div onMouseDown={(e) => { e.preventDefault(); setRepeatMenu(!repeatMenu); }}
+          <div onClick={(e) => { setRepeatMenu(!repeatMenu); }}
             style={{ padding: "5px 12px", cursor: "pointer", fontSize: 11, color: "var(--text)", display: "flex", justifyContent: "space-between" }}
             onMouseEnter={(e) => e.currentTarget.style.background = "var(--bg-hover)"} onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}>
             <span>{task.recurring ? "Change repeat" : "Repeat"}</span><span style={{ fontSize: 9, color: "var(--text-faint)" }}>{"\u25B6"}</span>
@@ -1179,7 +1204,7 @@ function TimedTaskBlock({ task, col, colIndex, totalCols, categories, taskFontSi
             <div style={{ padding: "4px 12px 6px", borderTop: "1px solid var(--border)" }}>
               <div style={{ fontSize: 8, color: "var(--text-muted)", fontWeight: 600, marginBottom: 3, fontFamily: "'JetBrains Mono', monospace", textTransform: "uppercase" }}>Weekly</div>
               {[2, 4, 8, 12].map((n) => (
-                <div key={n} onMouseDown={(e) => { e.preventDefault(); setRecurring(col, task.id, { type: "weeks", count: n, day: col }); setCtxMenu(null); }}
+                <div key={n} onClick={(e) => { setRecurring(col, task.id, { type: "weeks", count: n, day: col }); setCtxMenu(null); }}
                   style={{ padding: "2px 0", cursor: "pointer", fontSize: 10, color: "var(--text)" }}
                   onMouseEnter={(e) => e.currentTarget.style.color = "var(--accent)"} onMouseLeave={(e) => e.currentTarget.style.color = "var(--text)"}>
                   Every week for {n} weeks</div>
@@ -1191,22 +1216,22 @@ function TimedTaskBlock({ task, col, colIndex, totalCols, categories, taskFontSi
                   { label: "1st of month", rule: { type: "monthly", pattern: "day_of_month", dayOfMonth: 1, day: col } },
                   { label: "Last day of month", rule: { type: "monthly", pattern: "last_day", day: col } },
                 ].map((o, i) => (
-                  <div key={i} onMouseDown={(e) => { e.preventDefault(); setRecurring(col, task.id, o.rule); setCtxMenu(null); }}
+                  <div key={i} onClick={(e) => { setRecurring(col, task.id, o.rule); setCtxMenu(null); }}
                     style={{ padding: "2px 0", cursor: "pointer", fontSize: 10, color: "var(--text)" }}
                     onMouseEnter={(e) => e.currentTarget.style.color = "var(--accent)"} onMouseLeave={(e) => e.currentTarget.style.color = "var(--text)"}>
                     {o.label}</div>
                 ));
               })()}
               {task.recurring && (
-                <div onMouseDown={(e) => { e.preventDefault(); setRecurring(col, task.id, null); setCtxMenu(null); }}
+                <div onClick={(e) => { setRecurring(col, task.id, null); setCtxMenu(null); }}
                   style={{ padding: "3px 0 0", cursor: "pointer", fontSize: 9, color: "#c44", marginTop: 3 }}>Remove repeat</div>
               )}
             </div>
           )}
-          <div onMouseDown={(e) => { e.preventDefault(); removeTime(col, task.id); setCtxMenu(null); }}
+          <div onClick={(e) => { removeTime(col, task.id); setCtxMenu(null); }}
             style={{ padding: "5px 12px", cursor: "pointer", fontSize: 11, color: "var(--text)" }}
             onMouseEnter={(e) => e.currentTarget.style.background = "var(--bg-hover)"} onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}>Remove time</div>
-          <div onMouseDown={(e) => { e.preventDefault(); deleteTask(col, task.id); setCtxMenu(null); }}
+          <div onClick={(e) => { deleteTask(col, task.id); setCtxMenu(null); }}
             style={{ padding: "5px 12px", cursor: "pointer", fontSize: 11, color: "#c44" }}
             onMouseEnter={(e) => e.currentTarget.style.background = "var(--bg-hover)"} onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}>Delete</div>
         </div>
@@ -1227,7 +1252,16 @@ function UnscheduledCol({ col, untimed, done, categories, taskFontSize, toggleDo
   const [repeatMenu, setRepeatMenu] = useState(false);
   const addRef = useRef(null);
   useEffect(() => { if (adding && addRef.current) addRef.current.focus(); }, [adding]);
-  useEffect(() => { if (!ctxMenu) return; const close = () => { setCtxMenu(null); setCtxTask(null); setShowCatPicker(false); setRepeatMenu(false); }; document.addEventListener("mousedown", close); return () => document.removeEventListener("mousedown", close); }, [ctxMenu]);
+  useEffect(() => {
+    if (!ctxMenu) return;
+    const close = (e) => {
+      if (e.target.closest && e.target.closest("[data-ctx-menu]")) return;
+      setCtxMenu(null); setCtxTask(null); setShowCatPicker(false); setRepeatMenu(false);
+    };
+    document.addEventListener("mousedown", close);
+    document.addEventListener("touchstart", close);
+    return () => { document.removeEventListener("mousedown", close); document.removeEventListener("touchstart", close); };
+  }, [ctxMenu]);
   const submitAdd = () => { if (newText.trim()) { addTask(col, newText.trim(), autoDetectCategory(newText, categories)); setNewText(""); } setAdding(false); };
   const saveEdit = (taskId) => { if (editText.trim()) editTask(col, taskId, editText.trim()); setEditingId(null); };
   const startEdit = (task) => { setEditingId(task.id); setEditText(task.text); };
@@ -1263,26 +1297,26 @@ function UnscheduledCol({ col, untimed, done, categories, taskFontSize, toggleDo
       })}
       {/* Context menu for unscheduled tasks */}
       {ctxMenu && ctxTask && (
-        <div onMouseDown={(e) => e.stopPropagation()} ref={(el) => { if (el) { const r = el.getBoundingClientRect(); if (r.bottom > window.innerHeight - 8) el.style.top = Math.max(8, ctxMenu.y - r.height) + "px"; if (r.right > window.innerWidth - 8) el.style.left = Math.max(8, ctxMenu.x - r.width) + "px"; } }}
+        <div data-ctx-menu="true" onMouseDown={(e) => e.stopPropagation()} onTouchStart={(e) => e.stopPropagation()} ref={(el) => { if (el) { const r = el.getBoundingClientRect(); if (r.bottom > window.innerHeight - 8) el.style.top = Math.max(8, ctxMenu.y - r.height) + "px"; if (r.right > window.innerWidth - 8) el.style.left = Math.max(8, ctxMenu.x - r.width) + "px"; } }}
           style={{ position: "fixed", left: ctxMenu.x, top: ctxMenu.y, zIndex: 1000, background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 6, boxShadow: "0 4px 16px rgba(0,0,0,0.18)", padding: "4px 0", minWidth: 160 }}>
-          <div onMouseDown={(e) => { e.preventDefault(); startEdit(ctxTask); setCtxMenu(null); }} style={{ padding: "5px 12px", cursor: "pointer", fontSize: 11, color: "var(--text)" }} onMouseEnter={(e) => e.currentTarget.style.background = "var(--bg-hover)"} onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}>Edit</div>
-          <div onMouseDown={(e) => { e.preventDefault(); setShowCatPicker(!showCatPicker); }} style={{ padding: "5px 12px", cursor: "pointer", fontSize: 11, color: "var(--text)" }} onMouseEnter={(e) => e.currentTarget.style.background = "var(--bg-hover)"} onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}>Category</div>
+          <div onClick={(e) => { startEdit(ctxTask); setCtxMenu(null); }} style={{ padding: "5px 12px", cursor: "pointer", fontSize: 11, color: "var(--text)" }} onMouseEnter={(e) => e.currentTarget.style.background = "var(--bg-hover)"} onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}>Edit</div>
+          <div onClick={(e) => { setShowCatPicker(!showCatPicker); }} style={{ padding: "5px 12px", cursor: "pointer", fontSize: 11, color: "var(--text)" }} onMouseEnter={(e) => e.currentTarget.style.background = "var(--bg-hover)"} onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}>Category</div>
           {showCatPicker && (
             <div style={{ padding: "4px 12px", display: "flex", gap: 3, flexWrap: "wrap" }}>
               {categories.map((cat) => (
-                <div key={cat.id} onMouseDown={(e) => { e.preventDefault(); changeCategory(col, ctxTask.id, cat.id); setCtxMenu(null); }}
+                <div key={cat.id} onClick={(e) => { changeCategory(col, ctxTask.id, cat.id); setCtxMenu(null); }}
                   title={cat.name} style={{ width: 16, height: 16, borderRadius: 3, background: cat.color, cursor: "pointer", border: ctxTask.category === cat.id ? "2px solid #555" : "1px solid rgba(0,0,0,0.1)" }} />
               ))}
             </div>
           )}
-          <div onMouseDown={(e) => { e.preventDefault(); setRepeatMenu(!repeatMenu); }} style={{ padding: "5px 12px", cursor: "pointer", fontSize: 11, color: "var(--text)", display: "flex", justifyContent: "space-between" }} onMouseEnter={(e) => e.currentTarget.style.background = "var(--bg-hover)"} onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}>
+          <div onClick={(e) => { setRepeatMenu(!repeatMenu); }} style={{ padding: "5px 12px", cursor: "pointer", fontSize: 11, color: "var(--text)", display: "flex", justifyContent: "space-between" }} onMouseEnter={(e) => e.currentTarget.style.background = "var(--bg-hover)"} onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}>
             <span>{ctxTask.recurring ? "Change repeat" : "Repeat"}</span><span style={{ fontSize: 9, color: "var(--text-faint)" }}>{"\u25B6"}</span>
           </div>
           {repeatMenu && (
             <div style={{ padding: "4px 12px 6px", borderTop: "1px solid var(--border)" }}>
               <div style={{ fontSize: 8, color: "var(--text-muted)", fontWeight: 600, marginBottom: 3, fontFamily: "'JetBrains Mono', monospace", textTransform: "uppercase" }}>Weekly</div>
               {[2, 4, 8, 12].map((n) => (
-                <div key={n} onMouseDown={(e) => { e.preventDefault(); setRecurring(col, ctxTask.id, { type: "weeks", count: n, day: col }); setCtxMenu(null); }}
+                <div key={n} onClick={(e) => { setRecurring(col, ctxTask.id, { type: "weeks", count: n, day: col }); setCtxMenu(null); }}
                   style={{ padding: "2px 0", cursor: "pointer", fontSize: 10, color: "var(--text)" }} onMouseEnter={(e) => e.currentTarget.style.color = "var(--accent)"} onMouseLeave={(e) => e.currentTarget.style.color = "var(--text)"}>Every week for {n} weeks</div>
               ))}
               <div style={{ fontSize: 8, color: "var(--text-muted)", fontWeight: 600, marginTop: 4, marginBottom: 3, fontFamily: "'JetBrains Mono', monospace", textTransform: "uppercase" }}>Monthly</div>
@@ -1292,15 +1326,15 @@ function UnscheduledCol({ col, untimed, done, categories, taskFontSize, toggleDo
                   { label: "1st of month", rule: { type: "monthly", pattern: "day_of_month", dayOfMonth: 1, day: col } },
                   { label: "Last day of month", rule: { type: "monthly", pattern: "last_day", day: col } },
                 ].map((o, i) => (
-                  <div key={i} onMouseDown={(e) => { e.preventDefault(); setRecurring(col, ctxTask.id, o.rule); setCtxMenu(null); }}
+                  <div key={i} onClick={(e) => { setRecurring(col, ctxTask.id, o.rule); setCtxMenu(null); }}
                     style={{ padding: "2px 0", cursor: "pointer", fontSize: 10, color: "var(--text)" }} onMouseEnter={(e) => e.currentTarget.style.color = "var(--accent)"} onMouseLeave={(e) => e.currentTarget.style.color = "var(--text)"}>
                     {o.label}</div>
                 ));
               })()}
-              {ctxTask.recurring && <div onMouseDown={(e) => { e.preventDefault(); setRecurring(col, ctxTask.id, null); setCtxMenu(null); }} style={{ padding: "3px 0 0", cursor: "pointer", fontSize: 9, color: "#c44", marginTop: 3 }}>Remove repeat</div>}
+              {ctxTask.recurring && <div onClick={(e) => { setRecurring(col, ctxTask.id, null); setCtxMenu(null); }} style={{ padding: "3px 0 0", cursor: "pointer", fontSize: 9, color: "#c44", marginTop: 3 }}>Remove repeat</div>}
             </div>
           )}
-          <div onMouseDown={(e) => { e.preventDefault(); deleteTask(col, ctxTask.id); setCtxMenu(null); }} style={{ padding: "5px 12px", cursor: "pointer", fontSize: 11, color: "#c44" }} onMouseEnter={(e) => e.currentTarget.style.background = "var(--bg-hover)"} onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}>Delete</div>
+          <div onClick={(e) => { deleteTask(col, ctxTask.id); setCtxMenu(null); }} style={{ padding: "5px 12px", cursor: "pointer", fontSize: 11, color: "#c44" }} onMouseEnter={(e) => e.currentTarget.style.background = "var(--bg-hover)"} onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}>Delete</div>
         </div>
       )}
       {done.length > 0 && (
@@ -1556,6 +1590,9 @@ function FutureSidebar({ futureTasks, onAddFuture, onDeleteFuture, onEditFuture,
 /* ─── Main Planner ─── */
 export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSaveNotebooks, onSaveJournal, onSaveContacts, onSaveArchive, onSaveDailyHabits, onSaveWeeklyHabits, onSaveSettings, onSaveRecurringRules, onGetBackups, onRestoreBackup, onExportData, onLogout, userEmail, userId }) {
   const isMobile = useIsMobile();
+  const [mobileAddingFuture, setMobileAddingFuture] = useState(false);
+  const [mobileNewFutureText, setMobileNewFutureText] = useState("");
+  const [mobileNewFutureDate, setMobileNewFutureDate] = useState("");
   const weekDates = getWeekDates();
   const { tasks, futureTasks, dailyHabits, weeklyHabits, notes, habitHistory } = data;
   const [activeView, setActiveViewState] = useState(() => {
@@ -2152,13 +2189,23 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
                         onToggle={toggleDone} onDelete={deleteTask} onEdit={editTask} onAdd={addTask} onChangeCategory={changeCategory} isMobile={isMobile} onMove={moveTask} onSetRecurring={setRecurring} highlightQuery={highlightQuery} taskFontSize={taskFontSize} />
                     )}
                     {/* Mobile upcoming section */}
-                    {isMobile && futureTasks.length > 0 && (() => {
+                    {isMobile && (() => {
                       const grouped = {};
                       futureTasks.forEach((t) => { if (!grouped[t.date]) grouped[t.date] = []; grouped[t.date].push(t); });
                       const sortedDates = Object.keys(grouped).sort();
                       return (
                         <div style={{ padding: "8px 4px" }}>
-                          <div style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, fontSize: 14, color: "var(--text-muted)", letterSpacing: 0.5, textTransform: "uppercase", padding: "4px 6px 6px" }}>Upcoming</div>
+                          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "4px 6px 6px" }}>
+                            <div style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, fontSize: 14, color: "var(--text-muted)", letterSpacing: 0.5, textTransform: "uppercase" }}>Upcoming</div>
+                            <button onClick={() => setMobileAddingFuture(!mobileAddingFuture)} style={{ background: "none", border: "1px solid var(--border)", borderRadius: 4, padding: "4px 10px", fontSize: 13, color: "var(--text-muted)", cursor: "pointer" }}>{mobileAddingFuture ? "Cancel" : "+ Add"}</button>
+                          </div>
+                          {mobileAddingFuture && (
+                            <div style={{ padding: "6px 6px 10px" }}>
+                              <input value={mobileNewFutureText} onChange={(e) => setMobileNewFutureText(e.target.value)} placeholder="Task..." style={{ width: "100%", border: "1px solid var(--border)", borderRadius: 4, padding: "8px 10px", fontSize: 15, outline: "none", background: "var(--input-bg)", color: "var(--text)", boxSizing: "border-box", marginBottom: 6 }} />
+                              <input type="date" value={mobileNewFutureDate} onChange={(e) => setMobileNewFutureDate(e.target.value)} style={{ width: "100%", border: "1px solid var(--border)", borderRadius: 4, padding: "8px 10px", fontSize: 15, outline: "none", background: "var(--input-bg)", color: "var(--text)", boxSizing: "border-box", marginBottom: 6 }} />
+                              <button onClick={() => { if (mobileNewFutureText.trim() && mobileNewFutureDate) { addFuture(mobileNewFutureText.trim(), mobileNewFutureDate); setMobileNewFutureText(""); setMobileNewFutureDate(""); setMobileAddingFuture(false); } }} style={{ width: "100%", background: "#555", color: "#fff", border: "none", borderRadius: 4, padding: "10px 0", fontSize: 14, cursor: "pointer" }}>Schedule</button>
+                            </div>
+                          )}
                           {sortedDates.map((date) => {
                             const label = new Date(date + "T12:00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
                             return (
@@ -2173,6 +2220,9 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
                               </div>
                             );
                           })}
+                          {sortedDates.length === 0 && !mobileAddingFuture && (
+                            <div style={{ fontSize: 13, color: "var(--text-faint)", textAlign: "center", padding: "8px 0" }}>No upcoming tasks</div>
+                          )}
                         </div>
                       );
                     })()}

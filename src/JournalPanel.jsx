@@ -231,10 +231,13 @@ export default function JournalPanel({ journal, onChange, userId, isMobile }) {
             {[...entryDates].sort().reverse().map((date) => {
               const d = new Date(date + "T12:00:00");
               const label = d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric" });
+              const content = journal[date] || "";
+              const textPreview = content.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
               return (
                 <div key={date} onClick={() => selectDate(date)}
-                  style={{ padding: "10px 12px", cursor: "pointer", fontSize: 15, borderBottom: "1px solid var(--border-light)", color: "var(--text)" }}>
-                  {label}
+                  style={{ padding: "12px 14px", cursor: "pointer", borderBottom: "1px solid var(--border-light)", background: "var(--bg-card)", marginBottom: 8, borderRadius: 6 }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: "var(--accent)", marginBottom: 4 }}>{label}</div>
+                  <div style={{ fontSize: 14, color: "var(--text)", lineHeight: 1.5, display: "-webkit-box", WebkitLineClamp: 4, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{textPreview || <span style={{ color: "var(--text-faint)", fontStyle: "italic" }}>Empty entry</span>}</div>
                 </div>
               );
             })}
