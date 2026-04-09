@@ -1015,13 +1015,33 @@ function DaySection({ dayInfo, columnId, tasks, categories, onDragStart, onDrop,
   const handleManualCat = (catId) => { setNewCat(catId); setCatManuallySet(true); };
   const isToday = dayInfo?.isToday;
   const timeToMin = (t) => { if (!t) return 99999; const [h, m] = t.split(":").map(Number); return h * 60 + (m || 0); };
-  const incompleteTasks = tasks.filter((t) => !t.done).sort((a, b) => {
-    const aHasTime = a.startTime ? 0 : 1;
-    const bHasTime = b.startTime ? 0 : 1;
-    if (aHasTime !== bHasTime) return aHasTime - bHasTime;
-    if (a.startTime && b.startTime) return timeToMin(a.startTime) - timeToMin(b.startTime);
-    return 0;
+  // Build ordered list: scheduled tasks sorted by time, unscheduled tasks inserted at their orderHint anchor.
+  // orderHint = null means top. orderHint = "some-task-id" means appear after that scheduled task.
+  // Stale hints (anchor deleted or no longer scheduled) fall back to the bottom.
+  const allIncomplete = tasks.filter((t) => !t.done);
+  const scheduledSorted = allIncomplete.filter((t) => t.startTime).sort((a, b) => timeToMin(a.startTime) - timeToMin(b.startTime));
+  const unscheduled = allIncomplete.filter((t) => !t.startTime);
+  const scheduledIds = new Set(scheduledSorted.map((t) => t.id));
+  const anchoredByTop = []; // orderHint === null
+  const anchoredByScheduled = {}; // { scheduledId: [unscheduled tasks] }
+  const bottomFallback = []; // unscheduled tasks with stale or missing hints
+  unscheduled.forEach((t) => {
+    if (t.orderHint === null || t.orderHint === "__top__") {
+      anchoredByTop.push(t);
+    } else if (t.orderHint && scheduledIds.has(t.orderHint)) {
+      if (!anchoredByScheduled[t.orderHint]) anchoredByScheduled[t.orderHint] = [];
+      anchoredByScheduled[t.orderHint].push(t);
+    } else {
+      bottomFallback.push(t);
+    }
   });
+  const incompleteTasks = [];
+  anchoredByTop.forEach((t) => incompleteTasks.push(t));
+  scheduledSorted.forEach((t) => {
+    incompleteTasks.push(t);
+    if (anchoredByScheduled[t.id]) anchoredByScheduled[t.id].forEach((u) => incompleteTasks.push(u));
+  });
+  bottomFallback.forEach((t) => incompleteTasks.push(t));
   const doneTasks = tasks.filter((t) => t.done);
 
   const dayLabel = isLater ? "LATER" : (dayInfo?.label === "MON" ? "MONDAY" : dayInfo?.label === "TUE" ? "TUESDAY" : dayInfo?.label === "WED" ? "WEDNESDAY" : dayInfo?.label === "THU" ? "THURSDAY" : dayInfo?.label === "FRI" ? "FRIDAY" : dayInfo?.label === "SAT" ? "SATURDAY" : dayInfo?.label === "SUN" ? "SUNDAY" : dayInfo?.label);
@@ -1799,6 +1819,37 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
     const currentTasks = d.tasks;
     const currentFuture = d.futureTasks || [];
     const currentCats = d.categories || [];
+    const timeToMinLocal = (t) => { if (!t) return 99999; const [h, m] = t.split(":").map(Number); return h * 60 + (m || 0); };
+    // Compute orderHint for an unscheduled task being dropped at a position.
+    // Walks the rendered order of the target column and finds the scheduled task
+    // that the dropped task should be anchored to.
+    const computeOrderHint = (toList, beforeId) => {
+      // Rebuild rendered order from toList using same algorithm as DaySection
+      const all = toList.filter((t) => !t.done);
+      const sched = all.filter((t) => t.startTime).sort((a, b) => timeToMinLocal(a.startTime) - timeToMinLocal(b.startTime));
+      const schedIds = new Set(sched.map((t) => t.id));
+      const unsch = all.filter((t) => !t.startTime);
+      const topAnchored = [];
+      const byScheduled = {};
+      const bottomFallback = [];
+      unsch.forEach((t) => {
+        if (t.orderHint === null || t.orderHint === "__top__") topAnchored.push(t);
+        else if (t.orderHint && schedIds.has(t.orderHint)) { (byScheduled[t.orderHint] = byScheduled[t.orderHint] || []).push(t); }
+        else bottomFallback.push(t);
+      });
+      const rendered = [];
+      topAnchored.forEach((t) => rendered.push(t));
+      sched.forEach((t) => { rendered.push(t); if (byScheduled[t.id]) byScheduled[t.id].forEach((u) => rendered.push(u)); });
+      bottomFallback.forEach((t) => rendered.push(t));
+      // Find beforeId index in rendered order
+      const beforeIdx = beforeId ? rendered.findIndex((t) => t.id === beforeId) : rendered.length;
+      // Walk backwards from beforeIdx to find nearest scheduled task
+      let anchor = "__top__";
+      for (let i = beforeIdx - 1; i >= 0; i--) {
+        if (rendered[i].startTime) { anchor = rendered[i].id; break; }
+      }
+      return anchor;
+    };
     if (fromCol === "future") {
       const task = currentFuture.find((t) => t.id === taskId);
       if (!task) return;
@@ -1806,6 +1857,10 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
       Object.keys(currentTasks).forEach((k) => { newTasks[k] = [...currentTasks[k]]; });
       const detectedCat = autoDetectCategory(task.text, currentCats);
       const newTask = makeTask(task.text, { category: detectedCat });
+      // New task from future has no startTime, so it's unscheduled - compute orderHint
+      if (toCol !== "later") {
+        newTask.orderHint = computeOrderHint(newTasks[toCol] || [], beforeTaskId);
+      }
       if (beforeTaskId) { const toList = newTasks[toCol] || []; const idx = toList.findIndex((t) => t.id === beforeTaskId); toList.splice(idx, 0, newTask); newTasks[toCol] = toList; }
       else { newTasks[toCol] = [...(newTasks[toCol] || []), newTask]; }
       const newFuture = currentFuture.filter((t) => t.id !== taskId);
@@ -1822,6 +1877,14 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
     const [task] = fromList.splice(taskIdx, 1);
     if (!task.category || task.category === "cat_none") {
       task.category = autoDetectCategory(task.text, currentCats);
+    }
+    // If the task is unscheduled and being dropped in a day column, update its orderHint
+    if (!task.startTime && toCol !== "later") {
+      // Use the target list (which has the task already removed if same-col move) to compute anchor
+      task.orderHint = computeOrderHint(newTasks[toCol] || [], beforeTaskId);
+    } else if (task.startTime) {
+      // Scheduled tasks don't need orderHint - clear any stale one
+      delete task.orderHint;
     }
     const toList = newTasks[toCol] || [];
     if (beforeTaskId) {
@@ -2266,14 +2329,15 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
                         const task = (dataRef.current.tasks[d.from] || []).find((x) => x.id === d.taskId);
                         const duration = task?.endTime ? timeToMin(task.endTime) - timeToMin(task.startTime) : 30;
                         const endStr = minToTime(startMin + Math.max(15, duration));
+                        const applySchedule = (x) => { const c = { ...x, startTime: timeStr, endTime: endStr }; delete c.orderHint; return c; };
                         if (d.from === col) {
                           const t = dataRef.current.tasks;
-                          update({ tasks: { ...t, [col]: t[col].map((x) => x.id === d.taskId ? { ...x, startTime: timeStr, endTime: endStr } : x) } });
+                          update({ tasks: { ...t, [col]: t[col].map((x) => x.id === d.taskId ? applySchedule(x) : x) } });
                         } else {
                           handleDrop(d.from, col, d.taskId, null);
                           setTimeout(() => {
                             const t = dataRef.current.tasks;
-                            update({ tasks: { ...t, [col]: t[col].map((x) => x.id === d.taskId ? { ...x, startTime: timeStr, endTime: endStr } : x) } });
+                            update({ tasks: { ...t, [col]: t[col].map((x) => x.id === d.taskId ? applySchedule(x) : x) } });
                           }, 50);
                         }
                       } catch {}
