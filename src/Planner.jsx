@@ -599,7 +599,7 @@ function HabitsTracker({ dailyHabits, weeklyHabits, habitHistory, onToggleDaily,
         </button>
       </div>
       {showStats && (() => {
-        const weeks = Object.keys(habitHistory).sort().reverse();
+        const weeks = Object.keys(habitHistory).sort();
         const dayKeys = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
         const dayLabels = ["M", "T", "W", "T", "F", "S", "S"];
 
@@ -855,7 +855,7 @@ function TaskCard({ task, columnId, categories, onDragStart, onToggle, onDelete,
       onTouchMove={cancelLongPress}
       onTouchCancel={cancelLongPress}
       style={{
-        padding: isMobile ? "8px 12px" : "2px 4px",
+        padding: isMobile ? "8px 12px" : "3px 4px",
         borderLeft: `3px solid ${catColor}`,
         background: hover ? "var(--bg-hover)" : `${catColor}18`,
         cursor: editing ? "text" : "grab",
@@ -1578,6 +1578,8 @@ function FutureSidebar({ futureTasks, onAddFuture, onDeleteFuture, onEditFuture,
                   ) : (
                     <span onDoubleClick={() => { setEditingId(task.id); setEditText(task.text); }} style={{ flex: 1, wordBreak: "break-word", cursor: "text" }}><HighlightText text={task.text} query={highlightQuery} /></span>
                   )}
+                  <input type="date" value={task.date} onChange={(e) => onEditFuture(task.id, undefined, e.target.value)} onClick={(e) => e.stopPropagation()} title="Change date"
+                    style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-faint)", fontSize: 9, padding: 0, width: 18, marginLeft: 3, colorScheme: "dark" }} />
                   <button onClick={() => onDeleteFuture(task.id)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-faint)", fontSize: 11, padding: 0, marginLeft: 3, fontWeight: 600, lineHeight: 1 }} onMouseEnter={(e) => (e.target.style.color = "#c44")} onMouseLeave={(e) => (e.target.style.color = "#bbb")}>&times;</button>
                 </div>))}</div>);
             })}
@@ -2045,7 +2047,7 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
   const reorderWeekly = (items) => { update({ weeklyHabits: items }); onSaveWeeklyHabits(items); };
   const addFuture = (text, date) => { const nf = [...futureTasks, { id: "f" + Date.now(), text, date }]; update({ futureTasks: nf }); onSaveFuture(nf); };
   const deleteFuture = (id) => { pushUndo(); const nf = futureTasks.filter((t) => t.id !== id); update({ futureTasks: nf }); onSaveFuture(nf); };
-  const editFuture = (id, text) => { const nf = futureTasks.map((t) => t.id === id ? { ...t, text } : t); update({ futureTasks: nf }); onSaveFuture(nf); };
+  const editFuture = (id, text, date) => { const nf = futureTasks.map((t) => t.id === id ? { ...t, text: text !== undefined ? text : t.text, date: date !== undefined ? date : t.date } : t); update({ futureTasks: nf }); onSaveFuture(nf); };
   const updateNotebooks = (nbs) => { update({ notebooks: nbs }); onSaveNotebooks(nbs); };
   const updateJournal = (j) => { update({ journal: j }); onSaveJournal(j); };
   const updateContacts = (c) => { update({ contacts: c }); onSaveContacts(c); };
@@ -2183,6 +2185,8 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
             </button>
           ))}
           <div style={{ flex: 1 }} />
+          <button onClick={() => { const newLayout = layout === "horizontal" ? "vertical" : "horizontal"; update({ layout: newLayout }); onSaveSettings({ categories, layout: newLayout, notes, darkMode, taskFontSize }); }} title={layout === "horizontal" ? "Switch to vertical view" : "Switch to horizontal view"}
+            style={{ width: 42, height: 42, borderRadius: 8, border: "none", cursor: "pointer", background: "transparent", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, color: "var(--text-muted)" }}>{layout === "horizontal" ? "\u2630" : "\u29C9"}</button>
           <button onClick={() => { setSearchOpen(!searchOpen); if (searchOpen) setSearchQuery(""); }} title="Search"
             style={{ width: 42, height: 42, borderRadius: 8, border: "none", cursor: "pointer", background: searchOpen ? "var(--border)" : "transparent", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, color: searchOpen ? "var(--text)" : "var(--text-muted)" }}>{"\u{1F50D}"}</button>
           <button onClick={onLogout} title={`Sign out (${userEmail})`}
