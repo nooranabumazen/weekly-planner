@@ -1486,6 +1486,7 @@ function FutureSidebar({ futureTasks, onAddFuture, onDeleteFuture, onEditFuture,
   const [newDate, setNewDate] = useState("");
   const [editingId, setEditingId] = useState(null);
   const [editText, setEditText] = useState("");
+  const [editDate, setEditDate] = useState("");
   const [calMonth, setCalMonth] = useState(() => new Date().getMonth());
   const [calYear, setCalYear] = useState(() => new Date().getFullYear());
   const [highlightDate, setHighlightDate] = useState(null);
@@ -1566,20 +1567,24 @@ function FutureSidebar({ futureTasks, onAddFuture, onDeleteFuture, onEditFuture,
               const label = new Date(date + "T12:00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
               const isHighlighted = highlightDate === date;
               return (<div key={date} data-future-date={date} style={{ marginBottom: 8, padding: isHighlighted ? "4px 6px" : 0, background: isHighlighted ? "rgba(139,105,20,0.12)" : "transparent", borderRadius: 6, transition: "background 0.3s" }}><div style={{ fontSize: 11, fontWeight: 600, color: isHighlighted ? "var(--accent)" : "var(--text-muted)", marginBottom: 3 }}>{label}</div>
-                {grouped[date].map((task) => (<div key={task.id} draggable onDragStart={(e) => { e.dataTransfer.setData("text/plain", JSON.stringify({ taskId: task.id, from: "future", futureText: task.text })); }}
+                {grouped[date].map((task) => editingId === task.id ? (
+                  <div key={task.id} style={{ background: "var(--bg-card)", border: "1px solid var(--accent)", borderRadius: 4, padding: "6px 7px", marginBottom: 3 }}>
+                    <input ref={editRef} value={editText} onChange={(e) => setEditText(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === "Enter") { onEditFuture(task.id, editText.trim(), editDate); setEditingId(null); } if (e.key === "Escape") setEditingId(null); }}
+                      style={{ width: "100%", border: "1px solid var(--border)", borderRadius: 3, padding: "3px 5px", fontSize: 12, outline: "none", background: "var(--input-bg)", color: "var(--text)", boxSizing: "border-box", marginBottom: 4 }} />
+                    <div style={{ display: "flex", gap: 3, alignItems: "center" }}>
+                      <input type="date" value={editDate} onChange={(e) => setEditDate(e.target.value)}
+                        style={{ flex: 1, border: "1px solid var(--border)", borderRadius: 3, padding: "2px 4px", fontSize: 10, background: "var(--input-bg)", color: "var(--text)", outline: "none", colorScheme: "dark" }} />
+                      <button onClick={() => { if (editText.trim()) onEditFuture(task.id, editText.trim(), editDate); setEditingId(null); }}
+                        style={{ background: "var(--accent)", color: "#fff", border: "none", borderRadius: 3, padding: "2px 8px", fontSize: 10, cursor: "pointer", fontWeight: 600 }}>Save</button>
+                      <button onClick={() => setEditingId(null)}
+                        style={{ background: "var(--border)", color: "var(--text-muted)", border: "none", borderRadius: 3, padding: "2px 8px", fontSize: 10, cursor: "pointer" }}>Cancel</button>
+                    </div>
+                  </div>
+                ) : (<div key={task.id} draggable onDragStart={(e) => { e.dataTransfer.setData("text/plain", JSON.stringify({ taskId: task.id, from: "future", futureText: task.text })); }}
                   style={{ background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 4, padding: "5px 7px", marginBottom: 3, fontSize: 12, cursor: "grab", display: "flex", justifyContent: "space-between", alignItems: "center" }}
                   onMouseEnter={(e) => { e.currentTarget.style.boxShadow = "0 2px 6px rgba(0,0,0,0.1)"; }} onMouseLeave={(e) => { e.currentTarget.style.boxShadow = "none"; }}>
-                  {editingId === task.id ? (
-                    <input ref={editRef} value={editText} onChange={(e) => setEditText(e.target.value)}
-                      onBlur={() => { if (editText.trim()) onEditFuture(task.id, editText.trim()); setEditingId(null); }}
-                      onKeyDown={(e) => { if (e.key === "Enter") { if (editText.trim()) onEditFuture(task.id, editText.trim()); setEditingId(null); } if (e.key === "Escape") setEditingId(null); }}
-                      onClick={(e) => e.stopPropagation()}
-                      style={{ flex: 1, border: "1px solid var(--border)", borderRadius: 3, padding: "1px 4px", fontSize: 12, outline: "none", background: "var(--input-bg)", color: "var(--text)", boxSizing: "border-box" }} />
-                  ) : (
-                    <span onDoubleClick={() => { setEditingId(task.id); setEditText(task.text); }} style={{ flex: 1, wordBreak: "break-word", cursor: "text" }}><HighlightText text={task.text} query={highlightQuery} /></span>
-                  )}
-                  <input type="date" value={task.date} onChange={(e) => onEditFuture(task.id, undefined, e.target.value)} onClick={(e) => e.stopPropagation()} title="Change date"
-                    style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-faint)", fontSize: 9, padding: 0, width: 18, marginLeft: 3, colorScheme: "dark" }} />
+                  <span onDoubleClick={() => { setEditingId(task.id); setEditText(task.text); setEditDate(task.date); }} style={{ flex: 1, wordBreak: "break-word", cursor: "text" }}><HighlightText text={task.text} query={highlightQuery} /></span>
                   <button onClick={() => onDeleteFuture(task.id)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-faint)", fontSize: 11, padding: 0, marginLeft: 3, fontWeight: 600, lineHeight: 1 }} onMouseEnter={(e) => (e.target.style.color = "#c44")} onMouseLeave={(e) => (e.target.style.color = "#bbb")}>&times;</button>
                 </div>))}</div>);
             })}
@@ -2688,7 +2693,7 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
               {/* Mobile streaks */}
               {(() => {
                 const hh = habitHistory || {};
-                const weeks = Object.keys(hh).sort().reverse();
+                const weeks = Object.keys(hh).sort();
                 const dayKeys = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
                 const dayLabels = ["M", "T", "W", "T", "F", "S", "S"];
                 const todayIdx = (() => { const d = new Date().getDay(); return (d + 6) % 7; })();
@@ -2841,7 +2846,7 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
             {/* Habit Progress */}
             {(() => {
               const hh = habitHistory || {};
-              const weeks = Object.keys(hh).sort().reverse();
+              const weeks = Object.keys(hh).sort();
               if (weeks.length === 0 && dailyHabits.length === 0) return null;
 
               const recent4 = weeks.slice(0, 4);
