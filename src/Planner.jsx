@@ -806,7 +806,7 @@ function NotesSection({ notes, onChange }) {
 }
 
 /* ─── Task Card ─── */
-function TaskCard({ task, columnId, categories, onDragStart, onToggle, onDelete, onEdit, onChangeCategory, isMobile, onMove, onSetRecurring, onSetTime, highlightQuery, taskFontSize }) {
+function TaskCard({ task, columnId, categories, onDragStart, onToggle, onDelete, onEdit, onChangeCategory, isMobile, onMove, onSetRecurring, onSetTime, onRemoveTime, highlightQuery, taskFontSize }) {
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [timeInput, setTimeInput] = useState(task.startTime || "09:00");
   const [editing, setEditing] = useState(false);
@@ -943,6 +943,13 @@ function TaskCard({ task, columnId, categories, onDragStart, onToggle, onDelete,
                 style={{ background: "var(--accent)", color: "#fff", border: "none", borderRadius: 3, padding: "3px 8px", fontSize: 10, cursor: "pointer", fontWeight: 600 }}>Set</button>
             </div>
           )}
+          {task.startTime && (
+            <div onClick={(e) => { onRemoveTime && onRemoveTime(columnId, task.id); setCtxMenu(null); }}
+              style={{ padding: "6px 14px", cursor: "pointer", fontSize: 12, color: "var(--text)" }}
+              onMouseEnter={(e) => e.currentTarget.style.background = "var(--bg-hover)"} onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}>
+              Remove time
+            </div>
+          )}
           <div onClick={(e) => { setRepeatMenu(!repeatMenu); }}
             style={{ padding: "6px 14px", cursor: "pointer", fontSize: 12, color: "var(--text)", display: "flex", justifyContent: "space-between" }}
             onMouseEnter={(e) => e.currentTarget.style.background = "var(--bg-hover)"} onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}>
@@ -1023,7 +1030,7 @@ function DropZone({ onDrop }) {
 }
 
 /* ─── Day Section ─── */
-function DaySection({ dayInfo, columnId, tasks, categories, onDragStart, onDrop, onToggle, onDelete, onEdit, onAdd, onChangeCategory, isMobile, onMove, onSetRecurring, onSetTime, highlightQuery, taskFontSize }) {
+function DaySection({ dayInfo, columnId, tasks, categories, onDragStart, onDrop, onToggle, onDelete, onEdit, onAdd, onChangeCategory, isMobile, onMove, onSetRecurring, onSetTime, onRemoveTime, highlightQuery, taskFontSize }) {
   const [dragOver, setDragOver] = useState(false);
   const [adding, setAdding] = useState(false);
   const [newText, setNewText] = useState("");
@@ -1102,11 +1109,11 @@ function DaySection({ dayInfo, columnId, tasks, categories, onDragStart, onDrop,
         {incompleteTasks.map((task, idx) => (
           <div key={task.id}>
             <DropZone onDrop={(e) => handleDropAtIndex(e, task.id)} />
-            <TaskCard task={task} columnId={columnId} categories={categories} onDragStart={onDragStart} onToggle={onToggle} onDelete={onDelete} onEdit={onEdit} onChangeCategory={onChangeCategory} isMobile={isMobile} onMove={onMove} onSetRecurring={onSetRecurring} onSetTime={onSetTime} onSetTime={onSetTime} highlightQuery={highlightQuery} taskFontSize={taskFontSize} />
+            <TaskCard task={task} columnId={columnId} categories={categories} onDragStart={onDragStart} onToggle={onToggle} onDelete={onDelete} onEdit={onEdit} onChangeCategory={onChangeCategory} isMobile={isMobile} onMove={onMove} onSetRecurring={onSetRecurring} onSetTime={onSetTime} onSetTime={onSetTime} onRemoveTime={onRemoveTime} highlightQuery={highlightQuery} taskFontSize={taskFontSize} />
           </div>
         ))}
         <DropZone onDrop={(e) => handleDropAtIndex(e, null)} />
-        <DoneCollapse doneTasks={doneTasks} columnId={columnId} categories={categories} onDragStart={onDragStart} onToggle={onToggle} onDelete={onDelete} onEdit={onEdit} onChangeCategory={onChangeCategory} onMove={onMove} onSetRecurring={onSetRecurring} onSetTime={onSetTime} highlightQuery={highlightQuery} isMobile={isMobile} taskFontSize={taskFontSize} />
+        <DoneCollapse doneTasks={doneTasks} columnId={columnId} categories={categories} onDragStart={onDragStart} onToggle={onToggle} onDelete={onDelete} onEdit={onEdit} onChangeCategory={onChangeCategory} onMove={onMove} onSetRecurring={onSetRecurring} onSetTime={onSetTime} onRemoveTime={onRemoveTime} highlightQuery={highlightQuery} isMobile={isMobile} taskFontSize={taskFontSize} />
       </div>
 
       {/* Add task */}
@@ -1286,7 +1293,9 @@ function TimedTaskBlock({ task, col, colIndex, totalCols, categories, taskFontSi
   );
 }
 
-function UnscheduledCol({ col, untimed, done, categories, taskFontSize, toggleDone, addTask, editTask, deleteTask, changeCategory, setRecurring, autoDetectCategory, handleUntimedDrop }) {
+function UnscheduledCol({ col, untimed, done, categories, taskFontSize, toggleDone, addTask, editTask, deleteTask, changeCategory, setRecurring, setTaskTime, autoDetectCategory, handleUntimedDrop }) {
+  const [showTimePicker, setShowTimePicker] = useState(false);
+  const [timeInput, setTimeInput] = useState("09:00");
   const [adding, setAdding] = useState(false);
   const [newText, setNewText] = useState("");
   const [showDone, setShowDone] = useState(false);
@@ -1346,6 +1355,15 @@ function UnscheduledCol({ col, untimed, done, categories, taskFontSize, toggleDo
         <div data-ctx-menu="true" onMouseDown={(e) => e.stopPropagation()} onTouchStart={(e) => e.stopPropagation()} ref={(el) => { if (el) { const r = el.getBoundingClientRect(); if (r.bottom > window.innerHeight - 8) el.style.top = Math.max(8, ctxMenu.y - r.height) + "px"; if (r.right > window.innerWidth - 8) el.style.left = Math.max(8, ctxMenu.x - r.width) + "px"; } }}
           style={{ position: "fixed", left: ctxMenu.x, top: ctxMenu.y, zIndex: 1000, background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 6, boxShadow: "0 4px 16px rgba(0,0,0,0.18)", padding: "4px 0", minWidth: 160 }}>
           <div onClick={(e) => { startEdit(ctxTask); setCtxMenu(null); }} style={{ padding: "5px 12px", cursor: "pointer", fontSize: 11, color: "var(--text)" }} onMouseEnter={(e) => e.currentTarget.style.background = "var(--bg-hover)"} onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}>Edit</div>
+          <div onClick={(e) => { setShowTimePicker(!showTimePicker); }} style={{ padding: "5px 12px", cursor: "pointer", fontSize: 11, color: "var(--text)" }} onMouseEnter={(e) => e.currentTarget.style.background = "var(--bg-hover)"} onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}>Set time</div>
+          {showTimePicker && (
+            <div style={{ padding: "4px 12px", display: "flex", gap: 3, alignItems: "center" }}>
+              <input type="time" value={timeInput} onChange={(e) => setTimeInput(e.target.value)}
+                style={{ flex: 1, border: "1px solid var(--border)", borderRadius: 3, padding: "2px 4px", fontSize: 10, background: "var(--input-bg)", color: "var(--text)", outline: "none", colorScheme: "dark" }} />
+              <button onClick={() => { setTaskTime && setTaskTime(col, ctxTask.id, timeInput); setShowTimePicker(false); setCtxMenu(null); }}
+                style={{ background: "var(--accent)", color: "#fff", border: "none", borderRadius: 3, padding: "2px 6px", fontSize: 9, cursor: "pointer", fontWeight: 600 }}>Set</button>
+            </div>
+          )}
           <div onClick={(e) => { setShowCatPicker(!showCatPicker); }} style={{ padding: "5px 12px", cursor: "pointer", fontSize: 11, color: "var(--text)" }} onMouseEnter={(e) => e.currentTarget.style.background = "var(--bg-hover)"} onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}>Category</div>
           {showCatPicker && (
             <div style={{ padding: "4px 12px", display: "flex", gap: 3, flexWrap: "wrap" }}>
@@ -1417,7 +1435,7 @@ function UnscheduledCol({ col, untimed, done, categories, taskFontSize, toggleDo
   );
 }
 
-function DoneCollapse({ doneTasks, columnId, categories, onDragStart, onToggle, onDelete, onEdit, onChangeCategory, onMove, onSetRecurring, onSetTime, highlightQuery, isToday, isMobile, taskFontSize }) {
+function DoneCollapse({ doneTasks, columnId, categories, onDragStart, onToggle, onDelete, onEdit, onChangeCategory, onMove, onSetRecurring, onSetTime, onRemoveTime, highlightQuery, isToday, isMobile, taskFontSize }) {
   const [expanded, setExpanded] = useState(false);
   if (doneTasks.length === 0) return null;
   return (
@@ -1427,7 +1445,7 @@ function DoneCollapse({ doneTasks, columnId, categories, onDragStart, onToggle, 
         <span style={{ fontSize: 8, color: "var(--text-faint)" }}>{doneTasks.length} done</span>
       </div>
       {expanded && doneTasks.map((task) => (
-        <TaskCard key={task.id} task={task} columnId={columnId} categories={categories} onDragStart={onDragStart} onToggle={onToggle} onDelete={onDelete} onEdit={onEdit} onChangeCategory={onChangeCategory} isMobile={isMobile} onMove={onMove} onSetRecurring={onSetRecurring} onSetTime={onSetTime} onSetTime={onSetTime} highlightQuery={highlightQuery} taskFontSize={taskFontSize} />
+        <TaskCard key={task.id} task={task} columnId={columnId} categories={categories} onDragStart={onDragStart} onToggle={onToggle} onDelete={onDelete} onEdit={onEdit} onChangeCategory={onChangeCategory} isMobile={isMobile} onMove={onMove} onSetRecurring={onSetRecurring} onSetTime={onSetTime} onSetTime={onSetTime} onRemoveTime={onRemoveTime} highlightQuery={highlightQuery} taskFontSize={taskFontSize} />
       ))}
     </>
   );
@@ -1478,11 +1496,11 @@ function DayColumn({ dayInfo, columnId, tasks, categories, onDragStart, onDrop, 
         {incompleteTasks.map((task, idx) => (
           <div key={task.id}>
             <DropZone onDrop={(e) => handleDropAtIndex(e, task.id)} />
-            <TaskCard task={task} columnId={columnId} categories={categories} onDragStart={onDragStart} onToggle={onToggle} onDelete={onDelete} onEdit={onEdit} onChangeCategory={onChangeCategory} onMove={onMove} onSetRecurring={onSetRecurring} onSetTime={onSetTime} onSetTime={onSetTime} highlightQuery={highlightQuery} taskFontSize={taskFontSize} />
+            <TaskCard task={task} columnId={columnId} categories={categories} onDragStart={onDragStart} onToggle={onToggle} onDelete={onDelete} onEdit={onEdit} onChangeCategory={onChangeCategory} onMove={onMove} onSetRecurring={onSetRecurring} onSetTime={onSetTime} onSetTime={onSetTime} onRemoveTime={onRemoveTime} highlightQuery={highlightQuery} taskFontSize={taskFontSize} />
           </div>
         ))}
         <DropZone onDrop={(e) => handleDropAtIndex(e, null)} />
-        <DoneCollapse doneTasks={doneTasks} columnId={columnId} categories={categories} onDragStart={onDragStart} onToggle={onToggle} onDelete={onDelete} onEdit={onEdit} onChangeCategory={onChangeCategory} onMove={onMove} onSetRecurring={onSetRecurring} onSetTime={onSetTime} highlightQuery={highlightQuery} isToday={isToday} taskFontSize={taskFontSize} />
+        <DoneCollapse doneTasks={doneTasks} columnId={columnId} categories={categories} onDragStart={onDragStart} onToggle={onToggle} onDelete={onDelete} onEdit={onEdit} onChangeCategory={onChangeCategory} onMove={onMove} onSetRecurring={onSetRecurring} onSetTime={onSetTime} onRemoveTime={onRemoveTime} highlightQuery={highlightQuery} isToday={isToday} taskFontSize={taskFontSize} />
       </div>
       {adding ? (
         <div style={{ marginTop: 2, flexShrink: 0 }}>
@@ -2022,7 +2040,7 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
     if (!task || !newStartTime) return;
     const [nh, nm] = newStartTime.split(":").map(Number);
     const newStartMin = nh * 60 + (nm || 0);
-    let durationMin = 30;
+    let durationMin = 15;
     if (task.startTime && task.endTime) {
       const [sh, sm] = task.startTime.split(":").map(Number);
       const [eh, em] = task.endTime.split(":").map(Number);
@@ -2033,6 +2051,11 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
     const updated = { ...task, startTime: fmt(newStartMin), endTime: fmt(endMin) };
     delete updated.orderHint;
     update({ tasks: { ...t, [col]: t[col].map((x) => x.id === id ? updated : x) } });
+  }, []);
+  const removeTaskTime = useCallback((col, id) => {
+    const t = dataRef.current.tasks;
+    const clearTime = (x) => { const c = { ...x }; delete c.startTime; delete c.endTime; return c; };
+    update({ tasks: { ...t, [col]: t[col].map((x) => x.id === id ? clearTime(x) : x) } });
   }, []);
   const addTask = useCallback((col, text, catId) => {
     const t = dataRef.current.tasks;
@@ -2298,11 +2321,11 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
                   <div style={{ padding: isMobile ? "4px 4px" : "4px 8px", display: "flex", flexDirection: "column", gap: 2 }}>
                     {DAYS.map((day, i) => (
                       <DaySection key={day} dayInfo={weekDates[i]} columnId={day.toLowerCase()} tasks={tasks[day.toLowerCase()]} categories={categories}
-                        onDragStart={() => {}} onDrop={handleDrop} onToggle={toggleDone} onDelete={deleteTask} onEdit={editTask} onAdd={addTask} onChangeCategory={changeCategory} isMobile={isMobile} onMove={moveTask} onSetRecurring={setRecurring} onSetTime={setTaskTime} highlightQuery={highlightQuery} taskFontSize={taskFontSize} />
+                        onDragStart={() => {}} onDrop={handleDrop} onToggle={toggleDone} onDelete={deleteTask} onEdit={editTask} onAdd={addTask} onChangeCategory={changeCategory} isMobile={isMobile} onMove={moveTask} onSetRecurring={setRecurring} onSetTime={setTaskTime} onRemoveTime={removeTaskTime} highlightQuery={highlightQuery} taskFontSize={taskFontSize} />
                     ))}
                     {isMobile && (
                       <DaySection dayInfo={null} columnId="later" tasks={tasks.later} categories={categories} onDragStart={() => {}} onDrop={handleDrop}
-                        onToggle={toggleDone} onDelete={deleteTask} onEdit={editTask} onAdd={addTask} onChangeCategory={changeCategory} isMobile={isMobile} onMove={moveTask} onSetRecurring={setRecurring} onSetTime={setTaskTime} highlightQuery={highlightQuery} taskFontSize={taskFontSize} />
+                        onToggle={toggleDone} onDelete={deleteTask} onEdit={editTask} onAdd={addTask} onChangeCategory={changeCategory} isMobile={isMobile} onMove={moveTask} onSetRecurring={setRecurring} onSetTime={setTaskTime} onRemoveTime={removeTaskTime} highlightQuery={highlightQuery} taskFontSize={taskFontSize} />
                     )}
                     {/* Mobile upcoming section */}
                     {isMobile && (() => {
@@ -2380,7 +2403,7 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
                         const startMin = Math.round(minuteOfDay / 15) * 15;
                         const timeStr = minToTime(startMin);
                         const task = (dataRef.current.tasks[d.from] || []).find((x) => x.id === d.taskId);
-                        const duration = task?.endTime ? timeToMin(task.endTime) - timeToMin(task.startTime) : 30;
+                        const duration = task?.endTime ? timeToMin(task.endTime) - timeToMin(task.startTime) : 15;
                         const endStr = minToTime(startMin + Math.max(15, duration));
                         const applySchedule = (x) => { const c = { ...x, startTime: timeStr, endTime: endStr }; delete c.orderHint; return c; };
                         if (d.from === col) {
@@ -2573,7 +2596,7 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
                               const { untimed, done } = getTasksForDay(col);
                               return (
                                 <UnscheduledCol key={col} col={col} untimed={untimed} done={done} categories={categories} taskFontSize={taskFontSize}
-                                  toggleDone={toggleDone} addTask={addTask} editTask={editTask} deleteTask={deleteTask} changeCategory={changeCategory} setRecurring={setRecurring} autoDetectCategory={autoDetectCategory} handleUntimedDrop={handleUntimedDrop} />
+                                  toggleDone={toggleDone} addTask={addTask} editTask={editTask} deleteTask={deleteTask} changeCategory={changeCategory} setRecurring={setRecurring} setTaskTime={setTaskTime} autoDetectCategory={autoDetectCategory} handleUntimedDrop={handleUntimedDrop} />
                               );
                             })}
                           </div>
@@ -2610,7 +2633,7 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
                         {laterOpen && (
                           <div style={{ padding: "0px 8px 6px" }}>
                             <DaySection dayInfo={null} columnId="later" tasks={tasks.later} categories={categories} onDragStart={() => {}} onDrop={handleDrop}
-                              onToggle={toggleDone} onDelete={deleteTask} onEdit={editTask} onAdd={addTask} onChangeCategory={changeCategory} onMove={moveTask} onSetRecurring={setRecurring} onSetTime={setTaskTime} highlightQuery={highlightQuery} taskFontSize={taskFontSize} />
+                              onToggle={toggleDone} onDelete={deleteTask} onEdit={editTask} onAdd={addTask} onChangeCategory={changeCategory} onMove={moveTask} onSetRecurring={setRecurring} onSetTime={setTaskTime} onRemoveTime={removeTaskTime} highlightQuery={highlightQuery} taskFontSize={taskFontSize} />
                           </div>
                         )}
                       </div>
@@ -2645,7 +2668,7 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
                     {laterOpen && (
                       <div style={{ padding: "0px 8px 6px" }}>
                         <DaySection dayInfo={null} columnId="later" tasks={tasks.later} categories={categories} onDragStart={() => {}} onDrop={handleDrop}
-                          onToggle={toggleDone} onDelete={deleteTask} onEdit={editTask} onAdd={addTask} onChangeCategory={changeCategory} onMove={moveTask} onSetRecurring={setRecurring} onSetTime={setTaskTime} highlightQuery={highlightQuery} taskFontSize={taskFontSize} />
+                          onToggle={toggleDone} onDelete={deleteTask} onEdit={editTask} onAdd={addTask} onChangeCategory={changeCategory} onMove={moveTask} onSetRecurring={setRecurring} onSetTime={setTaskTime} onRemoveTime={removeTaskTime} highlightQuery={highlightQuery} taskFontSize={taskFontSize} />
                       </div>
                     )}
                 </div>
