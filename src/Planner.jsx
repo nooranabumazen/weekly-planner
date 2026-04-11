@@ -873,7 +873,7 @@ function TaskCard({ task, columnId, categories, onDragStart, onToggle, onDelete,
         opacity: task.done ? 0.45 : 1, transition: "opacity 0.2s, background 0.15s",
         fontSize: isMobile ? 16 : (taskFontSize || 13), lineHeight: 1.4, userSelect: "none", position: "relative",
         display: "flex", alignItems: "flex-start", gap: isMobile ? 10 : 5,
-        marginBottom: isMobile ? 0 : 2,
+        marginBottom: 0,
       }}>
       <input type="checkbox" checked={task.done} onChange={() => onToggle(columnId, task.id)}
         style={{ cursor: "pointer", accentColor: "#5a5a5a", width: isMobile ? 20 : 15, height: isMobile ? 20 : 15, marginTop: 2, flexShrink: 0 }} />
@@ -1025,7 +1025,7 @@ function DropZone({ onDrop }) {
       onDragEnter={(e) => { e.preventDefault(); e.stopPropagation(); setOver(true); }}
       onDragLeave={(e) => { e.stopPropagation(); setOver(false); }}
       onDrop={(e) => { e.preventDefault(); e.stopPropagation(); setOver(false); onDrop(e); }}
-      style={{ height: over ? 20 : dragging ? 8 : 2, margin: 0, background: over ? "rgba(139,105,20,0.25)" : "transparent", borderRadius: over ? 4 : 0, transition: "all 0.15s", border: over ? "1.5px dashed #8B6914" : "1.5px dashed transparent", overflow: "hidden" }} />
+      style={{ height: over ? 20 : dragging ? 8 : 1, margin: 0, background: over ? "rgba(139,105,20,0.25)" : "transparent", borderRadius: over ? 4 : 0, transition: "all 0.15s", border: over ? "1.5px dashed #8B6914" : "1.5px dashed transparent", overflow: "hidden" }} />
   );
 }
 
