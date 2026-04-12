@@ -467,9 +467,25 @@ function HabitsTracker({ dailyHabits, weeklyHabits, habitHistory, moods, onToggl
   const [dragHabit, setDragHabit] = useState(null);
   const [showMood, setShowMoodState] = useState(() => { try { return localStorage.getItem("planner_showMood") === "true"; } catch { return false; } });
   const setShowMood = (v) => { setShowMoodState(v); try { localStorage.setItem("planner_showMood", v); } catch {} };
-  const todayStr = new Date().toISOString().split("T")[0];
-  const todayMood = (moods || {})[todayStr] || { mood: "", note: "" };
-  const saveMood = (patch) => { const next = { ...(moods || {}), [todayStr]: { ...todayMood, ...patch } }; if (onSaveMoods) onSaveMoods(next); };
+  // Local-date YYYY-MM-DD (avoids UTC offset issues)
+  const fmtLocal = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  const todayStr = fmtLocal(new Date());
+  // Build the current Mon..Sun week
+  const moodWeekDates = (() => {
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const day = today.getDay();
+    const monday = new Date(today); monday.setDate(today.getDate() - ((day + 6) % 7));
+    const out = [];
+    for (let i = 0; i < 7; i++) { const d = new Date(monday); d.setDate(monday.getDate() + i); out.push({ dateStr: fmtLocal(d), label: ["M","T","W","T","F","S","S"][i], isToday: fmtLocal(d) === todayStr, isFuture: d > today }); }
+    return out;
+  })();
+  const [activeMoodDate, setActiveMoodDate] = useState(null); // which day's picker is open
+  const [openNoteDate, setOpenNoteDate] = useState(null); // which day's note bubble is shown
+  const saveMoodFor = (dateStr, patch) => {
+    const cur = (moods || {})[dateStr] || { mood: "", note: "" };
+    const next = { ...(moods || {}), [dateStr]: { ...cur, ...patch } };
+    if (onSaveMoods) onSaveMoods(next);
+  };
   const MOODS = [
     { key: "great", emoji: "\u{1F60A}", label: "great" },
     { key: "good", emoji: "\u{1F642}", label: "good" },
@@ -621,19 +637,53 @@ function HabitsTracker({ dailyHabits, weeklyHabits, habitHistory, moods, onToggl
       </div>
       {showMood && (
         <div style={{ padding: "6px 12px 8px", display: "flex", flexDirection: "column", gap: 6, alignItems: "center" }}>
-          <div style={{ display: "flex", gap: 6, justifyContent: "center", flexWrap: "wrap" }}>
-            {MOODS.map((m) => {
-              const selected = todayMood.mood === m.key;
+          {/* 7 day-of-week faces */}
+          <div style={{ display: "flex", gap: 4, justifyContent: "center", width: "100%", maxWidth: 340 }}>
+            {moodWeekDates.map((d) => {
+              const entry = (moods || {})[d.dateStr] || { mood: "", note: "" };
+              const moodObj = MOODS.find((m) => m.key === entry.mood);
+              const isPickerOpen = activeMoodDate === d.dateStr;
+              const hasNote = !!entry.note;
               return (
-                <button key={m.key} onClick={() => saveMood({ mood: selected ? "" : m.key })} title={m.label}
-                  style={{ background: selected ? "var(--bg-hover)" : "transparent", border: selected ? "1px solid var(--accent)" : "1px solid var(--border)", borderRadius: 6, padding: "4px 8px", fontSize: 18, cursor: "pointer", lineHeight: 1, transition: "all 0.15s" }}>
-                  {m.emoji}
-                </button>
+                <div key={d.dateStr} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 2, position: "relative" }}>
+                  <span style={{ fontSize: 9, color: d.isToday ? "var(--accent)" : "var(--text-faint)", fontFamily: "'JetBrains Mono', monospace", fontWeight: d.isToday ? 700 : 400 }}>{d.label}</span>
+                  <button onClick={() => { if (d.isFuture) return; setActiveMoodDate(isPickerOpen ? null : d.dateStr); setOpenNoteDate(null); }}
+                    title={d.isFuture ? "Future day" : moodObj ? moodObj.label : "Set mood"}
+                    style={{ background: isPickerOpen ? "var(--bg-hover)" : "transparent", border: isPickerOpen ? "1px solid var(--accent)" : "1px dashed var(--border)", borderRadius: "50%", width: 28, height: 28, padding: 0, fontSize: 16, cursor: d.isFuture ? "not-allowed" : "pointer", lineHeight: 1, opacity: d.isFuture ? 0.3 : 1, display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.15s" }}>
+                    {moodObj ? moodObj.emoji : ""}
+                  </button>
+                  {hasNote && !d.isFuture && (
+                    <button onClick={() => setOpenNoteDate(openNoteDate === d.dateStr ? null : d.dateStr)} title="Show note"
+                      style={{ background: "none", border: "none", padding: 0, cursor: "pointer", fontSize: 9, color: "var(--text-faint)", lineHeight: 1 }}>{"\u{1F4AC}"}</button>
+                  )}
+                  {openNoteDate === d.dateStr && hasNote && (
+                    <div style={{ position: "absolute", top: "100%", left: "50%", transform: "translateX(-50%)", marginTop: 4, background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 6, padding: "4px 8px", fontSize: 10, color: "var(--text)", boxShadow: "0 4px 12px rgba(0,0,0,0.18)", whiteSpace: "nowrap", maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", zIndex: 10 }}>
+                      {entry.note}
+                    </div>
+                  )}
+                </div>
               );
             })}
           </div>
-          <input type="text" value={todayMood.note} onChange={(e) => saveMood({ note: e.target.value })} placeholder="why? (optional note)"
-            style={{ width: "100%", maxWidth: 280, border: "1px solid var(--border)", borderRadius: 4, padding: "4px 8px", fontSize: 11, outline: "none", background: "var(--input-bg)", color: "var(--text)", fontFamily: "'DM Sans', sans-serif", boxSizing: "border-box", textAlign: "center" }} />
+          {/* Picker for the active day */}
+          {activeMoodDate && (
+            <>
+              <div style={{ display: "flex", gap: 4, justifyContent: "center", flexWrap: "wrap" }}>
+                {MOODS.map((m) => {
+                  const cur = (moods || {})[activeMoodDate] || {};
+                  const selected = cur.mood === m.key;
+                  return (
+                    <button key={m.key} onClick={() => saveMoodFor(activeMoodDate, { mood: selected ? "" : m.key })} title={m.label}
+                      style={{ background: selected ? "var(--bg-hover)" : "transparent", border: selected ? "1px solid var(--accent)" : "1px solid var(--border)", borderRadius: 6, padding: "3px 6px", fontSize: 16, cursor: "pointer", lineHeight: 1, transition: "all 0.15s" }}>
+                      {m.emoji}
+                    </button>
+                  );
+                })}
+              </div>
+              <input type="text" value={((moods || {})[activeMoodDate] || {}).note || ""} onChange={(e) => saveMoodFor(activeMoodDate, { note: e.target.value })} placeholder="why? (optional note)"
+                style={{ width: "100%", maxWidth: 280, border: "1px solid var(--border)", borderRadius: 4, padding: "4px 8px", fontSize: 11, outline: "none", background: "var(--input-bg)", color: "var(--text)", fontFamily: "'DM Sans', sans-serif", boxSizing: "border-box", textAlign: "center" }} />
+            </>
+          )}
         </div>
       )}
     </div>
@@ -933,11 +983,11 @@ function DaySection({ dayInfo, columnId, tasks, categories, onDragStart, onDrop,
         background: dragOver ? "rgba(139,105,20,0.03)" : isToday ? "rgba(180,140,80,0.04)" : "transparent",
         transition: "background 0.2s",
         borderBottom: "1px solid var(--border-light)",
-        paddingBottom: 4,
+        paddingBottom: 1,
       }}>
       {/* Day header */}
       <div style={{
-        padding: isLater ? (isMobile ? "4px 10px 2px" : "2px 10px 2px") : (isMobile ? "10px 10px 4px" : "8px 10px 4px"), display: "flex", alignItems: "baseline", gap: 8,
+        padding: isLater ? (isMobile ? "4px 10px 2px" : "2px 10px 2px") : (isMobile ? "6px 10px 2px" : "4px 10px 2px"), display: "flex", alignItems: "baseline", gap: 8,
       }}>
         <span style={{
           fontFamily: "'JetBrains Mono', monospace", fontWeight: 700,
@@ -976,7 +1026,7 @@ function DaySection({ dayInfo, columnId, tasks, categories, onDragStart, onDrop,
       ) : (
         <button onClick={() => setAdding(true)} style={{
           background: "none", border: "none", cursor: "pointer", color: "var(--text-faint)", fontSize: isMobile ? 15 : 12,
-          padding: isMobile ? "8px 10px 8px 20px" : "4px 10px 4px 26px", transition: "color 0.15s",
+          padding: isMobile ? "8px 10px 8px 20px" : "1px 10px 2px 26px", transition: "color 0.15s",
         }}
           onMouseEnter={(e) => (e.target.style.color = "var(--text-muted)")}
           onMouseLeave={(e) => (e.target.style.color = "var(--text-faint)")}>+ Add task</button>
@@ -1285,7 +1335,7 @@ function DoneCollapse({ doneTasks, columnId, categories, onDragStart, onToggle, 
   if (doneTasks.length === 0) return null;
   return (
     <>
-      <div onClick={() => setExpanded(!expanded)} style={{ borderTop: "1px dashed var(--border)", margin: "3px 2px 1px", padding: "2px 10px 2px 26px", cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}>
+      <div onClick={() => setExpanded(!expanded)} style={{ borderTop: "1px dashed var(--border)", margin: "1px 2px 0", padding: "1px 10px 1px 26px", cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}>
         <span style={{ fontSize: 8, color: "var(--text-faint)", transform: expanded ? "rotate(90deg)" : "rotate(0deg)", transition: "transform 0.15s", display: "inline-block" }}>{"\u25B6"}</span>
         <span style={{ fontSize: 8, color: "var(--text-faint)" }}>{doneTasks.length} done</span>
       </div>
@@ -1467,18 +1517,16 @@ function FutureSidebar({ futureTasks, onAddFuture, onDeleteFuture, onEditFuture,
               const isHighlighted = highlightDate === date;
               return (<div key={date} data-future-date={date} style={{ marginBottom: 8, padding: isHighlighted ? "4px 6px" : 0, background: isHighlighted ? "rgba(139,105,20,0.12)" : "transparent", borderRadius: 6, transition: "background 0.3s" }}><div style={{ fontSize: 11, fontWeight: 600, color: isHighlighted ? "var(--accent)" : "var(--text-muted)", marginBottom: 3 }}>{label}</div>
                 {grouped[date].map((task) => editingId === task.id ? (
-                  <div key={task.id} style={{ background: "var(--bg-card)", border: "1px solid var(--accent)", borderRadius: 4, padding: "6px 7px", marginBottom: 3 }}>
+                  <div key={task.id} style={{ background: "var(--bg-card)", border: "1px solid var(--accent)", borderRadius: 4, padding: "5px 7px", marginBottom: 3, fontSize: 12, display: "flex", alignItems: "center", gap: 4 }}>
                     <input ref={editRef} value={editText} onChange={(e) => setEditText(e.target.value)}
                       onKeyDown={(e) => { if (e.key === "Enter") { onEditFuture(task.id, editText.trim(), editDate); setEditingId(null); } if (e.key === "Escape") setEditingId(null); }}
-                      style={{ width: "100%", border: "1px solid var(--border)", borderRadius: 3, padding: "3px 5px", fontSize: 12, outline: "none", background: "var(--input-bg)", color: "var(--text)", boxSizing: "border-box", marginBottom: 4 }} />
-                    <div style={{ display: "flex", gap: 3, alignItems: "center" }}>
-                      <input type="date" value={editDate} onChange={(e) => setEditDate(e.target.value)}
-                        style={{ flex: 1, border: "1px solid var(--border)", borderRadius: 3, padding: "2px 4px", fontSize: 10, background: "var(--input-bg)", color: "var(--text)", outline: "none", colorScheme: "dark" }} />
-                      <button onClick={() => { if (editText.trim()) onEditFuture(task.id, editText.trim(), editDate); setEditingId(null); }}
-                        style={{ background: "var(--accent)", color: "#fff", border: "none", borderRadius: 3, padding: "2px 8px", fontSize: 10, cursor: "pointer", fontWeight: 600 }}>Save</button>
-                      <button onClick={() => setEditingId(null)}
-                        style={{ background: "var(--border)", color: "var(--text-muted)", border: "none", borderRadius: 3, padding: "2px 8px", fontSize: 10, cursor: "pointer" }}>Cancel</button>
-                    </div>
+                      style={{ flex: 1, minWidth: 0, border: "none", padding: 0, fontSize: 12, outline: "none", background: "transparent", color: "var(--text)", fontFamily: "inherit" }} />
+                    <input type="date" value={editDate} onChange={(e) => setEditDate(e.target.value)} title="Date"
+                      style={{ width: 18, border: "none", padding: 0, fontSize: 9, background: "transparent", color: "var(--text-faint)", outline: "none", colorScheme: "dark", cursor: "pointer", flexShrink: 0 }} />
+                    <button onClick={() => { if (editText.trim()) onEditFuture(task.id, editText.trim(), editDate); setEditingId(null); }} title="Save"
+                      style={{ background: "none", border: "none", color: "var(--accent)", cursor: "pointer", fontSize: 13, padding: 0, lineHeight: 1, fontWeight: 700, flexShrink: 0 }}>{"\u2713"}</button>
+                    <button onClick={() => setEditingId(null)} title="Cancel"
+                      style={{ background: "none", border: "none", color: "var(--text-faint)", cursor: "pointer", fontSize: 13, padding: 0, lineHeight: 1, fontWeight: 700, flexShrink: 0 }}>{"\u2715"}</button>
                   </div>
                 ) : (<div key={task.id} draggable onDragStart={(e) => { e.dataTransfer.setData("text/plain", JSON.stringify({ taskId: task.id, from: "future", futureText: task.text })); }}
                   onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); setFutureCtxMenu({ x: e.clientX, y: e.clientY, task }); setFutureTimeInput(task.startTime || "09:00"); }}
