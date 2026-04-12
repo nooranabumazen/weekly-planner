@@ -40,6 +40,52 @@ function formatTime12(timeStr) {
   return `${h12}:${String(m || 0).padStart(2, "0")} ${period}`;
 }
 
+// Parse natural-language time/range out of task text.
+// Returns { startTime, endTime, cleanText } or null if no time found.
+// Rules: only matches times with am/pm suffix or HH:MM colon format. Bare integers ignored.
+// First match wins. Strips matched text only if at start OR full-string range pattern.
+function parseTimeFromText(raw) {
+  if (!raw) return null;
+  const text = raw.trim();
+  // Range: "9-10am", "1:30-2:30 pm", "9am-12pm", "2:30-3:30"
+  const rangeRe = /\b(\d{1,2})(?::(\d{2}))?\s*(am|pm|AM|PM)?\s*[-\u2013]\s*(\d{1,2})(?::(\d{2}))?\s*(am|pm|AM|PM)\b|\b(\d{1,2})(?::(\d{2}))?\s*(am|pm|AM|PM)\s*[-\u2013]\s*(\d{1,2})(?::(\d{2}))?\s*(am|pm|AM|PM)?\b|\b(\d{1,2}):(\d{2})\s*[-\u2013]\s*(\d{1,2}):(\d{2})\b/;
+  const rm = text.match(rangeRe);
+  if (rm) {
+    let sH, sM, eH, eM, sP, eP;
+    if (rm[1] !== undefined && rm[6]) { sH=+rm[1]; sM=+(rm[2]||0); sP=(rm[3]||rm[6]).toLowerCase(); eH=+rm[4]; eM=+(rm[5]||0); eP=rm[6].toLowerCase(); }
+    else if (rm[7] !== undefined) { sH=+rm[7]; sM=+(rm[8]||0); sP=rm[9].toLowerCase(); eH=+rm[10]; eM=+(rm[11]||0); eP=(rm[12]||rm[9]).toLowerCase(); }
+    else { sH=+rm[13]; sM=+rm[14]; eH=+rm[15]; eM=+rm[16]; sP=eP=null; }
+    const to24 = (h, p) => { if (p === "am") return h === 12 ? 0 : h; if (p === "pm") return h === 12 ? 12 : h + 12; if (h <= 12) return h + 12; return h; };
+    const startH = to24(sH, sP); const endH = to24(eH, eP);
+    const startTime = `${String(startH).padStart(2, "0")}:${String(sM).padStart(2, "0")}`;
+    const endTime = `${String(endH).padStart(2, "0")}:${String(eM).padStart(2, "0")}`;
+    const matchStart = text.indexOf(rm[0]);
+    const isStart = matchStart === 0;
+    const isWholeString = rm[0].length >= text.length - 2;
+    let cleanText = text;
+    if (isStart || isWholeString) cleanText = text.replace(rm[0], "").replace(/^[\s,:.\-\u2013]+/, "").replace(/\s+/g, " ").trim();
+    return { startTime, endTime, cleanText: cleanText || text };
+  }
+  // Single time: "1pm", "1:30 pm", "13:30"
+  const singleRe = /\b(\d{1,2})(?::(\d{2}))?\s*(am|pm|AM|PM)\b|\b(\d{1,2}):(\d{2})\b/;
+  const sm = text.match(singleRe);
+  if (sm) {
+    let h, m, p;
+    if (sm[1] !== undefined) { h=+sm[1]; m=+(sm[2]||0); p=sm[3].toLowerCase(); }
+    else { h=+sm[4]; m=+sm[5]; p=null; }
+    if (p === "am") h = h === 12 ? 0 : h;
+    else if (p === "pm") h = h === 12 ? 12 : h + 12;
+    if (h > 23 || m > 59) return null;
+    const startTime = `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+    const matchStart = text.indexOf(sm[0]);
+    const isStart = matchStart === 0;
+    let cleanText = text;
+    if (isStart) cleanText = text.replace(sm[0], "").replace(/^[\s,:.\-\u2013]+/, "").replace(/\s+/g, " ").trim();
+    return { startTime, endTime: null, cleanText: cleanText || text };
+  }
+  return null;
+}
+
 function getCatColor(categories, catId) {
   const cat = categories.find((c) => c.id === catId);
   return cat ? cat.color : "#e0ddd6";
@@ -2010,7 +2056,19 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
   }, []);
   const addTask = useCallback((col, text, catId) => {
     const t = dataRef.current.tasks;
-    const task = makeTask(text, { category: catId || "cat_none" });
+    const parsed = parseTimeFromText(text);
+    const finalText = parsed ? parsed.cleanText : text;
+    const taskOpts = { category: catId || "cat_none" };
+    if (parsed && col !== "later") {
+      taskOpts.startTime = parsed.startTime;
+      if (parsed.endTime) taskOpts.endTime = parsed.endTime;
+      else {
+        const [h, m] = parsed.startTime.split(":").map(Number);
+        const endMin = h * 60 + m + 15;
+        taskOpts.endTime = `${String(Math.floor(endMin / 60)).padStart(2, "0")}:${String(endMin % 60).padStart(2, "0")}`;
+      }
+    }
+    const task = makeTask(finalText, taskOpts);
     const laterLenBefore = t?.later?.length || 0;
     const nextList = [...t[col], task];
     // #region agent log addTask to later
@@ -2068,7 +2126,7 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
   const editWeekly = (id, name) => { const updated = weeklyHabits.map((h) => h.id === id ? { ...h, name } : h); update({ weeklyHabits: updated }); onSaveWeeklyHabits(updated); };
   const reorderDaily = (items) => { update({ dailyHabits: items }); onSaveDailyHabits(items); };
   const reorderWeekly = (items) => { update({ weeklyHabits: items }); onSaveWeeklyHabits(items); };
-  const addFuture = (text, date) => { const nf = [...futureTasks, { id: "f" + Date.now(), text, date }]; update({ futureTasks: nf }); onSaveFuture(nf); };
+  const addFuture = (text, date) => { const parsed = parseTimeFromText(text); const finalText = parsed ? parsed.cleanText : text; const entry = { id: "f" + Date.now(), text: finalText, date }; if (parsed) entry.startTime = parsed.startTime; const nf = [...futureTasks, entry]; update({ futureTasks: nf }); onSaveFuture(nf); };
   const deleteFuture = (id) => { pushUndo(); const nf = futureTasks.filter((t) => t.id !== id); update({ futureTasks: nf }); onSaveFuture(nf); };
   const editFuture = (id, text, date, startTime) => { const nf = futureTasks.map((t) => { if (t.id !== id) return t; const u = { ...t, text: text !== undefined ? text : t.text, date: date !== undefined ? date : t.date }; if (startTime === null) delete u.startTime; else if (startTime !== undefined) u.startTime = startTime; return u; }); update({ futureTasks: nf }); onSaveFuture(nf); };
   const updateNotebooks = (nbs) => { update({ notebooks: nbs }); onSaveNotebooks(nbs); };
