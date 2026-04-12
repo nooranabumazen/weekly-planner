@@ -183,6 +183,37 @@ export function usePlannerData(userId) {
       let isNewWeek = false;
       if (weekDoc && weekDoc.tasks) {
         tasks = weekDoc.tasks;
+        // Even on existing week, check persistent recurring rules for missing tasks
+        const rules = recurringDoc?.items || [];
+        if (rules.length > 0) {
+          const dayKeys = ["mon","tue","wed","thu","fri","sat","sun"];
+          let changed = false;
+          for (const rule of rules) {
+            let shouldRepeat = false;
+            let targetDay = null;
+            if (rule.type === "weeks" && rule.count >= 1) { shouldRepeat = true; }
+            else if (rule.type === "until" && rule.until >= wk) { shouldRepeat = true; }
+            else if (rule.type === "monthly") {
+              const weekStart = new Date(wk + "T12:00:00");
+              targetDay = checkMonthlyRule(rule, weekStart);
+              if (targetDay) shouldRepeat = true;
+            }
+            if (shouldRepeat) {
+              const day = targetDay || rule.day || "mon";
+              if (dayKeys.includes(day)) {
+                const alreadyExists = tasks[day]?.some((t) => t.text === rule.text);
+                if (!alreadyExists) {
+                  if (!tasks[day]) tasks[day] = [];
+                  tasks[day].push({ id: "t" + Date.now() + "_" + Math.random().toString(36).slice(2,6), text: rule.text, done: false, category: rule.category || "cat_none", recurring: { ...rule } });
+                  changed = true;
+                }
+              }
+            }
+          }
+          if (changed) {
+            writeDoc(weekPath, { tasks, _lastModified: Date.now() });
+          }
+        }
       } else {
         isNewWeek = true;
         const prevDoc = await readDoc(`users/${userId}/weeks/${getPrevWeekKey()}`);
@@ -330,6 +361,9 @@ export function usePlannerData(userId) {
         setLoading(false);
         return;
       }
+      // Read moods (date-keyed mood + note tracker)
+      const moodsDoc = await readDoc(m("moods"));
+      const moods = (moodsDoc && moodsDoc !== READ_ERROR) ? (moodsDoc.entries || {}) : {};
       let habitHistory = historyDoc?.weeks || {};
 
       // Reset habit checks if we're in a new week (only if habit docs exist)
@@ -388,8 +422,9 @@ export function usePlannerData(userId) {
       latestTasksRef.current = tasks;
 
       if (!cancelled) {
-        setData({ tasks, futureTasks, notebooks, journal, contacts, archive, dailyHabits, weeklyHabits, habitHistory,
-          categories: settings.categories, layout: settings.layout, notes: settings.notes, darkMode: settings.darkMode });
+        setData({ tasks, futureTasks, notebooks, journal, contacts, archive, dailyHabits, weeklyHabits, habitHistory, moods,
+          categories: settings.categories, layout: settings.layout, notes: settings.notes, darkMode: settings.darkMode, taskFontSize: settings.taskFontSize,
+          recurringRules: recurringDoc?.items || [] });
         setLoading(false);
       }
     }
@@ -489,6 +524,7 @@ export function usePlannerData(userId) {
   const saveWeeklyHabits = useCallback((items) => { setData((p) => p ? { ...p, weeklyHabits: items } : p); writeDoc(`users/${userId}/meta/weeklyHabits`, { items, _weekKey: weekKeyRef.current }); }, [userId]);
   const saveSettings = useCallback((s) => { setData((p) => p ? { ...p, categories: s.categories, layout: s.layout, notes: s.notes, darkMode: s.darkMode, taskFontSize: s.taskFontSize } : p); writeDoc(`users/${userId}/meta/settings`, s); }, [userId]);
   const saveRecurringRules = useCallback((items) => { writeDoc(`users/${userId}/meta/recurringRules`, { items }); }, [userId]);
+  const saveMoods = useCallback((entries) => { setData((p) => p ? { ...p, moods: entries } : p); writeDoc(`users/${userId}/meta/moods`, { entries }); }, [userId]);
 
   // ─── Backup System ───
   const MAX_BACKUPS = 7;
@@ -629,7 +665,7 @@ export function usePlannerData(userId) {
     return () => clearInterval(interval);
   }, [userId, data !== null, createBackup]);
 
-  return { data, loading, save, saveQuiet, saveFuture, saveNotebooks, saveJournal, saveContacts, saveArchive, saveDailyHabits, saveWeeklyHabits, saveSettings, saveRecurringRules, getBackups, restoreBackup, exportData };
+  return { data, loading, save, saveQuiet, saveFuture, saveNotebooks, saveJournal, saveContacts, saveArchive, saveDailyHabits, saveWeeklyHabits, saveSettings, saveRecurringRules, saveMoods, getBackups, restoreBackup, exportData };
 }
 
 export const DEFAULT_CATEGORIES = [
