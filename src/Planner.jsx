@@ -455,7 +455,7 @@ function ResizeHandle({ currentHeight, minHeight, maxHeight, onHeightChange }) {
 }
 
 /* ─── Habits Tracker ─── */
-function HabitsTracker({ dailyHabits, weeklyHabits, habitHistory, onToggleDaily, onToggleWeekly, onAddDaily, onAddWeekly, onDeleteDaily, onDeleteWeekly, onEditDaily, onEditWeekly, onReorderDaily, onReorderWeekly }) {
+function HabitsTracker({ dailyHabits, weeklyHabits, habitHistory, moods, onToggleDaily, onToggleWeekly, onAddDaily, onAddWeekly, onDeleteDaily, onDeleteWeekly, onEditDaily, onEditWeekly, onReorderDaily, onReorderWeekly, onSaveMoods }) {
   const [addingDaily, setAddingDaily] = useState(false);
   const [addingWeekly, setAddingWeekly] = useState(false);
   const [newDaily, setNewDaily] = useState("");
@@ -465,7 +465,19 @@ function HabitsTracker({ dailyHabits, weeklyHabits, habitHistory, onToggleDaily,
   const [splitPct, setSplitPctState] = useState(() => { try { const v = localStorage.getItem("planner_habitSplit"); return v ? parseFloat(v) : 55; } catch { return 55; } });
   const setSplitPct = (v) => { setSplitPctState(v); try { localStorage.setItem("planner_habitSplit", v); } catch {} };
   const [dragHabit, setDragHabit] = useState(null);
-  const [showStats, setShowStats] = useState(false);
+  const [showMood, setShowMoodState] = useState(() => { try { return localStorage.getItem("planner_showMood") === "true"; } catch { return false; } });
+  const setShowMood = (v) => { setShowMoodState(v); try { localStorage.setItem("planner_showMood", v); } catch {} };
+  const todayStr = new Date().toISOString().split("T")[0];
+  const todayMood = (moods || {})[todayStr] || { mood: "", note: "" };
+  const saveMood = (patch) => { const next = { ...(moods || {}), [todayStr]: { ...todayMood, ...patch } }; if (onSaveMoods) onSaveMoods(next); };
+  const MOODS = [
+    { key: "great", emoji: "\u{1F60A}", label: "great" },
+    { key: "good", emoji: "\u{1F642}", label: "good" },
+    { key: "neutral", emoji: "\u{1F610}", label: "neutral" },
+    { key: "low", emoji: "\u{1F614}", label: "low" },
+    { key: "drained", emoji: "\u{1F629}", label: "drained" },
+    { key: "angry", emoji: "\u{1F621}", label: "angry" },
+  ];
   const dailyRef = useRef(null);
   const weeklyRef = useRef(null);
   const editRef = useRef(null);
@@ -600,197 +612,30 @@ function HabitsTracker({ dailyHabits, weeklyHabits, habitHistory, onToggleDaily,
         </div>
       </div>
       </div>
-      {/* Streaks section - centered below both habit columns */}
+      {/* Mood & notes section - replaces streaks */}
       <div style={{ textAlign: "center", paddingTop: 4 }}>
-        <button onClick={() => setShowStats(!showStats)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-faint)", fontSize: 9, padding: "2px 0", fontFamily: "'JetBrains Mono', monospace", letterSpacing: 0.5 }}
+        <button onClick={() => setShowMood(!showMood)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-faint)", fontSize: 9, padding: "2px 0", fontFamily: "'JetBrains Mono', monospace", letterSpacing: 0.5 }}
           onMouseEnter={(e) => e.target.style.color = "var(--text-muted)"} onMouseLeave={(e) => e.target.style.color = "var(--text-faint)"}>
-          {showStats ? "\u25BC" : "\u25B6"} Streaks
+          {showMood ? "\u25BC" : "\u25B6"} Mood & Notes
         </button>
       </div>
-      {showStats && (() => {
-        const weeks = Object.keys(habitHistory).sort();
-        const dayKeys = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
-        const dayLabels = ["M", "T", "W", "T", "F", "S", "S"];
-
-        // Per-day completion for current week (momentum circles)
-        const dailyByDay = dayKeys.map((d) => {
-          const done = dailyHabits.filter((h) => h.checks[d]).length;
-          return { day: d, done, total: dailyHabits.length };
-        });
-
-        // Figure out "today" index
-        const todayIdx = (() => { const d = new Date().getDay(); return (d + 6) % 7; })();
-
-        // Previous week per-day (from history)
-        const prevWeek = weeks[0];
-        const prev = prevWeek ? habitHistory[prevWeek] : null;
-        const prevTotal = prev?.daily ? prev.daily.reduce((s, h) => s + Object.values(h.checks || {}).filter(Boolean).length, 0) : 0;
-        const prevPossible = prev?.daily ? prev.daily.length * 7 : 0;
-        const curTotal = dailyHabits.reduce((s, h) => s + Object.values(h.checks).filter(Boolean).length, 0);
-        const curPossible = dailyHabits.length * 7;
-        // Pace: are we on track to beat last week?
-        const daysElapsed = todayIdx + 1;
-        const curPace = daysElapsed > 0 ? Math.round(curTotal / daysElapsed * 7) : 0;
-
-        // Per-habit streaks (consecutive weeks with 5+/7)
-        const dailyStreaks = dailyHabits.map((h) => {
-          let streak = 0;
-          const curChecks = Object.values(h.checks).filter(Boolean).length;
-          if (curChecks >= 5) streak++;
-          else return { name: h.name, streak: 0, curChecks, improved: 0 };
-          for (const wk of weeks) {
-            const wData = habitHistory[wk]?.daily;
-            if (!wData) break;
-            const match = wData.find((hh) => hh.id === h.id || hh.name === h.name);
-            if (match && Object.values(match.checks || {}).filter(Boolean).length >= 5) streak++;
-            else break;
-          }
-          return { name: h.name, streak, curChecks, improved: 0 };
-        });
-
-        // Most improved: compare current checks to last week
-        if (prev?.daily) {
-          dailyStreaks.forEach((s) => {
-            const habit = dailyHabits.find((h) => h.name === s.name);
-            if (!habit) return;
-            const curC = Object.values(habit.checks).filter(Boolean).length;
-            const prevH = prev.daily.find((hh) => hh.id === habit.id || hh.name === habit.name);
-            const prevC = prevH ? Object.values(prevH.checks || {}).filter(Boolean).length : 0;
-            s.improved = curC - prevC;
-          });
-        }
-
-        // Perfect weeks (7/7)
-        const perfectThisWeek = dailyHabits.filter((h) => Object.values(h.checks).filter(Boolean).length === 7);
-
-        // Longest active streak
-        const longestStreak = dailyStreaks.reduce((best, s) => s.streak > best.streak ? s : best, { name: "", streak: 0 });
-
-        // Most improved
-        const mostImproved = dailyStreaks.reduce((best, s) => s.improved > best.improved ? s : best, { name: "", improved: 0 });
-
-        // Close to milestone (streak of 3, 5, 8)
-        const nearMilestone = dailyStreaks.filter((s) => s.streak > 0 && [2, 4, 7].includes(s.streak));
-
-        // Circle component for momentum
-        const circle = (pct, isFuture, isToday) => {
-          const size = 22;
-          const r = 9;
-          const circ = 2 * Math.PI * r;
-          const offset = circ * (1 - pct);
-          const color = pct >= 0.8 ? "#6a9955" : pct >= 0.5 ? "#c9a227" : pct > 0 ? "#c47a20" : "var(--border)";
-          return (
-            <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
-              <circle cx={size/2} cy={size/2} r={r} fill="none" stroke={isFuture ? "var(--bg-hover)" : "var(--border)"} strokeWidth={2.5} />
-              {!isFuture && pct > 0 && <circle cx={size/2} cy={size/2} r={r} fill="none" stroke={color} strokeWidth={2.5}
-                strokeDasharray={circ} strokeDashoffset={offset} strokeLinecap="round" transform={`rotate(-90 ${size/2} ${size/2})`} />}
-              {isToday && <circle cx={size/2} cy={size/2} r={1.5} fill="var(--accent)" />}
-            </svg>
-          );
-        };
-
-        const spotlights = [];
-
-        // Longest active streak (lower threshold to 1 week)
-        if (longestStreak.streak >= 1) spotlights.push({ icon: "\uD83D\uDD25", text: `${longestStreak.name}: ${longestStreak.streak}w streak${longestStreak.streak >= 3 ? "!" : ""}` });
-
-        // Most improved this week vs last (threshold: 1+ more days)
-        if (mostImproved.improved >= 1) spotlights.push({ icon: "\uD83D\uDCC8", text: `${mostImproved.name}: +${mostImproved.improved} day${mostImproved.improved > 1 ? "s" : ""} vs last week` });
-
-        // Perfect week THIS week (7/7)
-        perfectThisWeek.forEach((h) => spotlights.push({ icon: "\u2B50", text: `${h.name}: perfect week! (7/7)` }));
-
-        // Last week achievements (from history)
-        if (prev?.daily) {
-          prev.daily.forEach((h) => {
-            const done = Object.values(h.checks || {}).filter(Boolean).length;
-            if (done === 7) spotlights.push({ icon: "\u2B50", text: `${h.name}: perfect last week! (7/7)` });
-          });
-          // Best daily habit last week
-          const bestLast = prev.daily.reduce((best, h) => {
-            const d = Object.values(h.checks || {}).filter(Boolean).length;
-            return d > best.done ? { name: h.name, done: d } : best;
-          }, { name: "", done: 0 });
-          if (bestLast.done >= 5 && !spotlights.some((s) => s.text.includes(bestLast.name))) {
-            spotlights.push({ icon: "\uD83D\uDCAA", text: `${bestLast.name}: ${bestLast.done}/7 last week` });
-          }
-        }
-
-        // Weekly habits completed last week
-        if (prev?.weekly) {
-          const weeklyDone = prev.weekly.filter((h) => h.done);
-          if (weeklyDone.length > 0 && weeklyDone.length === prev.weekly.length) {
-            spotlights.push({ icon: "\uD83C\uDF1F", text: `All weekly habits completed last week!` });
-          }
-        }
-
-        // Near milestone
-        nearMilestone.forEach((s) => {
-          const next = s.streak < 3 ? 3 : s.streak < 5 ? 5 : 8;
-          spotlights.push({ icon: "\uD83C\uDFAF", text: `${s.name}: ${next - s.streak}w from ${next}-week streak` });
-        });
-
-        // Current week encouragement based on today's progress
-        const todayDone = dailyHabits.filter((h) => {
-          const todayKey = dayKeys[todayIdx];
-          return h.checks[todayKey];
-        }).length;
-        if (todayDone === dailyHabits.length && dailyHabits.length > 0 && spotlights.length < 4) {
-          spotlights.push({ icon: "\u2705", text: `All daily habits done today!` });
-        }
-
-        // Pace message
-        let paceMsg = "";
-        if (prev && daysElapsed >= 1) {
-          if (curTotal >= prevTotal) paceMsg = "Already passed last week's total!";
-          else if (curPace > prevTotal) paceMsg = `On pace to beat last week (projected ${curPace} vs ${prevTotal})`;
-        }
-
-        return (
-          <div style={{ padding: "6px 12px 4px" }}>
-            {/* Weekly momentum: day circles */}
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 4, marginBottom: spotlights.length > 0 || paceMsg ? 8 : 0 }}>
-              {dayKeys.map((d, i) => {
-                const dd = dailyByDay[i];
-                const pct = dd.total > 0 ? dd.done / dd.total : 0;
-                const isFuture = i > todayIdx;
-                const isToday = i === todayIdx;
-                return (
-                  <div key={d} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 1 }}>
-                    <span style={{ fontSize: 8, color: isToday ? "var(--accent)" : "var(--text-faint)", fontWeight: isToday ? 700 : 400, fontFamily: "'JetBrains Mono', monospace" }}>{dayLabels[i]}</span>
-                    {circle(pct, isFuture, isToday)}
-                    {!isFuture && <span style={{ fontSize: 7, color: pct >= 0.8 ? "#6a9955" : "var(--text-faint)" }}>{dd.done}/{dd.total}</span>}
-                  </div>
-                );
-              })}
-              {/* Weekly habits summary dot */}
-              <div style={{ marginLeft: 8, display: "flex", flexDirection: "column", alignItems: "center", gap: 1 }}>
-                <span style={{ fontSize: 8, color: "var(--text-faint)", fontFamily: "'JetBrains Mono', monospace" }}>WK</span>
-                {(() => {
-                  const wd = weeklyHabits.filter((h) => h.done).length;
-                  const wt = weeklyHabits.length;
-                  const pct = wt > 0 ? wd / wt : 0;
-                  return circle(pct, false, false);
-                })()}
-                <span style={{ fontSize: 7, color: "var(--text-faint)" }}>{weeklyHabits.filter((h) => h.done).length}/{weeklyHabits.length}</span>
-              </div>
-            </div>
-            {/* Pace message */}
-            {paceMsg && <div style={{ textAlign: "center", fontSize: 9, color: "#6a9955", fontWeight: 600, marginBottom: 4 }}>{paceMsg}</div>}
-            {/* Best streaks spotlight */}
-            {spotlights.length > 0 && (
-              <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: 4 }}>
-                {spotlights.map((s, i) => (
-                  <span key={i} style={{ fontSize: 9, padding: "2px 8px", borderRadius: 4, background: "var(--bg-surface)", color: "var(--text-muted)", fontWeight: 500 }}>
-                    {s.icon} {s.text}
-                  </span>
-                ))}
-              </div>
-            )}
-            {weeks.length === 0 && !paceMsg && spotlights.length === 0 && <div style={{ textAlign: "center", fontSize: 9, color: "var(--text-faint)" }}>Streak history starts after your first full week</div>}
+      {showMood && (
+        <div style={{ padding: "6px 12px 8px", display: "flex", flexDirection: "column", gap: 6, alignItems: "center" }}>
+          <div style={{ display: "flex", gap: 6, justifyContent: "center", flexWrap: "wrap" }}>
+            {MOODS.map((m) => {
+              const selected = todayMood.mood === m.key;
+              return (
+                <button key={m.key} onClick={() => saveMood({ mood: selected ? "" : m.key })} title={m.label}
+                  style={{ background: selected ? "var(--bg-hover)" : "transparent", border: selected ? "1px solid var(--accent)" : "1px solid var(--border)", borderRadius: 6, padding: "4px 8px", fontSize: 18, cursor: "pointer", lineHeight: 1, transition: "all 0.15s" }}>
+                  {m.emoji}
+                </button>
+              );
+            })}
           </div>
-        );
-      })()}
+          <input type="text" value={todayMood.note} onChange={(e) => saveMood({ note: e.target.value })} placeholder="why? (optional note)"
+            style={{ width: "100%", maxWidth: 280, border: "1px solid var(--border)", borderRadius: 4, padding: "4px 8px", fontSize: 11, outline: "none", background: "var(--input-bg)", color: "var(--text)", fontFamily: "'DM Sans', sans-serif", boxSizing: "border-box", textAlign: "center" }} />
+        </div>
+      )}
     </div>
   );
 }
@@ -1700,7 +1545,7 @@ function FutureSidebar({ futureTasks, onAddFuture, onDeleteFuture, onEditFuture,
 }
 
 /* ─── Main Planner ─── */
-export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSaveNotebooks, onSaveJournal, onSaveContacts, onSaveArchive, onSaveDailyHabits, onSaveWeeklyHabits, onSaveSettings, onSaveRecurringRules, onGetBackups, onRestoreBackup, onExportData, onLogout, userEmail, userId }) {
+export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSaveNotebooks, onSaveJournal, onSaveContacts, onSaveArchive, onSaveDailyHabits, onSaveWeeklyHabits, onSaveSettings, onSaveRecurringRules, onSaveMoods, onGetBackups, onRestoreBackup, onExportData, onLogout, userEmail, userId }) {
   const isMobile = useIsMobile();
   const [mobileAddingFuture, setMobileAddingFuture] = useState(false);
   const [mobileFutureCtx, setMobileFutureCtx] = useState(null);
@@ -1717,7 +1562,7 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
   const [mobileNewFutureText, setMobileNewFutureText] = useState("");
   const [mobileNewFutureDate, setMobileNewFutureDate] = useState("");
   const weekDates = getWeekDates();
-  const { tasks, futureTasks, dailyHabits, weeklyHabits, notes, habitHistory } = data;
+  const { tasks, futureTasks, dailyHabits, weeklyHabits, notes, habitHistory, moods } = data;
   const [activeView, setActiveViewState] = useState(() => {
     try { return localStorage.getItem("planner_activeTab") || "planner"; } catch { return "planner"; }
   });
@@ -2361,7 +2206,7 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
               </div>
             )}
             {!isMobile && layout !== "horizontal" && habitsOpen && (
-              <HabitsTracker dailyHabits={dailyHabits} weeklyHabits={weeklyHabits} habitHistory={habitHistory || {}} onToggleDaily={toggleDaily} onToggleWeekly={toggleWeekly}
+              <HabitsTracker dailyHabits={dailyHabits} weeklyHabits={weeklyHabits} habitHistory={habitHistory || {}} moods={moods || {}} onSaveMoods={onSaveMoods} onToggleDaily={toggleDaily} onToggleWeekly={toggleWeekly}
                 onAddDaily={addDailyHabit} onAddWeekly={addWeeklyHabit} onDeleteDaily={deleteDaily} onDeleteWeekly={deleteWeekly} onEditDaily={editDaily} onEditWeekly={editWeekly} onReorderDaily={reorderDaily} onReorderWeekly={reorderWeekly} />
             )}
             <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
@@ -2705,7 +2550,7 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
                           </button>
                         </div>
                         {habitsOpen && (
-                          <HabitsTracker dailyHabits={dailyHabits} weeklyHabits={weeklyHabits} habitHistory={habitHistory || {}} onToggleDaily={toggleDaily} onToggleWeekly={toggleWeekly}
+                          <HabitsTracker dailyHabits={dailyHabits} weeklyHabits={weeklyHabits} habitHistory={habitHistory || {}} moods={moods || {}} onSaveMoods={onSaveMoods} onToggleDaily={toggleDaily} onToggleWeekly={toggleWeekly}
                             onAddDaily={addDailyHabit} onAddWeekly={addWeeklyHabit} onDeleteDaily={deleteDaily} onDeleteWeekly={deleteWeekly} onEditDaily={editDaily} onEditWeekly={editWeekly} onReorderDaily={reorderDaily} onReorderWeekly={reorderWeekly} />
                         )}
                       </div>
