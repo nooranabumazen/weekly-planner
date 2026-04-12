@@ -1531,6 +1531,16 @@ function FutureSidebar({ futureTasks, onAddFuture, onDeleteFuture, onEditFuture,
   const [editingId, setEditingId] = useState(null);
   const [editText, setEditText] = useState("");
   const [editDate, setEditDate] = useState("");
+  const [futureCtxMenu, setFutureCtxMenu] = useState(null); // { x, y, task }
+  const [futureTimePickerOpen, setFutureTimePickerOpen] = useState(false);
+  const [futureTimeInput, setFutureTimeInput] = useState("09:00");
+  useEffect(() => {
+    if (!futureCtxMenu) return;
+    const close = (e) => { if (e.target.closest && e.target.closest("[data-ctx-menu]")) return; setFutureCtxMenu(null); setFutureTimePickerOpen(false); };
+    document.addEventListener("mousedown", close);
+    document.addEventListener("touchstart", close);
+    return () => { document.removeEventListener("mousedown", close); document.removeEventListener("touchstart", close); };
+  }, [futureCtxMenu]);
   const [calMonth, setCalMonth] = useState(() => new Date().getMonth());
   const [calYear, setCalYear] = useState(() => new Date().getFullYear());
   const [highlightDate, setHighlightDate] = useState(null);
@@ -1626,13 +1636,44 @@ function FutureSidebar({ futureTasks, onAddFuture, onDeleteFuture, onEditFuture,
                     </div>
                   </div>
                 ) : (<div key={task.id} draggable onDragStart={(e) => { e.dataTransfer.setData("text/plain", JSON.stringify({ taskId: task.id, from: "future", futureText: task.text })); }}
-                  style={{ background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 4, padding: "5px 7px", marginBottom: 3, fontSize: 12, cursor: "grab", display: "flex", justifyContent: "space-between", alignItems: "center" }}
+                  onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); setFutureCtxMenu({ x: e.clientX, y: e.clientY, task }); setFutureTimeInput(task.startTime || "09:00"); }}
+                  style={{ background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 4, padding: "5px 7px", marginBottom: 3, fontSize: 12, cursor: "grab" }}
                   onMouseEnter={(e) => { e.currentTarget.style.boxShadow = "0 2px 6px rgba(0,0,0,0.1)"; }} onMouseLeave={(e) => { e.currentTarget.style.boxShadow = "none"; }}>
-                  <span onDoubleClick={() => { setEditingId(task.id); setEditText(task.text); setEditDate(task.date); }} style={{ flex: 1, wordBreak: "break-word", cursor: "text" }}><HighlightText text={task.text} query={highlightQuery} /></span>
-                  <button onClick={() => onDeleteFuture(task.id)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-faint)", fontSize: 11, padding: 0, marginLeft: 3, fontWeight: 600, lineHeight: 1 }} onMouseEnter={(e) => (e.target.style.color = "#c44")} onMouseLeave={(e) => (e.target.style.color = "#bbb")}>&times;</button>
+                  <span onDoubleClick={() => { setEditingId(task.id); setEditText(task.text); setEditDate(task.date); }} style={{ wordBreak: "break-word", cursor: "text" }}>
+                    {task.startTime && <span style={{ fontSize: 10, color: "var(--text-muted)", marginRight: 4, fontFamily: "'JetBrains Mono', monospace", fontWeight: 600 }}>{formatTime12(task.startTime)}</span>}
+                    <HighlightText text={task.text} query={highlightQuery} />
+                  </span>
                 </div>))}</div>);
             })}
             {sortedDates.length === 0 && <div style={{ fontSize: 10, color: "var(--text-faint)", textAlign: "center", marginTop: 16 }}>No upcoming</div>}
+            {futureCtxMenu && (
+              <div data-ctx-menu="true" onMouseDown={(e) => e.stopPropagation()} onTouchStart={(e) => e.stopPropagation()}
+                ref={(el) => { if (el) { const r = el.getBoundingClientRect(); if (r.bottom > window.innerHeight - 8) el.style.top = Math.max(8, futureCtxMenu.y - r.height) + "px"; if (r.right > window.innerWidth - 8) el.style.left = Math.max(8, futureCtxMenu.x - r.width) + "px"; } }}
+                style={{ position: "fixed", left: futureCtxMenu.x, top: futureCtxMenu.y, zIndex: 1000, background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 6, boxShadow: "0 4px 16px rgba(0,0,0,0.18)", padding: "4px 0", minWidth: 160 }}>
+                <div onClick={() => { setEditingId(futureCtxMenu.task.id); setEditText(futureCtxMenu.task.text); setEditDate(futureCtxMenu.task.date); setFutureCtxMenu(null); }}
+                  style={{ padding: "5px 12px", cursor: "pointer", fontSize: 11, color: "var(--text)" }}
+                  onMouseEnter={(e) => e.currentTarget.style.background = "var(--bg-hover)"} onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}>Edit</div>
+                <div onClick={() => setFutureTimePickerOpen(!futureTimePickerOpen)}
+                  style={{ padding: "5px 12px", cursor: "pointer", fontSize: 11, color: "var(--text)" }}
+                  onMouseEnter={(e) => e.currentTarget.style.background = "var(--bg-hover)"} onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}>{futureCtxMenu.task.startTime ? "Change time" : "Set time"}</div>
+                {futureTimePickerOpen && (
+                  <div style={{ padding: "4px 12px", display: "flex", gap: 3, alignItems: "center" }}>
+                    <input type="time" value={futureTimeInput} onChange={(e) => setFutureTimeInput(e.target.value)}
+                      style={{ flex: 1, border: "1px solid var(--border)", borderRadius: 3, padding: "2px 4px", fontSize: 10, background: "var(--input-bg)", color: "var(--text)", outline: "none", colorScheme: "dark" }} />
+                    <button onClick={() => { onEditFuture(futureCtxMenu.task.id, undefined, undefined, futureTimeInput); setFutureTimePickerOpen(false); setFutureCtxMenu(null); }}
+                      style={{ background: "var(--accent)", color: "#fff", border: "none", borderRadius: 3, padding: "2px 6px", fontSize: 9, cursor: "pointer", fontWeight: 600 }}>Set</button>
+                  </div>
+                )}
+                {futureCtxMenu.task.startTime && (
+                  <div onClick={() => { onEditFuture(futureCtxMenu.task.id, undefined, undefined, null); setFutureCtxMenu(null); }}
+                    style={{ padding: "5px 12px", cursor: "pointer", fontSize: 11, color: "var(--text)" }}
+                    onMouseEnter={(e) => e.currentTarget.style.background = "var(--bg-hover)"} onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}>Remove time</div>
+                )}
+                <div onClick={() => { onDeleteFuture(futureCtxMenu.task.id); setFutureCtxMenu(null); }}
+                  style={{ padding: "5px 12px", cursor: "pointer", fontSize: 11, color: "#c44" }}
+                  onMouseEnter={(e) => e.currentTarget.style.background = "var(--bg-hover)"} onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}>Delete</div>
+              </div>
+            )}
           </div>
           {adding ? (
             <div style={{ position: "relative", padding: "6px 8px", borderTop: "1px solid var(--border)", flexShrink: 0 }}>
@@ -1662,6 +1703,17 @@ function FutureSidebar({ futureTasks, onAddFuture, onDeleteFuture, onEditFuture,
 export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSaveNotebooks, onSaveJournal, onSaveContacts, onSaveArchive, onSaveDailyHabits, onSaveWeeklyHabits, onSaveSettings, onSaveRecurringRules, onGetBackups, onRestoreBackup, onExportData, onLogout, userEmail, userId }) {
   const isMobile = useIsMobile();
   const [mobileAddingFuture, setMobileAddingFuture] = useState(false);
+  const [mobileFutureCtx, setMobileFutureCtx] = useState(null);
+  const [mobileFutureTimeOpen, setMobileFutureTimeOpen] = useState(false);
+  const [mobileFutureTimeInput, setMobileFutureTimeInput] = useState("09:00");
+  const mobileFutureLongPressRef = useRef(null);
+  useEffect(() => {
+    if (!mobileFutureCtx) return;
+    const close = (e) => { if (e.target.closest && e.target.closest("[data-ctx-menu]")) return; setMobileFutureCtx(null); setMobileFutureTimeOpen(false); };
+    document.addEventListener("touchstart", close);
+    document.addEventListener("mousedown", close);
+    return () => { document.removeEventListener("touchstart", close); document.removeEventListener("mousedown", close); };
+  }, [mobileFutureCtx]);
   const [mobileNewFutureText, setMobileNewFutureText] = useState("");
   const [mobileNewFutureDate, setMobileNewFutureDate] = useState("");
   const weekDates = getWeekDates();
@@ -1802,6 +1854,12 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
       const dayCol = weekDateMap[ft.date];
       const detectedCat = autoDetectCategory(ft.text, categories);
       const newTask = makeTask(ft.text, { category: detectedCat });
+      if (ft.startTime) {
+        newTask.startTime = ft.startTime;
+        const [h, m] = ft.startTime.split(":").map(Number);
+        const endMin = h * 60 + (m || 0) + 15;
+        newTask.endTime = `${String(Math.floor(endMin / 60)).padStart(2, "0")}:${String(endMin % 60).padStart(2, "0")}`;
+      }
       newTasks[dayCol] = [...(newTasks[dayCol] || []), newTask];
     }
 
@@ -2119,7 +2177,7 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
   const reorderWeekly = (items) => { update({ weeklyHabits: items }); onSaveWeeklyHabits(items); };
   const addFuture = (text, date) => { const nf = [...futureTasks, { id: "f" + Date.now(), text, date }]; update({ futureTasks: nf }); onSaveFuture(nf); };
   const deleteFuture = (id) => { pushUndo(); const nf = futureTasks.filter((t) => t.id !== id); update({ futureTasks: nf }); onSaveFuture(nf); };
-  const editFuture = (id, text, date) => { const nf = futureTasks.map((t) => t.id === id ? { ...t, text: text !== undefined ? text : t.text, date: date !== undefined ? date : t.date } : t); update({ futureTasks: nf }); onSaveFuture(nf); };
+  const editFuture = (id, text, date, startTime) => { const nf = futureTasks.map((t) => { if (t.id !== id) return t; const u = { ...t, text: text !== undefined ? text : t.text, date: date !== undefined ? date : t.date }; if (startTime === null) delete u.startTime; else if (startTime !== undefined) u.startTime = startTime; return u; }); update({ futureTasks: nf }); onSaveFuture(nf); };
   const updateNotebooks = (nbs) => { update({ notebooks: nbs }); onSaveNotebooks(nbs); };
   const updateJournal = (j) => { update({ journal: j }); onSaveJournal(j); };
   const updateContacts = (c) => { update({ contacts: c }); onSaveContacts(c); };
@@ -2351,9 +2409,13 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
                               <div key={date} style={{ marginBottom: 8, padding: "0 6px" }}>
                                 <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-muted)", marginBottom: 3 }}>{label}</div>
                                 {grouped[date].map((task) => (
-                                  <div key={task.id} style={{ background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 4, padding: "8px 10px", marginBottom: 4, fontSize: 15, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                                    <span style={{ flex: 1, wordBreak: "break-word" }}>{task.text}</span>
-                                    <button onClick={() => deleteFuture(task.id)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-faint)", fontSize: 18, padding: "0 4px", fontWeight: 600 }}>&times;</button>
+                                  <div key={task.id}
+                                    onTouchStart={(e) => { const x = e.touches[0].clientX, y = e.touches[0].clientY; mobileFutureLongPressRef.current = setTimeout(() => { setMobileFutureCtx({ x, y, task }); setMobileFutureTimeInput(task.startTime || "09:00"); mobileFutureLongPressRef.current = null; }, 500); }}
+                                    onTouchEnd={() => { if (mobileFutureLongPressRef.current) { clearTimeout(mobileFutureLongPressRef.current); mobileFutureLongPressRef.current = null; } }}
+                                    onTouchMove={() => { if (mobileFutureLongPressRef.current) { clearTimeout(mobileFutureLongPressRef.current); mobileFutureLongPressRef.current = null; } }}
+                                    style={{ background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 4, padding: "8px 10px", marginBottom: 4, fontSize: 15, wordBreak: "break-word" }}>
+                                    {task.startTime && <span style={{ fontSize: 12, color: "var(--text-muted)", marginRight: 6, fontFamily: "'JetBrains Mono', monospace", fontWeight: 600 }}>{formatTime12(task.startTime)}</span>}
+                                    {task.text}
                                   </div>
                                 ))}
                               </div>
@@ -2361,6 +2423,30 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
                           })}
                           {sortedDates.length === 0 && !mobileAddingFuture && (
                             <div style={{ fontSize: 13, color: "var(--text-faint)", textAlign: "center", padding: "8px 0" }}>No upcoming tasks</div>
+                          )}
+                          {mobileFutureCtx && (
+                            <div data-ctx-menu="true" onTouchStart={(e) => e.stopPropagation()} onMouseDown={(e) => e.stopPropagation()}
+                              ref={(el) => { if (el) { const r = el.getBoundingClientRect(); if (r.bottom > window.innerHeight - 8) el.style.top = Math.max(8, mobileFutureCtx.y - r.height) + "px"; if (r.right > window.innerWidth - 8) el.style.left = Math.max(8, mobileFutureCtx.x - r.width) + "px"; } }}
+                              style={{ position: "fixed", left: mobileFutureCtx.x, top: mobileFutureCtx.y, zIndex: 1000, background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 6, boxShadow: "0 4px 16px rgba(0,0,0,0.18)", padding: "6px 0", minWidth: 180 }}>
+                              <div onClick={() => { setMobileNewFutureText(mobileFutureCtx.task.text); setMobileNewFutureDate(mobileFutureCtx.task.date); setMobileAddingFuture(true); deleteFuture(mobileFutureCtx.task.id); setMobileFutureCtx(null); }}
+                                style={{ padding: "10px 16px", fontSize: 14, color: "var(--text)", cursor: "pointer" }}>Edit</div>
+                              <div onClick={() => setMobileFutureTimeOpen(!mobileFutureTimeOpen)}
+                                style={{ padding: "10px 16px", fontSize: 14, color: "var(--text)", cursor: "pointer" }}>{mobileFutureCtx.task.startTime ? "Change time" : "Set time"}</div>
+                              {mobileFutureTimeOpen && (
+                                <div style={{ padding: "6px 16px", display: "flex", gap: 6, alignItems: "center" }}>
+                                  <input type="time" value={mobileFutureTimeInput} onChange={(e) => setMobileFutureTimeInput(e.target.value)}
+                                    style={{ flex: 1, border: "1px solid var(--border)", borderRadius: 4, padding: "6px 8px", fontSize: 14, background: "var(--input-bg)", color: "var(--text)", outline: "none", colorScheme: "dark" }} />
+                                  <button onClick={() => { editFuture(mobileFutureCtx.task.id, undefined, undefined, mobileFutureTimeInput); setMobileFutureTimeOpen(false); setMobileFutureCtx(null); }}
+                                    style={{ background: "var(--accent)", color: "#fff", border: "none", borderRadius: 4, padding: "6px 12px", fontSize: 13, cursor: "pointer", fontWeight: 600 }}>Set</button>
+                                </div>
+                              )}
+                              {mobileFutureCtx.task.startTime && (
+                                <div onClick={() => { editFuture(mobileFutureCtx.task.id, undefined, undefined, null); setMobileFutureCtx(null); }}
+                                  style={{ padding: "10px 16px", fontSize: 14, color: "var(--text)", cursor: "pointer" }}>Remove time</div>
+                              )}
+                              <div onClick={() => { deleteFuture(mobileFutureCtx.task.id); setMobileFutureCtx(null); }}
+                                style={{ padding: "10px 16px", fontSize: 14, color: "#c44", cursor: "pointer" }}>Delete</div>
+                            </div>
                           )}
                         </div>
                       );
