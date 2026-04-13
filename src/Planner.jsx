@@ -736,7 +736,6 @@ function HabitsTracker({ dailyHabits, weeklyHabits, habitHistory, moods, onToggl
               style={{ background: "none", border: "none", cursor: moodWeekOffset >= 0 ? "default" : "pointer", color: moodWeekOffset >= 0 ? "transparent" : "var(--text-faint)", fontSize: 14, padding: "4px 6px", lineHeight: 1, flexShrink: 0 }}
               onMouseEnter={(e) => { if (moodWeekOffset < 0) e.target.style.color = "var(--text-muted)"; }} onMouseLeave={(e) => { if (moodWeekOffset < 0) e.target.style.color = "var(--text-faint)"; }}>{"\u203A"}</button>
           </div>
-          </div>
           {/* Picker for the active day */}
           {activeMoodDate && (
             <>
