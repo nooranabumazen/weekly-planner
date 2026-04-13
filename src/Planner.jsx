@@ -1043,6 +1043,10 @@ function DaySection({ dayInfo, columnId, tasks, categories, onDragStart, onDrop,
         </span>
         {!isLater && <span style={{ fontSize: isMobile ? 14 : 11, color: "var(--text-muted)", fontWeight: 400 }}>{dayInfo?.date}</span>}
         {isToday && <span style={{ fontSize: isMobile ? 10 : 8, background: "#8B6914", color: "#fff", padding: "1px 5px", borderRadius: 3, fontWeight: 600 }}>TODAY</span>}
+        <button onClick={() => setAdding(true)} title="Add task"
+          style={{ marginLeft: "auto", background: "none", border: "none", cursor: "pointer", color: "var(--text-faint)", fontSize: isMobile ? 20 : 14, padding: isMobile ? "0 4px" : "0 4px", lineHeight: 1, fontWeight: 600 }}
+          onMouseEnter={(e) => (e.target.style.color = "var(--text)")}
+          onMouseLeave={(e) => (e.target.style.color = "var(--text-faint)")}>+</button>
       </div>
 
       {/* Task list */}
@@ -1057,8 +1061,8 @@ function DaySection({ dayInfo, columnId, tasks, categories, onDragStart, onDrop,
         <DoneCollapse doneTasks={doneTasks} columnId={columnId} categories={categories} onDragStart={onDragStart} onToggle={onToggle} onDelete={onDelete} onEdit={onEdit} onChangeCategory={onChangeCategory} onMove={onMove} onSetRecurring={onSetRecurring} onSetTime={onSetTime} onRemoveTime={onRemoveTime} highlightQuery={highlightQuery} isMobile={isMobile} taskFontSize={taskFontSize} />
       </div>
 
-      {/* Add task */}
-      {adding ? (
+      {/* Add task form (only shown when adding) */}
+      {adding && (
         <div style={{ padding: isMobile ? "6px 10px 6px 20px" : "4px 10px 4px 26px" }}>
           <input ref={addRef} value={newText} onChange={isLater ? (e) => setNewText(e.target.value) : handleTextChange}
             onKeyDown={(e) => { if (e.key === "Enter") submitAdd(); if (e.key === "Escape") setAdding(false); }}
@@ -1069,13 +1073,6 @@ function DaySection({ dayInfo, columnId, tasks, categories, onDragStart, onDrop,
             <button onClick={() => { setAdding(false); setCatManuallySet(false); }} style={{ background: "var(--border)", color: "var(--text-muted)", border: "none", borderRadius: 4, padding: isMobile ? "6px 14px" : "4px 10px", cursor: "pointer", fontSize: isMobile ? 13 : 10 }}>Cancel</button>
           </div>
         </div>
-      ) : (
-        <button onClick={() => setAdding(true)} style={{
-          background: "none", border: "none", cursor: "pointer", color: "var(--text-faint)", fontSize: isMobile ? 15 : 12,
-          padding: isMobile ? "8px 10px 8px 20px" : "1px 10px 2px 26px", transition: "color 0.15s",
-        }}
-          onMouseEnter={(e) => (e.target.style.color = "var(--text-muted)")}
-          onMouseLeave={(e) => (e.target.style.color = "var(--text-faint)")}>+ Add task</button>
       )}
     </div>
   );

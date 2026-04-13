@@ -233,7 +233,7 @@ export function usePlannerData(userId) {
           dayKeys.forEach((d) => {
             (pt[d] || []).forEach((t) => {
               if (!t.done) {
-                carry.push({ ...t, id: "t" + Date.now() + "_" + Math.random().toString(36).slice(2,6) });
+                carry.push({ ...t, id: "t" + Date.now() + "_" + Math.random().toString(36).slice(2,6), _targetDay: d });
               }
               // If task has a recurring rule, generate a new copy for this week
               if (t.recurring) {
@@ -272,14 +272,14 @@ export function usePlannerData(userId) {
             });
           });
 
-          // Sort carry items into their target days
+          // Sort carry items into their target days (incomplete tasks stay on their original weekday)
           const newTasks = { mon: [], tue: [], wed: [], thu: [], fri: [], sat: [], sun: [], later: pt.later || [] };
           carry.forEach((t) => {
             if (t._targetDay && dayKeys.includes(t._targetDay)) {
               const { _targetDay, ...clean } = t;
               newTasks[_targetDay].push(clean);
             } else {
-              newTasks.mon.push(t); // default: incomplete tasks go to Monday
+              newTasks.mon.push(t); // fallback for items without a source day
             }
           });
 
