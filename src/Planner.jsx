@@ -516,14 +516,22 @@ function HabitsTracker({ dailyHabits, weeklyHabits, habitHistory, moods, onToggl
   // Local-date YYYY-MM-DD (avoids UTC offset issues)
   const fmtLocal = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
   const todayStr = fmtLocal(new Date());
-  // Build the current Mon..Sun week
+  const [moodWeekOffset, setMoodWeekOffset] = useState(0); // 0 = current week, -1 = one week back, etc.
+  // Build the Mon..Sun week based on offset
   const moodWeekDates = (() => {
     const today = new Date(); today.setHours(0, 0, 0, 0);
     const day = today.getDay();
-    const monday = new Date(today); monday.setDate(today.getDate() - ((day + 6) % 7));
+    const monday = new Date(today); monday.setDate(today.getDate() - ((day + 6) % 7) + moodWeekOffset * 7);
     const out = [];
     for (let i = 0; i < 7; i++) { const d = new Date(monday); d.setDate(monday.getDate() + i); out.push({ dateStr: fmtLocal(d), label: ["M","T","W","T","F","S","S"][i], isToday: fmtLocal(d) === todayStr, isFuture: d > today }); }
     return out;
+  })();
+  const moodWeekRangeLabel = (() => {
+    if (moodWeekOffset === 0) return null;
+    const first = moodWeekDates[0];
+    const last = moodWeekDates[6];
+    const fmt = (s) => { const d = new Date(s + "T12:00:00"); return d.toLocaleDateString("en-US", { month: "short", day: "numeric" }); };
+    return `${fmt(first.dateStr)} - ${fmt(last.dateStr)}`;
   })();
   const [activeMoodDate, setActiveMoodDate] = useState(null); // which day's picker is open
   const [openNoteDate, setOpenNoteDate] = useState(null); // which day's note bubble is shown
@@ -683,8 +691,21 @@ function HabitsTracker({ dailyHabits, weeklyHabits, habitHistory, moods, onToggl
       </div>
       {showMood && (
         <div style={{ padding: "6px 12px 8px", display: "flex", flexDirection: "column", gap: 6, alignItems: "center" }}>
-          {/* 7 day-of-week faces */}
-          <div style={{ display: "flex", gap: 4, justifyContent: "center", width: "100%", maxWidth: 340 }}>
+          {/* Week range label (only shown when viewing past weeks) */}
+          {moodWeekRangeLabel && (
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ fontSize: 10, color: "var(--text-muted)", fontFamily: "'JetBrains Mono', monospace", letterSpacing: 0.3 }}>{moodWeekRangeLabel}</span>
+              <button onClick={() => setMoodWeekOffset(0)} title="Back to this week"
+                style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-faint)", fontSize: 9, padding: 0, textDecoration: "underline", fontFamily: "'JetBrains Mono', monospace" }}
+                onMouseEnter={(e) => e.target.style.color = "var(--text-muted)"} onMouseLeave={(e) => e.target.style.color = "var(--text-faint)"}>return to now</button>
+            </div>
+          )}
+          {/* Nav arrows + 7 day-of-week faces */}
+          <div style={{ display: "flex", gap: 4, alignItems: "center", width: "100%", maxWidth: 380 }}>
+            <button onClick={() => setMoodWeekOffset(moodWeekOffset - 1)} title="Previous week"
+              style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-faint)", fontSize: 14, padding: "4px 6px", lineHeight: 1, flexShrink: 0 }}
+              onMouseEnter={(e) => e.target.style.color = "var(--text-muted)"} onMouseLeave={(e) => e.target.style.color = "var(--text-faint)"}>{"\u2039"}</button>
+            <div style={{ display: "flex", gap: 4, justifyContent: "center", flex: 1 }}>
             {moodWeekDates.map((d) => {
               const entry = (moods || {})[d.dateStr] || { mood: "", note: "" };
               const moodObj = MOODS.find((m) => m.key === entry.mood);
@@ -710,6 +731,11 @@ function HabitsTracker({ dailyHabits, weeklyHabits, habitHistory, moods, onToggl
                 </div>
               );
             })}
+            </div>
+            <button onClick={() => setMoodWeekOffset(moodWeekOffset + 1)} title="Next week" disabled={moodWeekOffset >= 0}
+              style={{ background: "none", border: "none", cursor: moodWeekOffset >= 0 ? "default" : "pointer", color: moodWeekOffset >= 0 ? "transparent" : "var(--text-faint)", fontSize: 14, padding: "4px 6px", lineHeight: 1, flexShrink: 0 }}
+              onMouseEnter={(e) => { if (moodWeekOffset < 0) e.target.style.color = "var(--text-muted)"; }} onMouseLeave={(e) => { if (moodWeekOffset < 0) e.target.style.color = "var(--text-faint)"; }}>{"\u203A"}</button>
+          </div>
           </div>
           {/* Picker for the active day */}
           {activeMoodDate && (
