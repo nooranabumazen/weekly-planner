@@ -13,7 +13,7 @@ Plan your tasks, schedule them by time, track habits, log your mood, write journ
 
 | Feature | What it does |
 |---|---|
-| **Weekly Tasks** | Drag-and-drop tasks across days. Incomplete tasks carry forward automatically. |
+| **Weekly Tasks** | Drag-and-drop tasks across days. Incomplete tasks carry forward automatically. Can set tasks that repeat weekly or monthly. |
 | **Two Layouts** | Vertical list or horizontal columns with a time grid. Toggle from the sidebar. |
 | **Time Scheduling** | Schedule tasks at specific times. Drag to time slots in horizontal view, or right-click to set a custom time anywhere. |
 | **Smart Categories** | Auto-detects task type from keywords and color-codes it. Fully customizable. |
