@@ -1560,20 +1560,25 @@ function FutureSidebar({ futureTasks, onAddFuture, onDeleteFuture, onEditFuture,
               const isHighlighted = highlightDate === date;
               return (<div key={date} data-future-date={date} style={{ marginBottom: 8, padding: isHighlighted ? "4px 6px" : 0, background: isHighlighted ? "rgba(139,105,20,0.12)" : "transparent", borderRadius: 6, transition: "background 0.3s" }}><div style={{ fontSize: 11, fontWeight: 600, color: isHighlighted ? "var(--accent)" : "var(--text-muted)", marginBottom: 3 }}>{label}</div>
                 {grouped[date].map((task) => editingId === task.id ? (
-                  <div key={task.id} style={{ background: "var(--bg-card)", border: "1px solid var(--accent)", borderRadius: 4, padding: "5px 7px", marginBottom: 3, fontSize: 12, display: "flex", alignItems: "center", gap: 4 }}>
-                    <input ref={editRef} value={editText} onChange={(e) => setEditText(e.target.value)}
-                      onKeyDown={(e) => { if (e.key === "Enter") { onEditFuture(task.id, editText.trim(), editDate); setEditingId(null); } if (e.key === "Escape") setEditingId(null); }}
-                      style={{ flex: 1, minWidth: 0, border: "none", padding: 0, fontSize: 12, outline: "none", background: "transparent", color: "var(--text)", fontFamily: "inherit" }} />
-                    <input type="date" value={editDate} onChange={(e) => setEditDate(e.target.value)} title="Date"
-                      style={{ width: 18, border: "none", padding: 0, fontSize: 9, background: "transparent", color: "var(--text-faint)", outline: "none", colorScheme: "dark", cursor: "pointer", flexShrink: 0 }} />
-                    <button onClick={() => { if (editText.trim()) onEditFuture(task.id, editText.trim(), editDate); setEditingId(null); }} title="Save"
-                      style={{ background: "none", border: "none", color: "var(--accent)", cursor: "pointer", fontSize: 13, padding: 0, lineHeight: 1, fontWeight: 700, flexShrink: 0 }}>{"\u2713"}</button>
-                    <button onClick={() => setEditingId(null)} title="Cancel"
-                      style={{ background: "none", border: "none", color: "var(--text-faint)", cursor: "pointer", fontSize: 13, padding: 0, lineHeight: 1, fontWeight: 700, flexShrink: 0 }}>{"\u2715"}</button>
+                  <div key={task.id} style={{ background: "var(--bg-card)", border: "1px solid var(--accent)", borderRadius: 4, padding: "5px 7px", marginBottom: 3, fontSize: 12 }}>
+                    <textarea ref={editRef} value={editText}
+                      onChange={(e) => { setEditText(e.target.value); e.target.style.height = "auto"; e.target.style.height = e.target.scrollHeight + "px"; }}
+                      onFocus={(e) => { e.target.style.height = "auto"; e.target.style.height = e.target.scrollHeight + "px"; }}
+                      onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); if (editText.trim()) onEditFuture(task.id, editText.trim(), editDate); setEditingId(null); } if (e.key === "Escape") setEditingId(null); }}
+                      rows={1}
+                      style={{ width: "100%", border: "none", padding: 0, fontSize: 12, outline: "none", background: "transparent", color: "var(--text)", fontFamily: "inherit", resize: "none", overflow: "hidden", boxSizing: "border-box", lineHeight: 1.4, display: "block" }} />
+                    <div style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 4, justifyContent: "flex-end" }}>
+                      <input type="date" value={editDate} onChange={(e) => setEditDate(e.target.value)} title="Date"
+                        style={{ width: 18, border: "none", padding: 0, fontSize: 9, background: "transparent", color: "var(--text-faint)", outline: "none", colorScheme: "dark", cursor: "pointer", flexShrink: 0 }} />
+                      <button onClick={() => { if (editText.trim()) onEditFuture(task.id, editText.trim(), editDate); setEditingId(null); }} title="Save"
+                        style={{ background: "none", border: "none", color: "var(--accent)", cursor: "pointer", fontSize: 13, padding: 0, lineHeight: 1, fontWeight: 700, flexShrink: 0 }}>{"\u2713"}</button>
+                      <button onClick={() => setEditingId(null)} title="Cancel"
+                        style={{ background: "none", border: "none", color: "var(--text-faint)", cursor: "pointer", fontSize: 13, padding: 0, lineHeight: 1, fontWeight: 700, flexShrink: 0 }}>{"\u2715"}</button>
+                    </div>
                   </div>
-                ) : (<div key={task.id} draggable onDragStart={(e) => { e.dataTransfer.setData("text/plain", JSON.stringify({ taskId: task.id, from: "future", futureText: task.text })); }}
+                ) : (<div key={task.id}
                   onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); setFutureCtxMenu({ x: e.clientX, y: e.clientY, task }); setFutureTimeInput(task.startTime || "09:00"); }}
-                  style={{ background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 4, padding: "5px 7px", marginBottom: 3, fontSize: 12, cursor: "grab" }}
+                  style={{ background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 4, padding: "5px 7px", marginBottom: 3, fontSize: 12 }}
                   onMouseEnter={(e) => { e.currentTarget.style.boxShadow = "0 2px 6px rgba(0,0,0,0.1)"; }} onMouseLeave={(e) => { e.currentTarget.style.boxShadow = "none"; }}>
                   <span onDoubleClick={() => { setEditingId(task.id); setEditText(task.text); setEditDate(task.date); }} style={{ wordBreak: "break-word", cursor: "text" }}>
                     {task.startTime && <span style={{ fontSize: 10, color: "var(--text-muted)", marginRight: 4, fontFamily: "'JetBrains Mono', monospace", fontWeight: 600 }}>{formatTime12(task.startTime)}</span>}
