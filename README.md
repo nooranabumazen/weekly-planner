@@ -14,10 +14,10 @@ Plan your tasks, schedule them by time, track habits, log your mood, write journ
 | Feature | What it does |
 |---|---|
 | **Weekly Tasks** | Drag-and-drop tasks across days. Incomplete tasks carry forward automatically. |
+| **Two Layouts** | Vertical list or horizontal columns with a time grid. Toggle from the sidebar. |
 | **Time Scheduling** | Schedule tasks at specific times. Drag to time slots in horizontal view, or right-click to set a custom time anywhere. |
 | **Smart Categories** | Auto-detects task type from keywords and color-codes it. Fully customizable. |
 | **Auto Time Detection** | Type "1pm meeting" or "lunch 2:30-3:30" and the app schedules it automatically. |
-| **Two Layouts** | Vertical list or horizontal columns with a time grid. Toggle from the sidebar. |
 | **Habits** | Daily checkbox grid (Mon-Sun) and weekly checklist. Editable, resizable. |
 | **Mood & Notes** | Track how you felt each day with emoji moods and short notes. |
 | **Notebooks** | Rich text editor with dynamic tables, images, highlights, and color. |
@@ -67,7 +67,6 @@ When you add a task, the text is parsed for time patterns. If found, the time is
 |---|---|
 | "1pm meeting" | "meeting" scheduled at 1:00 PM (15 min) |
 | "lunch 2:30-3:30" | "lunch" scheduled 2:30-3:30 PM |
-| "9-10am standup" | "standup" scheduled 9:00-10:00 AM |
 | "13:30 call" | "call" scheduled at 1:30 PM (24-hour format) |
 | "follow up at 2pm" | text unchanged, time set to 2:00 PM (mid-string time stays in text) |
 | "review chapter 2" | no time detected (bare numbers ignored) |
@@ -83,7 +82,6 @@ Type a task name and the app detects the category from keywords:
 | "cook dinner" | Cooking |
 | "vacuum living room" | Cleaning |
 | "water the garden" | Gardening |
-| "sporas meeting" | Sporas |
 | "volunteer at market" | Volunteering |
 | "study for exam" | Learning |
 
@@ -100,7 +98,7 @@ Each task shows a colored left stripe and a subtle background tint. Override any
 
 A toggle button in the left sidebar (above the search icon) flips between the two layouts in one click. Your preference syncs across devices.
 
-In horizontal mode, drag the edge between any two columns to resize all columns at once. Drag handles at the top and bottom of the time grid let you hide early-morning or late-night hours.
+In horizontal mode, drag handles at the top and bottom of the time grid let you hide early-morning or late-night hours.
 
 <!-- Replace with a screenshot showing horizontal column layout -->
 ![Layout options](screenshots/layout-options.png)
@@ -129,8 +127,6 @@ This means:
 
 A collapsible section below the habits with a 7-face week view. Each day of the week gets an empty face slot. Click any past or current day to pick from 6 mood emojis (😊 great, 🙂 good, 😐 neutral, 😔 low, 😩 drained, 😡 angry) and add a short note explaining why.
 
-- Today's slot is highlighted with the accent color
-- Future days are dimmed and locked
 - Past days remain editable (catch up on the days you missed)
 - Days with notes show a 💬 indicator below the face — click to see the note in a popup
 - Section is collapsed by default; the open/closed state is remembered per-device
@@ -179,10 +175,6 @@ Full dark theme across the entire app, including all tabs, editors, popups, and 
 
 <!-- Replace with a screenshot in dark mode -->
 ![Dark mode](screenshots/dark-mode.png)
-
-### Resizable Sections
-
-The Later and Notes sections at the bottom of the planner have drag handles. Pull up to expand, push down to shrink. Each has a sensible minimum so it doesn't collapse.
 
 ### Global Search
 
