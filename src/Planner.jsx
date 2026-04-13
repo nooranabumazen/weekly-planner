@@ -879,6 +879,7 @@ function TaskCard({ task, columnId, categories, onDragStart, onToggle, onDelete,
           {showTimePicker && (
             <div style={{ padding: "6px 14px", display: "flex", gap: 4, alignItems: "center" }}>
               <input type="time" value={timeInput} onChange={(e) => setTimeInput(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") { onSetTime && onSetTime(columnId, task.id, timeInput); setShowTimePicker(false); setCtxMenu(null); } }}
                 style={{ flex: 1, border: "1px solid var(--border)", borderRadius: 3, padding: "3px 5px", fontSize: 11, background: "var(--input-bg)", color: "var(--text)", outline: "none", colorScheme: "dark" }} />
               <button onClick={() => { onSetTime && onSetTime(columnId, task.id, timeInput); setShowTimePicker(false); setCtxMenu(null); }}
                 style={{ background: "var(--accent)", color: "#fff", border: "none", borderRadius: 3, padding: "3px 8px", fontSize: 10, cursor: "pointer", fontWeight: 600 }}>Set</button>
@@ -1044,7 +1045,7 @@ function DaySection({ dayInfo, columnId, tasks, categories, onDragStart, onDrop,
         {!isLater && <span style={{ fontSize: isMobile ? 14 : 11, color: "var(--text-muted)", fontWeight: 400 }}>{dayInfo?.date}</span>}
         {isToday && <span style={{ fontSize: isMobile ? 10 : 8, background: "#8B6914", color: "#fff", padding: "1px 5px", borderRadius: 3, fontWeight: 600 }}>TODAY</span>}
         <button onClick={() => setAdding(true)} title="Add task"
-          style={{ marginLeft: "auto", background: "none", border: "none", cursor: "pointer", color: "var(--text-faint)", fontSize: isMobile ? 20 : 14, padding: isMobile ? "0 4px" : "0 4px", lineHeight: 1, fontWeight: 600 }}
+          style={{ marginLeft: "auto", background: "none", border: "none", cursor: "pointer", color: "var(--text-faint)", fontSize: isMobile ? 16 : 13, fontFamily: "'JetBrains Mono', monospace", fontWeight: 400, padding: 0, width: isMobile ? 22 : 18, height: isMobile ? 22 : 18, display: "flex", alignItems: "center", justifyContent: "center", lineHeight: 1 }}
           onMouseEnter={(e) => (e.target.style.color = "var(--text)")}
           onMouseLeave={(e) => (e.target.style.color = "var(--text-faint)")}>+</button>
       </div>
@@ -1297,6 +1298,7 @@ function UnscheduledCol({ col, untimed, done, categories, taskFontSize, toggleDo
           {showTimePicker && (
             <div style={{ padding: "4px 12px", display: "flex", gap: 3, alignItems: "center" }}>
               <input type="time" value={timeInput} onChange={(e) => setTimeInput(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") { setTaskTime && setTaskTime(col, ctxTask.id, timeInput); setShowTimePicker(false); setCtxMenu(null); } }}
                 style={{ flex: 1, border: "1px solid var(--border)", borderRadius: 3, padding: "2px 4px", fontSize: 10, background: "var(--input-bg)", color: "var(--text)", outline: "none", colorScheme: "dark" }} />
               <button onClick={() => { setTaskTime && setTaskTime(col, ctxTask.id, timeInput); setShowTimePicker(false); setCtxMenu(null); }}
                 style={{ background: "var(--accent)", color: "#fff", border: "none", borderRadius: 3, padding: "2px 6px", fontSize: 9, cursor: "pointer", fontWeight: 600 }}>Set</button>
@@ -1600,6 +1602,7 @@ function FutureSidebar({ futureTasks, onAddFuture, onDeleteFuture, onEditFuture,
                 {futureTimePickerOpen && (
                   <div style={{ padding: "4px 12px", display: "flex", gap: 3, alignItems: "center" }}>
                     <input type="time" value={futureTimeInput} onChange={(e) => setFutureTimeInput(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === "Enter") { onEditFuture(futureCtxMenu.task.id, undefined, undefined, futureTimeInput); setFutureTimePickerOpen(false); setFutureCtxMenu(null); } }}
                       style={{ flex: 1, border: "1px solid var(--border)", borderRadius: 3, padding: "2px 4px", fontSize: 10, background: "var(--input-bg)", color: "var(--text)", outline: "none", colorScheme: "dark" }} />
                     <button onClick={() => { onEditFuture(futureCtxMenu.task.id, undefined, undefined, futureTimeInput); setFutureTimePickerOpen(false); setFutureCtxMenu(null); }}
                       style={{ background: "var(--accent)", color: "#fff", border: "none", borderRadius: 3, padding: "2px 6px", fontSize: 9, cursor: "pointer", fontWeight: 600 }}>Set</button>
@@ -1925,7 +1928,9 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
     const taskIdx = fromList.findIndex((t) => t.id === taskId);
     if (taskIdx === -1) return;
     const [task] = fromList.splice(taskIdx, 1);
-    if (!task.category || task.category === "cat_none") {
+    // Only auto-detect category when dragging out of "later" (where tasks are typically uncategorized).
+    // Drags between day columns should preserve whatever category the task already has.
+    if (fromCol === "later" && (!task.category || task.category === "cat_none")) {
       task.category = autoDetectCategory(task.text, currentCats);
     }
     // If the task is unscheduled and being dropped in a day column, update its orderHint
@@ -2301,9 +2306,9 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
 
         {activeView === "planner" && (
           <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
-            <div style={{ padding: isMobile ? "8px 12px 4px" : "10px 16px 6px", borderBottom: "1px solid var(--border)" }}>
+            <div style={{ padding: isMobile ? "8px 12px 4px" : "10px 16px 6px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap" }}>
               <h1 style={{ margin: 0, fontSize: isMobile ? 20 : 18, fontWeight: 700, letterSpacing: -0.5 }}>Weekly Planner</h1>
-              <span style={{ fontSize: isMobile ? 13 : 11, color: "var(--text-muted)" }}>{weekDates[0]?.date} , {weekDates[6]?.date}</span>
+              <span style={{ fontSize: isMobile ? 13 : 11, color: "var(--text-muted)" }}>{weekDates[0]?.date} - {weekDates[6]?.date}</span>
             </div>
             {!isMobile && layout !== "horizontal" && (
               <div style={{ display: "flex", alignItems: "center", borderBottom: "1px solid var(--border)", padding: "0 12px" }}>
@@ -2388,6 +2393,7 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
                               {mobileFutureTimeOpen && (
                                 <div style={{ padding: "6px 16px", display: "flex", gap: 6, alignItems: "center" }}>
                                   <input type="time" value={mobileFutureTimeInput} onChange={(e) => setMobileFutureTimeInput(e.target.value)}
+                                    onKeyDown={(e) => { if (e.key === "Enter") { editFuture(mobileFutureCtx.task.id, undefined, undefined, mobileFutureTimeInput); setMobileFutureTimeOpen(false); setMobileFutureCtx(null); } }}
                                     style={{ flex: 1, border: "1px solid var(--border)", borderRadius: 4, padding: "6px 8px", fontSize: 14, background: "var(--input-bg)", color: "var(--text)", outline: "none", colorScheme: "dark" }} />
                                   <button onClick={() => { editFuture(mobileFutureCtx.task.id, undefined, undefined, mobileFutureTimeInput); setMobileFutureTimeOpen(false); setMobileFutureCtx(null); }}
                                     style={{ background: "var(--accent)", color: "#fff", border: "none", borderRadius: 4, padding: "6px 12px", fontSize: 13, cursor: "pointer", fontWeight: 600 }}>Set</button>
