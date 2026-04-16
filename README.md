@@ -40,9 +40,6 @@ Organize your week with drag-and-drop. Add tasks to any day, reorder them, and c
 
 **Upcoming sidebar** lets you schedule tasks for future weeks. They auto-promote to the correct day when that week arrives. Each task supports text, date, and an optional time.
 
-<!-- Replace with a screenshot showing tasks with category colors -->
-![Tasks with categories](screenshots/tasks-categories.png)
-
 ### Time Scheduling
 
 Tasks can have specific times attached, displayed as a small badge before the task text (e.g., "1:00 PM make Chaga tea"). Times sync across all views.
@@ -87,6 +84,8 @@ Type a task name and the app detects the category from keywords:
 
 Each task shows a colored left stripe and a subtle background tint. Override any detection by clicking the palette icon on hover. Create custom categories with any name and color from a 32-color palette in Settings.
 
+![Editing Catergories](screenshots/categories-edit.png)
+
 ### Two Layout Options
 
 | Vertical (list) | Horizontal (with time grid) |
@@ -120,9 +119,6 @@ This means:
 - Drag the divider between daily and weekly sections to resize
 - On mobile, habits get their own tab with large, tappable checkboxes
 
-<!-- Replace with a screenshot of the habits tracker -->
-![Habits tracker](screenshots/habits.png)
-
 ### Mood & Notes
 
 A collapsible section below the habits with a 7-face week view. Each day of the week gets an empty face slot. Click any past or current day to pick from 6 mood emojis (😊 great, 🙂 good, 😐 neutral, 😔 low, 😩 drained, 😡 angry) and add a short note explaining why.
@@ -132,6 +128,8 @@ A collapsible section below the habits with a 7-face week view. Each day of the 
 - Section is collapsed by default; the open/closed state is remembered per-device
 
 The data is stored per-date so it survives across weeks and lets you look back at "why was last Tuesday so bad?"
+
+![Daily Mood](screenshots/mood.png)
 
 ### Rich Text Notebooks
 
@@ -167,14 +165,15 @@ Right-click any task and pick "Set recurring" to make it repeat weekly, biweekly
 
 ### Archive
 
-Every completed task is logged with its category, assigned date, and completion date. The last 500 are kept for reference.
+Every completed task is logged with its category, assigned date, and completion date. Some simple state such as number of tasks completed within past 7 days and 30 days is shown, as well as average number of tasks completed per week. Track your habit building progress by comparing your daily and weekly habit completion for the previous 4 weeks. 
 
-### Dark Mode
+![Archive](screenshots/archive.png)
 
-Full dark theme across the entire app, including all tabs, editors, popups, and mobile views. Toggle in Settings. Syncs across devices.
+### Dark Mode and Light Mode
 
-<!-- Replace with a screenshot in dark mode -->
-![Dark mode](screenshots/dark-mode.png)
+Full dark and light theme across the entire app, including all tabs, editors, popups, and mobile views. Toggle in Settings. Syncs across devices.
+
+![Light mode](screenshots/light-mode.png)
 
 ### Global Search
 
@@ -198,7 +197,7 @@ On screens under 640px, the app switches to a mobile-optimized layout:
 - Mobile upcoming view supports the same set-time / edit / delete options as desktop
 
 <!-- Replace with a screenshot on a phone -->
-![Mobile view](screenshots/mobile.png)
+![Mobile view planner](screenshots/mobile-planner.png) ![Mobile view habits](screenshots/mobile-habits.png) ![Mobile view journal](screenshots/mobile-journal.png) ![Mobile view settings](screenshots/mobile-settings.png)
 
 ### Cross-Device Sync
 
