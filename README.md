@@ -4,7 +4,6 @@
 
 Plan your tasks, schedule them by time, track habits, log your mood, write journal entries, manage contacts, and take notes, all in one place. Built as a Progressive Web App with Firebase sync and offline support.
 
-<!-- Replace with your own screenshot -->
 ![Main planner view](screenshots/planner-view.png)
 
 ---
@@ -99,7 +98,6 @@ A toggle button in the left sidebar (above the search icon) flips between the tw
 
 In horizontal mode, drag handles at the top and bottom of the time grid let you hide early-morning or late-night hours.
 
-<!-- Replace with a screenshot showing horizontal column layout -->
 ![Layout options](screenshots/layout-options.png)
 
 ### Anchor-Based Task Ordering
@@ -141,7 +139,6 @@ A built-in notes system with multiple notebooks and a full rich text editor.
 
 Notebooks are listed in a collapsible sidebar. Drag to reorder. Double-click to rename.
 
-<!-- Replace with a screenshot of the notebooks panel -->
 ![Notebooks](screenshots/notebooks.png)
 
 ### Journal
@@ -150,7 +147,6 @@ Write daily entries with the same rich text editor. A mini calendar shows green 
 
 Mobile shows a feed-style view with 4-line previews of recent entries. Tap any entry to expand and edit.
 
-<!-- Replace with a screenshot of the journal -->
 ![Journal](screenshots/journal.png)
 
 ### People and Birthday Reminders
