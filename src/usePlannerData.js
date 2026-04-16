@@ -673,7 +673,6 @@ export const DEFAULT_CATEGORIES = [
   { id: "cat_cooking", name: "Cooking", color: "#E8C9B7" },
   { id: "cat_learning", name: "Learning", color: "#D5E8B7" },
   { id: "cat_crafts", name: "Crafts/Art/Reading", color: "#D5B7E8" },
-  { id: "cat_sporas", name: "Sporas", color: "#E8B7D5" },
   { id: "cat_events", name: "Events", color: "#B7E8D5" },
   { id: "cat_volunteering", name: "Volunteering", color: "#E8D5B7" },
   { id: "cat_gardening", name: "Gardening", color: "#c8e8b0" },
