@@ -196,8 +196,12 @@ On screens under 640px, the app switches to a mobile-optimized layout:
 - Inputs sized to prevent iOS auto-zoom
 - Mobile upcoming view supports the same set-time / edit / delete options as desktop
 
-<!-- Replace with a screenshot on a phone -->
-![Mobile view planner](screenshots/mobile-planner.png) ![Mobile view habits](screenshots/mobile-habits.png) ![Mobile view journal](screenshots/mobile-journal.png) ![Mobile view settings](screenshots/mobile-settings.png)
+<p align="center">
+  <img src="screenshots/mobile-planner.png" alt="Mobile Planner" width="24%" />
+  <img src="screenshots/mobile-habits.png" alt="Mobile Habits" width="24%" />
+  <img src="screenshots/mobile-journal.png" alt="Mobile Journal" width="24%" />
+  <img src="screenshots/mobile-settings.png" alt="Mobile Settings" width="24%" />
+</p>
 
 ### Cross-Device Sync
 
