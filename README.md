@@ -169,12 +169,11 @@ Right-click any task and pick "Set recurring" to make it repeat weekly, biweekly
 
 Every completed task is logged with its category, assigned date, and completion date. Some simple state such as number of tasks completed within past 7 days and 30 days is shown, as well as average number of tasks completed per week. Track your habit building progress by comparing your daily and weekly habit completion for the previous 4 weeks. 
 
-### Dark Mode
+### Dark Mode and Light Mode
 
-Full dark theme across the entire app, including all tabs, editors, popups, and mobile views. Toggle in Settings. Syncs across devices.
+Full dark and light theme across the entire app, including all tabs, editors, popups, and mobile views. Toggle in Settings. Syncs across devices.
 
-<!-- Replace with a screenshot in dark mode -->
-![Dark mode](screenshots/dark-mode.png)
+![Dark mode](screenshots/light-mode.png)
 
 ### Global Search
 
