@@ -285,25 +285,5 @@ SETUP_GUIDE.md         Detailed setup instructions
 
 ---
 
-## Screenshots
-
-To add your own screenshots, create a `screenshots/` folder and save images with these names:
-
-| Filename | What to capture |
-|---|---|
-| `planner-view.png` | Main weekly view with tasks |
-| `tasks-categories.png` | Tasks showing category color stripes |
-| `layout-options.png` | Horizontal column layout with time grid |
-| `habits.png` | Habits section with daily and weekly |
-| `mood.png` | Mood tracker with the 7-face week view |
-| `notebooks.png` | Notebook editor, ideally with a table |
-| `journal.png` | Journal with calendar sidebar visible |
-| `dark-mode.png` | Any view in dark mode |
-| `mobile.png` | The app on a phone |
-
-Then commit and push. GitHub renders them automatically.
-
----
-
 ## License
 
