@@ -307,4 +307,3 @@ Then commit and push. GitHub renders them automatically.
 
 ## License
 
-This is a personal project. You own it completely. Do whatever you want with it.
