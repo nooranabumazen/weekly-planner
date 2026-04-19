@@ -763,10 +763,12 @@ function HabitsTracker({ dailyHabits, weeklyHabits, habitHistory, moods, onToggl
 }
 
 /* ─── Projects ─── */
-function ProjectsSection({ projects, onSave, onArchive, onSyncToDay, onUnlinkSubtask }) {
+function ProjectsSection({ projects, onSave, onArchive, onSyncToDay, onUnlinkSubtask, addTrigger }) {
   const [expanded, setExpanded] = useState({});
   const [adding, setAdding] = useState(false);
   const [newName, setNewName] = useState("");
+  // Respond to external add trigger
+  useEffect(() => { if (addTrigger > 0) setAdding(true); }, [addTrigger]);
   const [addingSubtask, setAddingSubtask] = useState(null); // projectId
   const [newSubtask, setNewSubtask] = useState("");
   const [editingSubtask, setEditingSubtask] = useState(null); // { projectId, subtaskId }
@@ -863,11 +865,7 @@ function ProjectsSection({ projects, onSave, onArchive, onSyncToDay, onUnlinkSub
   };
 
   return (
-    <div style={{ padding: "0 12px 4px", boxSizing: "border-box" }}>
-      <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", marginBottom: 4 }}>
-        <button onClick={() => setAdding(true)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-faint)", fontSize: 13, fontFamily: "'JetBrains Mono', monospace", fontWeight: 400, padding: 0, lineHeight: 1 }}
-          onMouseEnter={(e) => e.target.style.color = "var(--text-muted)"} onMouseLeave={(e) => e.target.style.color = "var(--text-faint)"}>+</button>
-      </div>
+    <div style={{ padding: "0 12px 2px", boxSizing: "border-box" }}>
       {adding && (
         <div style={{ marginBottom: 6 }}>
           <input ref={addRef} value={newName} onChange={(e) => setNewName(e.target.value)}
@@ -1973,6 +1971,7 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
   const [laterOpen, setLaterOpenState] = useState(() => { try { return localStorage.getItem("planner_laterOpen") !== "false"; } catch { return true; } });
   const [notesOpen, setNotesOpenState] = useState(() => { try { return localStorage.getItem("planner_notesOpen") !== "false"; } catch { return true; } });
   const [projectsOpen, setProjectsOpenState] = useState(() => { try { return localStorage.getItem("planner_projectsOpen") !== "false"; } catch { return true; } });
+  const [projectAddTrigger, setProjectAddTrigger] = useState(0);
   const [habitsOpen, setHabitsOpenState] = useState(() => { try { return localStorage.getItem("planner_habitsOpen") !== "false"; } catch { return true; } });
   const setLaterOpen = (v) => { setLaterOpenState(v); try { localStorage.setItem("planner_laterOpen", v); } catch {} };
   const setNotesOpen = (v) => { setNotesOpenState(v); try { localStorage.setItem("planner_notesOpen", v); } catch {} };
@@ -3143,13 +3142,17 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
                       </div>
                       {/* Projects */}
                       <div style={{ background: "var(--bg-surface)", borderBottom: "1px solid var(--border)" }}>
-                        <button onClick={() => setProjectsOpen(!projectsOpen)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", fontSize: 10, padding: "6px 12px", display: "flex", alignItems: "center", gap: 4, width: "100%", textAlign: "left" }}>
-                          <span style={{ fontSize: 8, transition: "transform 0.2s", transform: projectsOpen ? "rotate(90deg)" : "rotate(0deg)", display: "inline-block" }}>{"\u25B6"}</span>
-                          <span style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, fontSize: 9, letterSpacing: 1, textTransform: "uppercase" }}>Projects</span>
-                          <span style={{ fontSize: 9, color: "var(--text-faint)" }}>({(projects || []).length})</span>
-                        </button>
+                        <div style={{ display: "flex", alignItems: "center" }}>
+                          <button onClick={() => setProjectsOpen(!projectsOpen)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", fontSize: 10, padding: "6px 12px", display: "flex", alignItems: "center", gap: 4, flex: 1, textAlign: "left" }}>
+                            <span style={{ fontSize: 8, transition: "transform 0.2s", transform: projectsOpen ? "rotate(90deg)" : "rotate(0deg)", display: "inline-block" }}>{"\u25B6"}</span>
+                            <span style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, fontSize: 9, letterSpacing: 1, textTransform: "uppercase" }}>Projects</span>
+                            <span style={{ fontSize: 9, color: "var(--text-faint)" }}>({(projects || []).length})</span>
+                          </button>
+                          <button onClick={(e) => { e.stopPropagation(); setProjectsOpen(true); setProjectAddTrigger((v) => v + 1); }} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-faint)", fontSize: 13, fontFamily: "'JetBrains Mono', monospace", fontWeight: 400, padding: "0 12px 0 0", lineHeight: 1 }}
+                            onMouseEnter={(e) => e.target.style.color = "var(--text-muted)"} onMouseLeave={(e) => e.target.style.color = "var(--text-faint)"}>+</button>
+                        </div>
                         {projectsOpen && (
-                          <ProjectsSection projects={projects || []} onSave={saveProjectsData} onArchive={archiveProject} onSyncToDay={syncProjectToDay} onUnlinkSubtask={unlinkSubtask} />
+                          <ProjectsSection projects={projects || []} onSave={saveProjectsData} onArchive={archiveProject} onSyncToDay={syncProjectToDay} onUnlinkSubtask={unlinkSubtask} addTrigger={projectAddTrigger} />
                         )}
                       </div>
                       {/* Quick Notes */}
@@ -3189,13 +3192,17 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
                 </div>
                 {/* Collapsible Projects */}
                 <div style={{ borderTop: "1px solid var(--border)", background: "var(--bg-surface)", flexShrink: 0 }}>
-                    <button onClick={() => setProjectsOpen(!projectsOpen)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", fontSize: 10, padding: "6px 12px", display: "flex", alignItems: "center", gap: 4, width: "100%", textAlign: "left" }}>
-                      <span style={{ fontSize: 8, transition: "transform 0.2s", transform: projectsOpen ? "rotate(90deg)" : "rotate(0deg)", display: "inline-block" }}>{"\u25B6"}</span>
-                      <span style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, fontSize: 9, letterSpacing: 1, textTransform: "uppercase" }}>Projects</span>
-                      <span style={{ fontSize: 9, color: "var(--text-faint)" }}>({(projects || []).length})</span>
-                    </button>
+                    <div style={{ display: "flex", alignItems: "center" }}>
+                      <button onClick={() => setProjectsOpen(!projectsOpen)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", fontSize: 10, padding: "6px 12px", display: "flex", alignItems: "center", gap: 4, flex: 1, textAlign: "left" }}>
+                        <span style={{ fontSize: 8, transition: "transform 0.2s", transform: projectsOpen ? "rotate(90deg)" : "rotate(0deg)", display: "inline-block" }}>{"\u25B6"}</span>
+                        <span style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, fontSize: 9, letterSpacing: 1, textTransform: "uppercase" }}>Projects</span>
+                        <span style={{ fontSize: 9, color: "var(--text-faint)" }}>({(projects || []).length})</span>
+                      </button>
+                      <button onClick={(e) => { e.stopPropagation(); setProjectsOpen(true); setProjectAddTrigger((v) => v + 1); }} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-faint)", fontSize: 13, fontFamily: "'JetBrains Mono', monospace", fontWeight: 400, padding: "0 12px 0 0", lineHeight: 1 }}
+                        onMouseEnter={(e) => e.target.style.color = "var(--text-muted)"} onMouseLeave={(e) => e.target.style.color = "var(--text-faint)"}>+</button>
+                    </div>
                     {projectsOpen && (
-                      <ProjectsSection projects={projects || []} onSave={saveProjectsData} onArchive={archiveProject} onSyncToDay={syncProjectToDay} onUnlinkSubtask={unlinkSubtask} />
+                      <ProjectsSection projects={projects || []} onSave={saveProjectsData} onArchive={archiveProject} onSyncToDay={syncProjectToDay} onUnlinkSubtask={unlinkSubtask} addTrigger={projectAddTrigger} />
                     )}
                 </div>
                 {/* Collapsible Quick Notes */}
