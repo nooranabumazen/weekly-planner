@@ -80,6 +80,32 @@ function JournalEditor({ content, onChange, userId }) {
   const handleInput = () => { isInternalChange.current = true; onChange(editorRef.current.innerHTML); };
   const exec = (cmd, val = null) => { editorRef.current.focus(); document.execCommand(cmd, false, val); handleInput(); };
 
+  const handleEditorKeyDown = (e) => {
+    if (e.ctrlKey && e.shiftKey && e.key === "*") { e.preventDefault(); exec("insertUnorderedList"); return; }
+    if (e.ctrlKey && e.shiftKey && e.key === "&") { e.preventDefault(); exec("insertOrderedList"); return; }
+    if (e.key !== " ") return;
+    const sel = window.getSelection();
+    if (!sel || sel.rangeCount === 0) return;
+    const range = sel.getRangeAt(0);
+    const node = range.startContainer;
+    if (node.nodeType !== 3) return;
+    const textBefore = node.textContent.slice(0, range.startOffset);
+    const block = node.parentElement?.closest("p, div, li, h1, h2, h3, h4, h5, h6");
+    if (!block || block.tagName === "LI") return;
+    const blockText = textBefore.trim();
+    if (blockText === "-" || blockText === "*") {
+      e.preventDefault();
+      node.textContent = node.textContent.slice(range.startOffset);
+      document.execCommand("insertUnorderedList");
+      handleInput();
+    } else if (/^\d+\.$/.test(blockText)) {
+      e.preventDefault();
+      node.textContent = node.textContent.slice(range.startOffset);
+      document.execCommand("insertOrderedList");
+      handleInput();
+    }
+  };
+
   const compressToBlob = (file, maxWidth = 1200, quality = 0.8) => {
     return new Promise((resolve) => {
       const reader = new FileReader();
@@ -144,32 +170,8 @@ function JournalEditor({ content, onChange, userId }) {
         [contenteditable] h2 { font-size: 18px; font-weight: 700; margin: 14px 0 8px; color: var(--text); }
         [contenteditable] hr { border: none; border-top: 1px solid var(--text-faint); margin: 14px 0; }
       `}} />
-      <div ref={editorRef} contentEditable onInput={handleInput} onBlur={handleInput} onPaste={handlePaste}
+      <div ref={editorRef} contentEditable onInput={handleInput} onBlur={handleInput} onPaste={handlePaste} onKeyDown={handleEditorKeyDown}
         onClick={(e) => { if (e.target.tagName === "A" && e.target.href) { e.preventDefault(); window.open(e.target.href, "_blank"); } }}
-        onKeyDown={(e) => {
-          if (e.key === "Tab") {
-            e.preventDefault();
-            const sel = window.getSelection();
-            const node = sel?.anchorNode;
-            const li = node?.closest ? node.closest("li") : node?.parentElement?.closest("li");
-            if (li) {
-              document.execCommand(e.shiftKey ? "outdent" : "indent");
-            } else {
-              document.execCommand("insertHTML", false, "&nbsp;&nbsp;&nbsp;&nbsp;");
-            }
-            handleInput();
-          }
-          if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === "8" || e.key === "*")) {
-            e.preventDefault();
-            document.execCommand("insertUnorderedList");
-            handleInput();
-          }
-          if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === "7" || e.key === "&")) {
-            e.preventDefault();
-            document.execCommand("insertOrderedList");
-            handleInput();
-          }
-        }}
         suppressContentEditableWarning
         style={{ flex: 1, overflowY: "auto", padding: "14px 24px 14px 48px", fontSize: 13, lineHeight: 1.7, outline: "none", color: "var(--text)", fontFamily: "'DM Sans', sans-serif" }} />
     </div>
@@ -178,10 +180,7 @@ function JournalEditor({ content, onChange, userId }) {
 
 export default function JournalPanel({ journal, onChange, userId, isMobile }) {
   const today = new Date().toISOString().split("T")[0];
-  const [selectedDate, setSelectedDate] = useState(() => {
-    try { const d = localStorage.getItem("planner_journalNav"); if (d) { localStorage.removeItem("planner_journalNav"); return d; } } catch {}
-    return today;
-  });
+  const [selectedDate, setSelectedDate] = useState(today);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mobileEditing, setMobileEditing] = useState(false);
 
@@ -231,13 +230,10 @@ export default function JournalPanel({ journal, onChange, userId, isMobile }) {
             {[...entryDates].sort().reverse().map((date) => {
               const d = new Date(date + "T12:00:00");
               const label = d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric" });
-              const content = journal[date] || "";
-              const textPreview = content.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
               return (
                 <div key={date} onClick={() => selectDate(date)}
-                  style={{ padding: "12px 14px", cursor: "pointer", borderBottom: "1px solid var(--border-light)", background: "var(--bg-card)", marginBottom: 8, borderRadius: 6 }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: "var(--accent)", marginBottom: 4 }}>{label}</div>
-                  <div style={{ fontSize: 14, color: "var(--text)", lineHeight: 1.5, display: "-webkit-box", WebkitLineClamp: 4, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{textPreview || <span style={{ color: "var(--text-faint)", fontStyle: "italic" }}>Empty entry</span>}</div>
+                  style={{ padding: "10px 12px", cursor: "pointer", fontSize: 15, borderBottom: "1px solid var(--border-light)", color: "var(--text)" }}>
+                  {label}
                 </div>
               );
             })}
@@ -246,21 +242,6 @@ export default function JournalPanel({ journal, onChange, userId, isMobile }) {
       </div>
     );
   }
-
-  const [viewMode, setViewMode] = useState("editor"); // "editor" or "feed"
-  const [feedEditingDate, setFeedEditingDate] = useState(null);
-
-  const sortedDates = [...entryDates].sort().reverse();
-
-  const WEEKDAYS = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
-  const formatFeedDate = (dateStr) => {
-    const d = new Date(dateStr + "T12:00:00");
-    const weekday = WEEKDAYS[d.getDay()];
-    const month = MONTH_NAMES[d.getMonth()];
-    const day = d.getDate();
-    const suffix = day === 1 || day === 21 || day === 31 ? "st" : day === 2 || day === 22 ? "nd" : day === 3 || day === 23 ? "rd" : "th";
-    return { weekday, full: `${weekday}, ${month} ${day}${suffix}`, monthShort: month.slice(0, 3).toUpperCase(), day };
-  };
 
   return (
     <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
@@ -276,27 +257,22 @@ export default function JournalPanel({ journal, onChange, userId, isMobile }) {
         {sidebarOpen && (
           <>
             <div style={{ padding: "10px 8px", borderBottom: "1px solid var(--border)" }}>
-              <MiniCalendar selectedDate={selectedDate} onSelect={(d) => { setSelectedDate(d); setViewMode("editor"); }} entryDates={entryDates} />
+              <MiniCalendar selectedDate={selectedDate} onSelect={setSelectedDate} entryDates={entryDates} />
             </div>
-            <div style={{ padding: "6px 10px", fontSize: 10, color: "var(--text-faint)", borderBottom: "1px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <span>{entryDates.size} {entryDates.size === 1 ? "entry" : "entries"}</span>
-              <button onClick={() => setViewMode(viewMode === "feed" ? "editor" : "feed")}
-                title={viewMode === "feed" ? "Editor view" : "Feed view"}
-                style={{ background: "none", border: "1px solid var(--border)", borderRadius: 3, cursor: "pointer", color: viewMode === "feed" ? "var(--accent)" : "var(--text-faint)", fontSize: 9, padding: "1px 5px", fontWeight: 600 }}>
-                {viewMode === "feed" ? "\u{1F4DD}" : "\u{1F4DC}"}
-              </button>
+            <div style={{ padding: "6px 10px", fontSize: 10, color: "var(--text-faint)", borderBottom: "1px solid var(--border)" }}>
+              {entryDates.size} journal {entryDates.size === 1 ? "entry" : "entries"}
             </div>
             <div style={{ flex: 1, overflowY: "auto", padding: "4px 0" }}>
-              {sortedDates.map((date) => {
+              {[...entryDates].sort().reverse().map((date) => {
                 const d = new Date(date + "T12:00:00");
                 const label = d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
                 return (
-                  <div key={date} onClick={() => { setSelectedDate(date); if (viewMode === "feed") setViewMode("editor"); }} style={{
+                  <div key={date} onClick={() => setSelectedDate(date)} style={{
                     padding: "6px 10px", cursor: "pointer", fontSize: 11,
-                    background: date === selectedDate && viewMode === "editor" ? "var(--bg-card)" : "transparent",
-                    color: date === selectedDate && viewMode === "editor" ? "var(--text)" : "var(--text-muted)",
-                    fontWeight: date === selectedDate && viewMode === "editor" ? 600 : 400,
-                    borderLeft: date === selectedDate && viewMode === "editor" ? "3px solid #8B6914" : "3px solid transparent",
+                    background: date === selectedDate ? "var(--bg-card)" : "transparent",
+                    color: date === selectedDate ? "var(--text)" : "var(--text-muted)",
+                    fontWeight: date === selectedDate ? 600 : 400,
+                    borderLeft: date === selectedDate ? "3px solid #8B6914" : "3px solid transparent",
                   }}>{label}</div>
                 );
               })}
@@ -305,82 +281,16 @@ export default function JournalPanel({ journal, onChange, userId, isMobile }) {
         )}
       </div>
 
-      {/* Right: editor OR feed view */}
-      {viewMode === "editor" ? (
-        <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
-          <div style={{ padding: "8px 12px", borderBottom: "1px solid var(--border)", fontSize: 12, fontWeight: 600, color: "var(--text)", display: "flex", alignItems: "center", gap: 6 }}>
-            {dateLabel}
-            {selectedDate === today && (
-              <span style={{ fontSize: 8, background: "#8B6914", color: "#fff", padding: "1px 4px", borderRadius: 3, fontWeight: 600, letterSpacing: 0.5 }}>TODAY</span>
-            )}
-            <div style={{ flex: 1 }} />
-            <button onClick={() => setViewMode("feed")} title="Switch to feed view"
-              style={{ background: "none", border: "1px solid var(--border)", borderRadius: 4, cursor: "pointer", color: "var(--text-muted)", fontSize: 9, padding: "3px 8px", fontWeight: 600 }}>
-              {"\u{1F4DC}"} Feed
-            </button>
-          </div>
-          <JournalEditor key={selectedDate} content={currentContent} onChange={updateEntry} userId={userId} />
+      {/* Right: editor */}
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+        <div style={{ padding: "8px 12px", borderBottom: "1px solid var(--border)", fontSize: 12, fontWeight: 600, color: "var(--text)", display: "flex", alignItems: "center", gap: 6 }}>
+          {dateLabel}
+          {selectedDate === today && (
+            <span style={{ fontSize: 8, background: "#8B6914", color: "#fff", padding: "1px 4px", borderRadius: 3, fontWeight: 600, letterSpacing: 0.5 }}>TODAY</span>
+          )}
         </div>
-      ) : (
-        <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
-          <div style={{ padding: "8px 12px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", gap: 6 }}>
-            <span style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, fontSize: 9, color: "var(--text-muted)", letterSpacing: 1.5, textTransform: "uppercase" }}>Journal Feed</span>
-            <div style={{ flex: 1 }} />
-            <button onClick={() => setViewMode("editor")} title="Switch to editor view"
-              style={{ background: "none", border: "1px solid var(--border)", borderRadius: 4, cursor: "pointer", color: "var(--text-muted)", fontSize: 9, padding: "3px 8px", fontWeight: 600 }}>
-              {"\u{1F4DD}"} Editor
-            </button>
-          </div>
-          <div style={{ flex: 1, overflowY: "auto", padding: "16px 24px" }}>
-            {/* Today's entry or prompt */}
-            {!entryDates.has(today) && (
-              <div onClick={() => { setSelectedDate(today); setViewMode("editor"); }}
-                style={{ maxWidth: 600, margin: "0 auto 20px", padding: "16px 20px", background: "var(--bg-card)", border: "1.5px dashed var(--border)", borderRadius: 10, cursor: "pointer", textAlign: "center" }}>
-                <div style={{ fontSize: 13, color: "var(--text-muted)", fontWeight: 500 }}>What's on your mind today?</div>
-                <div style={{ fontSize: 10, color: "var(--text-faint)", marginTop: 4 }}>Click to write today's entry</div>
-              </div>
-            )}
-            {sortedDates.map((date) => {
-              const { monthShort, day, full } = formatFeedDate(date);
-              const html = entries[date];
-              const isEditing = feedEditingDate === date;
-              return (
-                <div key={date} style={{ maxWidth: 600, margin: "0 auto 20px", background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 10, overflow: "hidden" }}>
-                  {/* Card header */}
-                  <div style={{ padding: "10px 16px 8px", display: "flex", alignItems: "center", gap: 10, borderBottom: "1px solid var(--border-light)" }}>
-                    {/* Date badge */}
-                    <div style={{ textAlign: "center", minWidth: 36 }}>
-                      <div style={{ fontSize: 8, fontWeight: 700, color: "var(--accent)", fontFamily: "'JetBrains Mono', monospace", letterSpacing: 1 }}>{monthShort}</div>
-                      <div style={{ fontSize: 18, fontWeight: 700, color: "var(--text)", lineHeight: 1 }}>{day}</div>
-                    </div>
-                    {/* Full date label */}
-                    <div style={{ flex: 1, fontSize: 15, fontWeight: 600, color: "var(--text)", fontStyle: "italic" }}>{full}</div>
-                    {/* Edit button */}
-                    <button onClick={() => { if (isEditing) { setFeedEditingDate(null); } else { setSelectedDate(date); setViewMode("editor"); } }}
-                      title="Edit entry"
-                      style={{ background: "none", border: "none", cursor: "pointer", fontSize: 14, color: "var(--text-faint)", padding: "2px 4px" }}>
-                      {"\u270F"}
-                    </button>
-                    {date === today && (
-                      <span style={{ fontSize: 7, background: "#8B6914", color: "#fff", padding: "1px 4px", borderRadius: 3, fontWeight: 700, letterSpacing: 0.5 }}>TODAY</span>
-                    )}
-                  </div>
-                  {/* Card body: rendered HTML */}
-                  <div
-                    dangerouslySetInnerHTML={{ __html: html }}
-                    style={{ padding: "12px 20px 16px", fontSize: 13, lineHeight: 1.7, color: "var(--text)", fontFamily: "'DM Sans', sans-serif" }}
-                  />
-                </div>
-              );
-            })}
-            {sortedDates.length === 0 && (
-              <div style={{ textAlign: "center", color: "var(--text-faint)", fontSize: 13, marginTop: 40 }}>
-                No journal entries yet. Click "What's on your mind?" to start writing.
-              </div>
-            )}
-          </div>
-        </div>
-      )}
+        <JournalEditor key={selectedDate} content={currentContent} onChange={updateEntry} userId={userId} />
+      </div>
     </div>
   );
 }

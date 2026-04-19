@@ -85,64 +85,6 @@ function ColorPicker({ colors, onSelect, buttonIcon, title }) {
   );
 }
 
-function BulletPicker() {
-  const [open, setOpen] = useState(false);
-  const ref3 = useRef(null);
-
-  useEffect(() => {
-    if (!open) return;
-    const close = (e) => { if (ref3.current && !ref3.current.contains(e.target)) setOpen(false); };
-    document.addEventListener("mousedown", close);
-    return () => document.removeEventListener("mousedown", close);
-  }, [open]);
-
-  const styles = [
-    { label: "Disc", icon: "\u2022", value: "disc" },
-    { label: "Circle", icon: "\u25CB", value: "circle" },
-    { label: "Square", icon: "\u25A0", value: "square" },
-    { label: "Dash", icon: "\u2013", value: "dash" },
-  ];
-
-  const applyBullet = (style) => {
-    document.execCommand("insertUnorderedList");
-    const sel = window.getSelection();
-    const node = sel?.anchorNode;
-    const ul = node?.closest ? node.closest("ul") : node?.parentElement?.closest("ul");
-    if (ul) {
-      if (style === "dash") {
-        ul.style.listStyleType = '"\u2013  "';
-      } else {
-        ul.style.listStyleType = style;
-      }
-    }
-    setOpen(false);
-  };
-
-  return (
-    <div ref={ref3} style={{ position: "relative" }}>
-      <ToolbarButton icon={<span style={{ fontSize: 10 }}>&bull; &ndash;</span>} title="Bullet list" onClick={() => setOpen(!open)} active={open} />
-      {open && (
-        <div style={{
-          position: "absolute", top: 30, left: 0, background: "var(--bg-card)",
-          border: "1px solid var(--border)", borderRadius: 6, padding: "4px 0",
-          boxShadow: "0 4px 12px rgba(0,0,0,0.1)", zIndex: 100, minWidth: 110,
-        }}>
-          {styles.map((s) => (
-            <div key={s.value}
-              onMouseDown={(e) => { e.preventDefault(); applyBullet(s.value); }}
-              style={{ padding: "4px 12px", cursor: "pointer", fontSize: 11, color: "var(--text)", display: "flex", alignItems: "center", gap: 8 }}
-              onMouseEnter={(e) => e.currentTarget.style.background = "var(--bg-hover)"}
-              onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}>
-              <span style={{ fontSize: 14, width: 16, textAlign: "center" }}>{s.icon}</span>
-              <span>{s.label}</span>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
 function RichEditor({ content, onChange, userId }) {
   const editorRef = useRef(null);
   const isInternalChange = useRef(false);
@@ -163,15 +105,42 @@ function RichEditor({ content, onChange, userId }) {
       }
     }
     isInternalChange.current = false;
-    // Disable spellcheck on all tables
-    if (editorRef.current) {
-      editorRef.current.querySelectorAll("table").forEach((t) => t.setAttribute("spellcheck", "false"));
-    }
   }, [content]);
 
   const handleInput = () => {
     isInternalChange.current = true;
     onChange(editorRef.current.innerHTML);
+  };
+
+  // Auto-detect list shortcuts: "- " or "* " → bullet list, "1. " → numbered list
+  const handleEditorKeyDown = (e) => {
+    // Ctrl+Shift+8 for unordered, Ctrl+Shift+7 for ordered (existing shortcuts)
+    if (e.ctrlKey && e.shiftKey && e.key === "*") { e.preventDefault(); exec("insertUnorderedList"); return; }
+    if (e.ctrlKey && e.shiftKey && e.key === "&") { e.preventDefault(); exec("insertOrderedList"); return; }
+    if (e.key !== " ") return;
+    const sel = window.getSelection();
+    if (!sel || sel.rangeCount === 0) return;
+    const range = sel.getRangeAt(0);
+    const node = range.startContainer;
+    if (node.nodeType !== 3) return; // text node only
+    const textBefore = node.textContent.slice(0, range.startOffset);
+    // Check if we're at the start of a block with "- ", "* ", or "1. " prefix
+    const block = node.parentElement?.closest("p, div, li, h1, h2, h3, h4, h5, h6");
+    if (!block || block.tagName === "LI") return; // already in a list
+    // Get all text before cursor in this block
+    const blockText = textBefore.trim();
+    if (blockText === "-" || blockText === "*") {
+      e.preventDefault();
+      // Clear the prefix
+      node.textContent = node.textContent.slice(range.startOffset);
+      document.execCommand("insertUnorderedList");
+      handleInput();
+    } else if (/^\d+\.$/.test(blockText)) {
+      e.preventDefault();
+      node.textContent = node.textContent.slice(range.startOffset);
+      document.execCommand("insertOrderedList");
+      handleInput();
+    }
   };
 
   const exec = (cmd, val = null) => {
@@ -182,7 +151,7 @@ function RichEditor({ content, onChange, userId }) {
 
   const insertTable = () => {
     const tid = "t" + Date.now();
-    const table = `<table spellcheck="false" data-tid="${tid}" style="border-collapse:separate;border-spacing:0;margin:8px 0;table-layout:auto;border-radius:8px;overflow:hidden;border:1px solid #999;">
+    const table = `<table data-tid="${tid}" style="border-collapse:separate;border-spacing:0;margin:8px 0;table-layout:auto;border-radius:8px;overflow:hidden;border:1px solid #999;">
       <tr><td style="border-bottom:1px solid #999;border-right:1px solid #999;padding:5px 10px;min-width:120px;">&nbsp;</td><td style="border-bottom:1px solid #999;padding:5px 10px;min-width:120px;">&nbsp;</td></tr>
       <tr><td style="border-right:1px solid #999;padding:5px 10px;min-width:120px;">&nbsp;</td><td style="padding:5px 10px;min-width:120px;">&nbsp;</td></tr>
     </table><p></p>`;
@@ -345,7 +314,6 @@ function RichEditor({ content, onChange, userId }) {
         t.style.tableLayout = "auto";
         t.removeAttribute("width");
         t.style.width = "";
-        t.setAttribute("spellcheck", "false");
       });
       div.querySelectorAll("td, th").forEach((cell) => {
         cell.style.border = "1px solid #999";
@@ -380,7 +348,7 @@ function RichEditor({ content, onChange, userId }) {
         <ToolbarButton icon={<s>S</s>} title="Strikethrough" onClick={() => exec("strikeThrough")} />
         <ToolbarButton icon={<span style={{ fontSize: 12, fontWeight: 700 }}>H</span>} title="Toggle heading" onClick={insertHeader} />
         <div style={{ width: 1, height: 18, background: "var(--border)", margin: "0 3px" }} />
-        <ColorPicker colors={HIGHLIGHT_COLORS} onSelect={(c) => { exec("hiliteColor", c); if (c !== "transparent") exec("foreColor", "#1a1a1a"); }}
+        <ColorPicker colors={HIGHLIGHT_COLORS} onSelect={(c) => exec("hiliteColor", c)}
           buttonIcon={<span style={{ background: "#fff3a8", padding: "0 3px", borderRadius: 2, fontSize: 11, fontWeight: 600 }}>H</span>} title="Highlight" />
         <ColorPicker colors={TEXT_COLORS} onSelect={(c) => exec("foreColor", c)}
           buttonIcon={<span style={{ fontSize: 12, fontWeight: 700 }}>A<span style={{ display: "block", height: 2, background: "#c44040", borderRadius: 1, marginTop: -2 }} /></span>} title="Text color" />
@@ -388,11 +356,13 @@ function RichEditor({ content, onChange, userId }) {
         <ToolbarButton icon={<span style={{ fontSize: 12 }}>&#128279;</span>} title="Insert link" onClick={insertLink} />
         <ToolbarButton icon={<span style={{ fontSize: 12 }}>&#128444;</span>} title="Insert image" onClick={insertImage} />
         <ToolbarButton icon={<span style={{ fontSize: 10, fontFamily: "monospace" }}>&#9638;</span>} title="Insert table" onClick={insertTable} />
+        <ToolbarButton icon={<span style={{ fontSize: 9, fontFamily: "monospace" }}>+R</span>} title="Add row (click in table first)" onClick={addTableRow} />
+        <ToolbarButton icon={<span style={{ fontSize: 9, fontFamily: "monospace" }}>+C</span>} title="Add column (click in table first)" onClick={addTableCol} />
+        <ToolbarButton icon={<span style={{ fontSize: 9, fontFamily: "monospace", color: "#c44" }}>{"\u2212"}R</span>} title="Remove row" onClick={removeTableRow} />
+        <ToolbarButton icon={<span style={{ fontSize: 9, fontFamily: "monospace", color: "#c44" }}>{"\u2212"}C</span>} title="Remove column" onClick={removeTableCol} />
         <div style={{ width: 1, height: 18, background: "var(--border)", margin: "0 3px" }} />
-        <BulletPicker />
+        <ToolbarButton icon={<span style={{ fontSize: 10 }}>&bull; &ndash;</span>} title="Bullet list" onClick={() => exec("insertUnorderedList")} />
         <ToolbarButton icon={<span style={{ fontSize: 10 }}>1. &ndash;</span>} title="Numbered list" onClick={() => exec("insertOrderedList")} />
-        <ToolbarButton icon={<span style={{ fontSize: 11 }}>{"\u2192"}</span>} title="Indent" onClick={() => exec("indent")} />
-        <ToolbarButton icon={<span style={{ fontSize: 11 }}>{"\u2190"}</span>} title="Outdent" onClick={() => exec("outdent")} />
         <div style={{ width: 1, height: 18, background: "var(--border)", margin: "0 3px" }} />
         <ToolbarButton icon={<span style={{ fontSize: 11 }}>&mdash;</span>} title="Insert divider" onClick={insertDivider} />
       </div>
@@ -407,33 +377,9 @@ function RichEditor({ content, onChange, userId }) {
         [contenteditable] ul, [contenteditable] ol { margin: 4px 0 8px; padding-left: 24px; }
         [contenteditable] li { margin-bottom: 2px; }
       `}} />
-      <div ref={editorRef} contentEditable onInput={handleInput} onBlur={handleInput} onPaste={handlePaste}
+      <div ref={editorRef} contentEditable onInput={handleInput} onBlur={handleInput} onPaste={handlePaste} onKeyDown={handleEditorKeyDown}
         onClick={(e) => { if (e.target.tagName === "A" && e.target.href) { e.preventDefault(); window.open(e.target.href, "_blank"); } }}
         onContextMenu={handleContextMenu}
-        onKeyDown={(e) => {
-          if (e.key === "Tab") {
-            e.preventDefault();
-            const sel = window.getSelection();
-            const node = sel?.anchorNode;
-            const li = node?.closest ? node.closest("li") : node?.parentElement?.closest("li");
-            if (li) {
-              exec(e.shiftKey ? "outdent" : "indent");
-            } else {
-              exec("insertHTML", "&nbsp;&nbsp;&nbsp;&nbsp;");
-            }
-            handleInput();
-          }
-          if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === "8" || e.key === "*")) {
-            e.preventDefault();
-            document.execCommand("insertUnorderedList");
-            handleInput();
-          }
-          if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === "7" || e.key === "&")) {
-            e.preventDefault();
-            document.execCommand("insertOrderedList");
-            handleInput();
-          }
-        }}
         suppressContentEditableWarning
         style={{ flex: 1, overflowY: "auto", padding: "14px 24px 14px 48px", fontSize: 13, lineHeight: 1.6, outline: "none", color: "var(--text)", fontFamily: "'DM Sans', sans-serif", minHeight: 100, position: "relative" }} />
       {ctxMenu && (
@@ -494,8 +440,6 @@ export default function NotebooksPanel({ notebooks, onChange, userId, isMobile }
     onChange([...notebooks, { id, title: "New Note", content: "<p></p>" }]);
     setActiveTab(id);
     if (isMobile) setMobileEditing(true);
-    setRenaming(id);
-    setRenameText("");
   };
 
   const deleteNotebook = (id) => {

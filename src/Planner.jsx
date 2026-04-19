@@ -724,7 +724,7 @@ function HabitsTracker({ dailyHabits, weeklyHabits, habitHistory, moods, onToggl
                       style={{ background: "none", border: "none", padding: 0, cursor: "pointer", fontSize: 9, color: "var(--text-faint)", lineHeight: 1 }}>{"\u{1F4AC}"}</button>
                   )}
                   {openNoteDate === d.dateStr && hasNote && (
-                    <div style={{ position: "absolute", top: "100%", left: "50%", transform: "translateX(-50%)", marginTop: 4, background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 6, padding: "4px 8px", fontSize: 10, color: "var(--text)", boxShadow: "0 4px 12px rgba(0,0,0,0.18)", whiteSpace: "nowrap", maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", zIndex: 10 }}>
+                    <div style={{ position: "absolute", top: "100%", left: "50%", transform: "translateX(-50%)", marginTop: 4, background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 6, padding: "4px 8px", fontSize: 10, color: "var(--text)", boxShadow: "0 4px 12px rgba(0,0,0,0.18)", whiteSpace: "normal", maxWidth: 220, wordBreak: "break-word", zIndex: 10 }}>
                       {entry.note}
                     </div>
                   )}
@@ -751,7 +751,8 @@ function HabitsTracker({ dailyHabits, weeklyHabits, habitHistory, moods, onToggl
                   );
                 })}
               </div>
-              <input type="text" value={((moods || {})[activeMoodDate] || {}).note || ""} onChange={(e) => saveMoodFor(activeMoodDate, { note: e.target.value })} placeholder="why? (optional note)"
+              <input type="text" value={((moods || {})[activeMoodDate] || {}).note || ""} onChange={(e) => saveMoodFor(activeMoodDate, { note: e.target.value })} placeholder="why? (optional note)" maxLength={200}
+                onKeyDown={(e) => { if (e.key === "Enter") setActiveMoodDate(null); }}
                 style={{ width: "100%", maxWidth: 280, border: "1px solid var(--border)", borderRadius: 4, padding: "4px 8px", fontSize: 11, outline: "none", background: "var(--input-bg)", color: "var(--text)", fontFamily: "'DM Sans', sans-serif", boxSizing: "border-box", textAlign: "center" }} />
             </>
           )}
