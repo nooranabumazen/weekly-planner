@@ -762,6 +762,202 @@ function HabitsTracker({ dailyHabits, weeklyHabits, habitHistory, moods, onToggl
   );
 }
 
+/* ─── Projects ─── */
+function ProjectsSection({ projects, onSave, onArchive }) {
+  const [expanded, setExpanded] = useState({});
+  const [adding, setAdding] = useState(false);
+  const [newName, setNewName] = useState("");
+  const [addingSubtask, setAddingSubtask] = useState(null); // projectId
+  const [newSubtask, setNewSubtask] = useState("");
+  const [editingSubtask, setEditingSubtask] = useState(null); // { projectId, subtaskId }
+  const [editSubText, setEditSubText] = useState("");
+  const [editingProject, setEditingProject] = useState(null);
+  const [editProjText, setEditProjText] = useState("");
+  const [dragSub, setDragSub] = useState(null); // { projectId, subtaskId }
+  const addRef = useRef(null);
+  const subRef = useRef(null);
+  const editSubRef = useRef(null);
+  const editProjRef = useRef(null);
+
+  useEffect(() => { if (adding && addRef.current) addRef.current.focus(); }, [adding]);
+  useEffect(() => { if (addingSubtask && subRef.current) subRef.current.focus(); }, [addingSubtask]);
+  useEffect(() => { if (editingSubtask && editSubRef.current) { editSubRef.current.focus(); editSubRef.current.select(); } }, [editingSubtask]);
+  useEffect(() => { if (editingProject && editProjRef.current) { editProjRef.current.focus(); editProjRef.current.select(); } }, [editingProject]);
+
+  const toggle = (id) => setExpanded((e) => ({ ...e, [id]: !e[id] }));
+
+  const addProject = () => {
+    if (!newName.trim()) return;
+    const p = { id: "p" + Date.now(), text: newName.trim(), done: false, subtasks: [] };
+    onSave([...projects, p]);
+    setNewName("");
+    setAdding(false);
+    setExpanded((e) => ({ ...e, [p.id]: true }));
+    setAddingSubtask(p.id);
+  };
+
+  const deleteProject = (id) => {
+    if (!window.confirm("Delete this project and all its subtasks?")) return;
+    onSave(projects.filter((p) => p.id !== id));
+  };
+
+  const completeProject = (id) => {
+    const proj = projects.find((p) => p.id === id);
+    if (!proj) return;
+    if (onArchive) onArchive(proj);
+    onSave(projects.filter((p) => p.id !== id));
+  };
+
+  const editProject = (id) => {
+    if (!editProjText.trim()) return;
+    onSave(projects.map((p) => p.id === id ? { ...p, text: editProjText.trim() } : p));
+    setEditingProject(null);
+  };
+
+  const addSub = (projectId) => {
+    if (!newSubtask.trim()) return;
+    const sub = { id: "s" + Date.now() + "_" + Math.random().toString(36).slice(2, 6), text: newSubtask.trim(), done: false };
+    onSave(projects.map((p) => p.id === projectId ? { ...p, subtasks: [...p.subtasks, sub] } : p));
+    setNewSubtask("");
+  };
+
+  const toggleSub = (projectId, subId) => {
+    onSave(projects.map((p) => p.id === projectId ? { ...p, subtasks: p.subtasks.map((s) => s.id === subId ? { ...s, done: !s.done } : s) } : p));
+  };
+
+  const deleteSub = (projectId, subId) => {
+    onSave(projects.map((p) => p.id === projectId ? { ...p, subtasks: p.subtasks.filter((s) => s.id !== subId) } : p));
+  };
+
+  const editSub = (projectId, subId) => {
+    if (!editSubText.trim()) return;
+    onSave(projects.map((p) => p.id === projectId ? { ...p, subtasks: p.subtasks.map((s) => s.id === subId ? { ...s, text: editSubText.trim() } : s) } : p));
+    setEditingSubtask(null);
+  };
+
+  const handleSubDrop = (projectId, targetSubId) => {
+    if (!dragSub || dragSub.projectId !== projectId) return;
+    const proj = projects.find((p) => p.id === projectId);
+    if (!proj) return;
+    const subs = [...proj.subtasks];
+    const fromIdx = subs.findIndex((s) => s.id === dragSub.subtaskId);
+    if (fromIdx === -1) return;
+    const [moved] = subs.splice(fromIdx, 1);
+    if (targetSubId) {
+      const toIdx = subs.findIndex((s) => s.id === targetSubId);
+      if (toIdx !== -1) subs.splice(toIdx, 0, moved);
+      else subs.push(moved);
+    } else {
+      subs.push(moved);
+    }
+    onSave(projects.map((p) => p.id === projectId ? { ...p, subtasks: subs } : p));
+    setDragSub(null);
+  };
+
+  return (
+    <div style={{ padding: "0 12px 4px", boxSizing: "border-box" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+        <span style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, fontSize: 9, color: "var(--text-muted)", letterSpacing: 1, textTransform: "uppercase" }}>Projects</span>
+        <button onClick={() => setAdding(true)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-faint)", fontSize: 13, fontFamily: "'JetBrains Mono', monospace", fontWeight: 400, padding: 0, lineHeight: 1 }}
+          onMouseEnter={(e) => e.target.style.color = "var(--text-muted)"} onMouseLeave={(e) => e.target.style.color = "var(--text-faint)"}>+</button>
+      </div>
+      {adding && (
+        <div style={{ marginBottom: 6 }}>
+          <input ref={addRef} value={newName} onChange={(e) => setNewName(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") addProject(); if (e.key === "Escape") { setAdding(false); setNewName(""); } }}
+            placeholder="Project name..."
+            style={{ width: "100%", border: "1px solid var(--border)", borderRadius: 4, padding: "4px 8px", fontSize: 12, outline: "none", background: "var(--input-bg)", color: "var(--text)", boxSizing: "border-box" }} />
+        </div>
+      )}
+      {projects.length === 0 && !adding && (
+        <div style={{ fontSize: 10, color: "var(--text-faint)", textAlign: "center", padding: "4px 0" }}>No projects yet</div>
+      )}
+      {projects.map((proj) => {
+        const doneCount = proj.subtasks.filter((s) => s.done).length;
+        const totalCount = proj.subtasks.length;
+        const isExpanded = expanded[proj.id];
+        return (
+          <div key={proj.id} style={{ background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 6, marginBottom: 4, overflow: "hidden" }}>
+            {/* Project header */}
+            <div onClick={() => toggle(proj.id)} style={{ padding: "6px 8px", cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
+              <span style={{ fontSize: 8, color: "var(--text-faint)", transform: isExpanded ? "rotate(90deg)" : "rotate(0deg)", transition: "transform 0.15s", display: "inline-block" }}>{"\u25B6"}</span>
+              {editingProject === proj.id ? (
+                <input ref={editProjRef} value={editProjText} onClick={(e) => e.stopPropagation()}
+                  onChange={(e) => setEditProjText(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") editProject(proj.id); if (e.key === "Escape") setEditingProject(null); }}
+                  onBlur={() => editProject(proj.id)}
+                  style={{ flex: 1, border: "1px solid var(--border)", borderRadius: 3, padding: "1px 4px", fontSize: 12, outline: "none", background: "var(--input-bg)", color: "var(--text)", fontWeight: 600 }} />
+              ) : (
+                <span onDoubleClick={(e) => { e.stopPropagation(); setEditingProject(proj.id); setEditProjText(proj.text); }}
+                  style={{ flex: 1, fontSize: 12, fontWeight: 600, color: "var(--text)", cursor: "text" }}>{proj.text}</span>
+              )}
+              {totalCount > 0 && (
+                <span style={{ fontSize: 10, color: doneCount === totalCount ? "#6a9955" : "var(--text-muted)", fontFamily: "'JetBrains Mono', monospace", fontWeight: 600 }}>{doneCount}/{totalCount}</span>
+              )}
+            </div>
+            {/* Expanded: subtasks */}
+            {isExpanded && (
+              <div style={{ padding: "0 8px 6px", borderTop: "1px solid var(--border-light)" }}>
+                {proj.subtasks.map((sub) => (
+                  <div key={sub.id} draggable
+                    onDragStart={() => setDragSub({ projectId: proj.id, subtaskId: sub.id })}
+                    onDragOver={(e) => e.preventDefault()}
+                    onDrop={() => handleSubDrop(proj.id, sub.id)}
+                    style={{ display: "flex", alignItems: "center", gap: 5, padding: "3px 0", cursor: "grab", borderBottom: "0.5px solid var(--border-light)" }}>
+                    <div onClick={() => toggleSub(proj.id, sub.id)}
+                      style={{ width: 14, height: 14, border: "1.5px solid var(--border)", borderRadius: 3, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", fontSize: 10, color: sub.done ? "#6a9955" : "transparent", background: sub.done ? "rgba(106,153,85,0.1)" : "transparent", flexShrink: 0 }}>
+                      {sub.done && "\u2713"}
+                    </div>
+                    {editingSubtask?.projectId === proj.id && editingSubtask?.subtaskId === sub.id ? (
+                      <input ref={editSubRef} value={editSubText} onChange={(e) => setEditSubText(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === "Enter") editSub(proj.id, sub.id); if (e.key === "Escape") setEditingSubtask(null); }}
+                        onBlur={() => editSub(proj.id, sub.id)}
+                        style={{ flex: 1, border: "1px solid var(--border)", borderRadius: 3, padding: "1px 4px", fontSize: 11, outline: "none", background: "var(--input-bg)", color: "var(--text)" }} />
+                    ) : (
+                      <span onDoubleClick={() => { setEditingSubtask({ projectId: proj.id, subtaskId: sub.id }); setEditSubText(sub.text); }}
+                        style={{ flex: 1, fontSize: 11, color: sub.done ? "var(--text-muted)" : "var(--text)", textDecoration: sub.done ? "line-through" : "none", cursor: "text", wordBreak: "break-word" }}>{sub.text}</span>
+                    )}
+                    <button onClick={() => deleteSub(proj.id, sub.id)}
+                      style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-faint)", fontSize: 11, padding: 0, fontWeight: 600, flexShrink: 0 }}
+                      onMouseEnter={(e) => e.target.style.color = "#c44"} onMouseLeave={(e) => e.target.style.color = "var(--text-faint)"}>&times;</button>
+                  </div>
+                ))}
+                {/* Drop zone at bottom for reorder */}
+                <div onDragOver={(e) => e.preventDefault()} onDrop={() => handleSubDrop(proj.id, null)}
+                  style={{ height: 4 }} />
+                {/* Add subtask */}
+                {addingSubtask === proj.id ? (
+                  <div style={{ marginTop: 2 }}>
+                    <input ref={subRef} value={newSubtask} onChange={(e) => setNewSubtask(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === "Enter") { addSub(proj.id); } if (e.key === "Escape") { setAddingSubtask(null); setNewSubtask(""); } }}
+                      placeholder="Subtask..."
+                      style={{ width: "100%", border: "1px solid var(--border)", borderRadius: 3, padding: "3px 6px", fontSize: 11, outline: "none", background: "var(--input-bg)", color: "var(--text)", boxSizing: "border-box" }} />
+                  </div>
+                ) : (
+                  <button onClick={() => { setAddingSubtask(proj.id); setNewSubtask(""); }}
+                    style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-faint)", fontSize: 10, padding: "3px 0" }}
+                    onMouseEnter={(e) => e.target.style.color = "var(--text-muted)"} onMouseLeave={(e) => e.target.style.color = "var(--text-faint)"}>+ subtask</button>
+                )}
+                {/* Project actions */}
+                <div style={{ display: "flex", gap: 4, marginTop: 4, borderTop: "1px solid var(--border-light)", paddingTop: 4 }}>
+                  {totalCount > 0 && doneCount === totalCount && (
+                    <button onClick={() => completeProject(proj.id)}
+                      style={{ background: "none", border: "1px solid #6a9955", borderRadius: 3, padding: "2px 8px", cursor: "pointer", fontSize: 9, color: "#6a9955", fontWeight: 600 }}>Complete</button>
+                  )}
+                  <button onClick={() => deleteProject(proj.id)}
+                    style={{ background: "none", border: "1px solid var(--border)", borderRadius: 3, padding: "2px 8px", cursor: "pointer", fontSize: 9, color: "var(--text-faint)" }}
+                    onMouseEnter={(e) => { e.target.style.borderColor = "#c44"; e.target.style.color = "#c44"; }}
+                    onMouseLeave={(e) => { e.target.style.borderColor = "var(--border)"; e.target.style.color = "var(--text-faint)"; }}>Delete</button>
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 /* ─── Notes ─── */
 function NotesSection({ notes, onChange }) {
   return (
@@ -773,9 +969,10 @@ function NotesSection({ notes, onChange }) {
 }
 
 /* ─── Task Card ─── */
-function TaskCard({ task, columnId, categories, onDragStart, onToggle, onDelete, onEdit, onChangeCategory, isMobile, onMove, onSetRecurring, onSetTime, onRemoveTime, highlightQuery, taskFontSize }) {
+function TaskCard({ task, columnId, categories, onDragStart, onToggle, onDelete, onEdit, onChangeCategory, isMobile, onMove, onSetRecurring, onSetTime, onRemoveTime, projects, onAssignToProject, highlightQuery, taskFontSize }) {
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [timeInput, setTimeInput] = useState(task.startTime || "09:00");
+  const [showProjectMenu, setShowProjectMenu] = useState(false);
   const [editing, setEditing] = useState(false);
   const [editText, setEditText] = useState(task.text);
   const [hover, setHover] = useState(false);
@@ -919,6 +1116,29 @@ function TaskCard({ task, columnId, categories, onDragStart, onToggle, onDelete,
               Remove time
             </div>
           )}
+          {projects && projects.length > 0 && !task.projectId && (
+            <>
+              <div onClick={() => setShowProjectMenu(!showProjectMenu)}
+                style={{ padding: "6px 14px", cursor: "pointer", fontSize: 12, color: "var(--text)", display: "flex", justifyContent: "space-between" }}
+                onMouseEnter={(e) => e.currentTarget.style.background = "var(--bg-hover)"} onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}>
+                <span>Assign to project</span><span style={{ fontSize: 10, color: "var(--text-faint)" }}>{"\u25B6"}</span>
+              </div>
+              {showProjectMenu && (
+                <div style={{ padding: "2px 14px 6px", borderTop: "1px solid var(--border)" }}>
+                  {projects.map((p) => (
+                    <div key={p.id} onClick={() => { onAssignToProject && onAssignToProject(columnId, task.id, p.id); setCtxMenu(null); setShowProjectMenu(false); }}
+                      style={{ padding: "3px 0", cursor: "pointer", fontSize: 11, color: "var(--text)" }}
+                      onMouseEnter={(e) => e.currentTarget.style.color = "var(--accent)"} onMouseLeave={(e) => e.currentTarget.style.color = "var(--text)"}>{p.text}</div>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+          {task.projectId && (
+            <div style={{ padding: "6px 14px", fontSize: 10, color: "var(--text-faint)", fontFamily: "'JetBrains Mono', monospace" }}>
+              Linked to project
+            </div>
+          )}
           <div onClick={(e) => { setRepeatMenu(!repeatMenu); }}
             style={{ padding: "6px 14px", cursor: "pointer", fontSize: 12, color: "var(--text)", display: "flex", justifyContent: "space-between" }}
             onMouseEnter={(e) => e.currentTarget.style.background = "var(--bg-hover)"} onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}>
@@ -999,7 +1219,7 @@ function DropZone({ onDrop }) {
 }
 
 /* ─── Day Section ─── */
-function DaySection({ dayInfo, columnId, tasks, categories, onDragStart, onDrop, onToggle, onDelete, onEdit, onAdd, onChangeCategory, isMobile, onMove, onSetRecurring, onSetTime, onRemoveTime, highlightQuery, taskFontSize }) {
+function DaySection({ dayInfo, columnId, tasks, categories, onDragStart, onDrop, onToggle, onDelete, onEdit, onAdd, onChangeCategory, isMobile, onMove, onSetRecurring, onSetTime, onRemoveTime, projects, onAssignToProject, highlightQuery, taskFontSize }) {
   const [dragOver, setDragOver] = useState(false);
   const [adding, setAdding] = useState(false);
   const [newText, setNewText] = useState("");
@@ -1082,11 +1302,11 @@ function DaySection({ dayInfo, columnId, tasks, categories, onDragStart, onDrop,
         {incompleteTasks.map((task, idx) => (
           <div key={task.id}>
             <DropZone onDrop={(e) => handleDropAtIndex(e, task.id)} />
-            <TaskCard task={task} columnId={columnId} categories={categories} onDragStart={onDragStart} onToggle={onToggle} onDelete={onDelete} onEdit={onEdit} onChangeCategory={onChangeCategory} isMobile={isMobile} onMove={onMove} onSetRecurring={onSetRecurring} onSetTime={onSetTime} onSetTime={onSetTime} onRemoveTime={onRemoveTime} highlightQuery={highlightQuery} taskFontSize={taskFontSize} />
+            <TaskCard task={task} columnId={columnId} categories={categories} onDragStart={onDragStart} onToggle={onToggle} onDelete={onDelete} onEdit={onEdit} onChangeCategory={onChangeCategory} isMobile={isMobile} onMove={onMove} onSetRecurring={onSetRecurring} onSetTime={onSetTime} onSetTime={onSetTime} onRemoveTime={onRemoveTime} projects={projects} onAssignToProject={onAssignToProject} highlightQuery={highlightQuery} taskFontSize={taskFontSize} />
           </div>
         ))}
         <DropZone onDrop={(e) => handleDropAtIndex(e, null)} />
-        <DoneCollapse doneTasks={doneTasks} columnId={columnId} categories={categories} onDragStart={onDragStart} onToggle={onToggle} onDelete={onDelete} onEdit={onEdit} onChangeCategory={onChangeCategory} onMove={onMove} onSetRecurring={onSetRecurring} onSetTime={onSetTime} onRemoveTime={onRemoveTime} highlightQuery={highlightQuery} isMobile={isMobile} taskFontSize={taskFontSize} />
+        <DoneCollapse doneTasks={doneTasks} columnId={columnId} categories={categories} onDragStart={onDragStart} onToggle={onToggle} onDelete={onDelete} onEdit={onEdit} onChangeCategory={onChangeCategory} onMove={onMove} onSetRecurring={onSetRecurring} onSetTime={onSetTime} onRemoveTime={onRemoveTime} projects={projects} onAssignToProject={onAssignToProject} highlightQuery={highlightQuery} isMobile={isMobile} taskFontSize={taskFontSize} />
       </div>
 
       {/* Add task form (only shown when adding and not read-only) */}
@@ -1402,7 +1622,7 @@ function UnscheduledCol({ col, untimed, done, categories, taskFontSize, toggleDo
   );
 }
 
-function DoneCollapse({ doneTasks, columnId, categories, onDragStart, onToggle, onDelete, onEdit, onChangeCategory, onMove, onSetRecurring, onSetTime, onRemoveTime, highlightQuery, isToday, isMobile, taskFontSize }) {
+function DoneCollapse({ doneTasks, columnId, categories, onDragStart, onToggle, onDelete, onEdit, onChangeCategory, onMove, onSetRecurring, onSetTime, onRemoveTime, projects, onAssignToProject, highlightQuery, isToday, isMobile, taskFontSize }) {
   const [expanded, setExpanded] = useState(false);
   if (doneTasks.length === 0) return null;
   return (
@@ -1412,7 +1632,7 @@ function DoneCollapse({ doneTasks, columnId, categories, onDragStart, onToggle, 
         <span style={{ fontSize: 8, color: "var(--text-faint)" }}>{doneTasks.length} done</span>
       </div>
       {expanded && doneTasks.map((task) => (
-        <TaskCard key={task.id} task={task} columnId={columnId} categories={categories} onDragStart={onDragStart} onToggle={onToggle} onDelete={onDelete} onEdit={onEdit} onChangeCategory={onChangeCategory} isMobile={isMobile} onMove={onMove} onSetRecurring={onSetRecurring} onSetTime={onSetTime} onSetTime={onSetTime} onRemoveTime={onRemoveTime} highlightQuery={highlightQuery} taskFontSize={taskFontSize} />
+        <TaskCard key={task.id} task={task} columnId={columnId} categories={categories} onDragStart={onDragStart} onToggle={onToggle} onDelete={onDelete} onEdit={onEdit} onChangeCategory={onChangeCategory} isMobile={isMobile} onMove={onMove} onSetRecurring={onSetRecurring} onSetTime={onSetTime} onSetTime={onSetTime} onRemoveTime={onRemoveTime} projects={projects} onAssignToProject={onAssignToProject} highlightQuery={highlightQuery} taskFontSize={taskFontSize} />
       ))}
     </>
   );
@@ -1463,11 +1683,11 @@ function DayColumn({ dayInfo, columnId, tasks, categories, onDragStart, onDrop, 
         {incompleteTasks.map((task, idx) => (
           <div key={task.id}>
             <DropZone onDrop={(e) => handleDropAtIndex(e, task.id)} />
-            <TaskCard task={task} columnId={columnId} categories={categories} onDragStart={onDragStart} onToggle={onToggle} onDelete={onDelete} onEdit={onEdit} onChangeCategory={onChangeCategory} onMove={onMove} onSetRecurring={onSetRecurring} onSetTime={onSetTime} onSetTime={onSetTime} onRemoveTime={onRemoveTime} highlightQuery={highlightQuery} taskFontSize={taskFontSize} />
+            <TaskCard task={task} columnId={columnId} categories={categories} onDragStart={onDragStart} onToggle={onToggle} onDelete={onDelete} onEdit={onEdit} onChangeCategory={onChangeCategory} onMove={onMove} onSetRecurring={onSetRecurring} onSetTime={onSetTime} onSetTime={onSetTime} onRemoveTime={onRemoveTime} projects={projects} onAssignToProject={onAssignToProject} highlightQuery={highlightQuery} taskFontSize={taskFontSize} />
           </div>
         ))}
         <DropZone onDrop={(e) => handleDropAtIndex(e, null)} />
-        <DoneCollapse doneTasks={doneTasks} columnId={columnId} categories={categories} onDragStart={onDragStart} onToggle={onToggle} onDelete={onDelete} onEdit={onEdit} onChangeCategory={onChangeCategory} onMove={onMove} onSetRecurring={onSetRecurring} onSetTime={onSetTime} onRemoveTime={onRemoveTime} highlightQuery={highlightQuery} isToday={isToday} taskFontSize={taskFontSize} />
+        <DoneCollapse doneTasks={doneTasks} columnId={columnId} categories={categories} onDragStart={onDragStart} onToggle={onToggle} onDelete={onDelete} onEdit={onEdit} onChangeCategory={onChangeCategory} onMove={onMove} onSetRecurring={onSetRecurring} onSetTime={onSetTime} onRemoveTime={onRemoveTime} projects={projects} onAssignToProject={onAssignToProject} highlightQuery={highlightQuery} isToday={isToday} taskFontSize={taskFontSize} />
       </div>
       {adding ? (
         <div style={{ marginTop: 2, flexShrink: 0 }}>
@@ -1671,7 +1891,7 @@ function FutureSidebar({ futureTasks, onAddFuture, onDeleteFuture, onEditFuture,
 }
 
 /* ─── Main Planner ─── */
-export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSaveNotebooks, onSaveJournal, onSaveContacts, onSaveArchive, onSaveDailyHabits, onSaveWeeklyHabits, onSaveSettings, onSaveRecurringRules, onSaveMoods, onLoadWeekTasks, onSaveWeekTasks, onGetBackups, onRestoreBackup, onExportData, onLogout, userEmail, userId }) {
+export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSaveNotebooks, onSaveJournal, onSaveContacts, onSaveArchive, onSaveProjects, onSaveDailyHabits, onSaveWeeklyHabits, onSaveSettings, onSaveRecurringRules, onSaveMoods, onLoadWeekTasks, onSaveWeekTasks, onGetBackups, onRestoreBackup, onExportData, onLogout, userEmail, userId }) {
   const isMobile = useIsMobile();
   const [mobileAddingFuture, setMobileAddingFuture] = useState(false);
   const [mobileFutureCtx, setMobileFutureCtx] = useState(null);
@@ -1706,7 +1926,7 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
     }).catch(() => { if (!cancelled) { setOffWeekTasks(null); setOffWeekLoading(false); } });
     return () => { cancelled = true; };
   }, [weekOffset, viewedWeekKey]);
-  const { tasks: currentTasks, futureTasks, dailyHabits, weeklyHabits, notes, habitHistory, moods } = data;
+  const { tasks: currentTasks, futureTasks, dailyHabits, weeklyHabits, notes, habitHistory, moods, projects } = data;
   // Merge upcoming tasks into future week view
   const viewedTasks = (() => {
     if (isCurrentWeek) return currentTasks;
@@ -1743,9 +1963,11 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
   const [colWidth, setColWidth] = useState(160);
   const [laterOpen, setLaterOpenState] = useState(() => { try { return localStorage.getItem("planner_laterOpen") !== "false"; } catch { return true; } });
   const [notesOpen, setNotesOpenState] = useState(() => { try { return localStorage.getItem("planner_notesOpen") !== "false"; } catch { return true; } });
+  const [projectsOpen, setProjectsOpenState] = useState(() => { try { return localStorage.getItem("planner_projectsOpen") !== "false"; } catch { return true; } });
   const [habitsOpen, setHabitsOpenState] = useState(() => { try { return localStorage.getItem("planner_habitsOpen") !== "false"; } catch { return true; } });
   const setLaterOpen = (v) => { setLaterOpenState(v); try { localStorage.setItem("planner_laterOpen", v); } catch {} };
   const setNotesOpen = (v) => { setNotesOpenState(v); try { localStorage.setItem("planner_notesOpen", v); } catch {} };
+  const setProjectsOpen = (v) => { setProjectsOpenState(v); try { localStorage.setItem("planner_projectsOpen", v); } catch {} };
   const setHabitsOpen = (v) => { setHabitsOpenState(v); try { localStorage.setItem("planner_habitsOpen", v); } catch {} };
   const [gridStartHour, setGridStartHourState] = useState(() => { try { const v = localStorage.getItem("planner_gridStartHour"); return v ? parseInt(v) : 6; } catch { return 6; } });
   const [gridEndHour, setGridEndHourState] = useState(() => { try { const v = localStorage.getItem("planner_gridEndHour"); return v ? parseInt(v) : 23; } catch { return 23; } });
@@ -2220,6 +2442,36 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
   const deleteFuture = (id) => { pushUndo(); const nf = futureTasks.filter((t) => t.id !== id); update({ futureTasks: nf }); onSaveFuture(nf); };
   const editFuture = (id, text, date, startTime) => { const nf = futureTasks.map((t) => { if (t.id !== id) return t; const u = { ...t, text: text !== undefined ? text : t.text, date: date !== undefined ? date : t.date }; if (startTime === null) delete u.startTime; else if (startTime !== undefined) u.startTime = startTime; return u; }); update({ futureTasks: nf }); onSaveFuture(nf); };
 
+  // ─── Project helpers ───
+  const saveProjectsData = (newProjects) => { update({ projects: newProjects }); onSaveProjects(newProjects); };
+  const archiveProject = (proj) => {
+    const d = dataRef.current;
+    const entry = { ...proj, completedAt: new Date().toISOString(), _type: "project" };
+    const newArchive = [entry, ...(d.archive || [])].slice(0, 500);
+    update({ archive: newArchive });
+    onSaveArchive(newArchive);
+  };
+  // Assign a day-task to a project as a linked subtask
+  const assignToProject = (col, taskId, projectId) => {
+    const t = dataRef.current.tasks;
+    const task = (t[col] || []).find((x) => x.id === taskId);
+    if (!task) return;
+    const p = (dataRef.current.projects || []);
+    const subId = "s" + Date.now() + "_" + Math.random().toString(36).slice(2, 6);
+    // Add subtask to project
+    const newProjects = p.map((proj) => proj.id === projectId ? { ...proj, subtasks: [...proj.subtasks, { id: subId, text: task.text, done: task.done }] } : proj);
+    saveProjectsData(newProjects);
+    // Mark the day-task as linked
+    const newTasks = { ...t, [col]: t[col].map((x) => x.id === taskId ? { ...x, projectId, subtaskId: subId } : x) };
+    update({ tasks: newTasks });
+  };
+  // Sync: when a linked task is toggled/edited, update the project subtask too
+  const syncToProject = (projectId, subtaskId, patch) => {
+    const p = dataRef.current.projects || [];
+    const newProjects = p.map((proj) => proj.id === projectId ? { ...proj, subtasks: proj.subtasks.map((s) => s.id === subtaskId ? { ...s, ...patch } : s) } : proj);
+    saveProjectsData(newProjects);
+  };
+
   // Wrappers that intercept operations on upcoming-task ghosts in the week view
   // and redirect them to futureTasks instead of the week doc
   const wrappedDeleteTask = useCallback((col, id) => {
@@ -2228,6 +2480,7 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
       deleteFuture(task._futureId);
       return;
     }
+    // Linked task: deleting from day does NOT delete the project subtask
     deleteTask(col, id);
   }, [tasks, deleteTask]);
 
@@ -2238,16 +2491,19 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
       return;
     }
     editTask(col, id, text);
+    // Sync to project if linked
+    if (task && task.projectId && task.subtaskId) syncToProject(task.projectId, task.subtaskId, { text });
   }, [tasks, editTask]);
 
   const wrappedToggleDone = useCallback((col, id) => {
     const task = (tasks[col] || []).find((t) => t.id === id);
     if (task && task._isUpcoming && task._futureId) {
-      // Completing an upcoming task: remove from futureTasks
       deleteFuture(task._futureId);
       return;
     }
     toggleDone(col, id);
+    // Sync to project if linked
+    if (task && task.projectId && task.subtaskId) syncToProject(task.projectId, task.subtaskId, { done: !task.done });
   }, [tasks, toggleDone]);
   const updateNotebooks = (nbs) => { update({ notebooks: nbs }); onSaveNotebooks(nbs); };
   const updateJournal = (j) => { update({ journal: j }); onSaveJournal(j); };
@@ -2468,11 +2724,11 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
                   <div style={{ padding: isMobile ? "4px 4px" : "4px 8px", display: "flex", flexDirection: "column", gap: 2 }}>
                     {DAYS.map((day, i) => (
                       <DaySection key={day} dayInfo={weekDates[i]} columnId={day.toLowerCase()} tasks={tasks[day.toLowerCase()] || []} categories={categories}
-                        onDragStart={() => {}} onDrop={isReadOnly ? () => {} : handleDrop} onToggle={isReadOnly ? () => {} : wrappedToggleDone} onDelete={isReadOnly ? () => {} : wrappedDeleteTask} onEdit={isReadOnly ? () => {} : wrappedEditTask} onAdd={isReadOnly ? null : addTask} onChangeCategory={isReadOnly ? () => {} : changeCategory} isMobile={isMobile} onMove={isReadOnly ? () => {} : moveTask} onSetRecurring={isReadOnly ? () => {} : setRecurring} onSetTime={isReadOnly ? () => {} : setTaskTime} onRemoveTime={isReadOnly ? () => {} : removeTaskTime} highlightQuery={highlightQuery} taskFontSize={taskFontSize} />
+                        onDragStart={() => {}} onDrop={isReadOnly ? () => {} : handleDrop} onToggle={isReadOnly ? () => {} : wrappedToggleDone} onDelete={isReadOnly ? () => {} : wrappedDeleteTask} onEdit={isReadOnly ? () => {} : wrappedEditTask} onAdd={isReadOnly ? null : addTask} onChangeCategory={isReadOnly ? () => {} : changeCategory} isMobile={isMobile} onMove={isReadOnly ? () => {} : moveTask} onSetRecurring={isReadOnly ? () => {} : setRecurring} onSetTime={isReadOnly ? () => {} : setTaskTime} onRemoveTime={isReadOnly ? () => {} : removeTaskTime} projects={projects || []} onAssignToProject={assignToProject} highlightQuery={highlightQuery} taskFontSize={taskFontSize} />
                     ))}
                     {isMobile && (
                       <DaySection dayInfo={null} columnId="later" tasks={tasks.later} categories={categories} onDragStart={() => {}} onDrop={handleDrop}
-                        onToggle={toggleDone} onDelete={deleteTask} onEdit={editTask} onAdd={addTask} onChangeCategory={changeCategory} isMobile={isMobile} onMove={moveTask} onSetRecurring={setRecurring} onSetTime={setTaskTime} onRemoveTime={removeTaskTime} highlightQuery={highlightQuery} taskFontSize={taskFontSize} />
+                        onToggle={toggleDone} onDelete={deleteTask} onEdit={editTask} onAdd={addTask} onChangeCategory={changeCategory} isMobile={isMobile} onMove={moveTask} onSetRecurring={setRecurring} onSetTime={setTaskTime} onRemoveTime={removeTaskTime} projects={projects || []} onAssignToProject={assignToProject} highlightQuery={highlightQuery} taskFontSize={taskFontSize} />
                     )}
                     {/* Mobile upcoming section */}
                     {isMobile && (() => {
@@ -2809,8 +3065,19 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
                         {laterOpen && (
                           <div style={{ padding: "0px 8px 6px" }}>
                             <DaySection dayInfo={null} columnId="later" tasks={tasks.later} categories={categories} onDragStart={() => {}} onDrop={handleDrop}
-                              onToggle={toggleDone} onDelete={deleteTask} onEdit={editTask} onAdd={addTask} onChangeCategory={changeCategory} onMove={moveTask} onSetRecurring={setRecurring} onSetTime={setTaskTime} onRemoveTime={removeTaskTime} highlightQuery={highlightQuery} taskFontSize={taskFontSize} />
+                              onToggle={toggleDone} onDelete={deleteTask} onEdit={editTask} onAdd={addTask} onChangeCategory={changeCategory} onMove={moveTask} onSetRecurring={setRecurring} onSetTime={setTaskTime} onRemoveTime={removeTaskTime} projects={projects || []} onAssignToProject={assignToProject} highlightQuery={highlightQuery} taskFontSize={taskFontSize} />
                           </div>
+                        )}
+                      </div>
+                      {/* Projects */}
+                      <div style={{ background: "var(--bg-surface)", borderBottom: "1px solid var(--border)" }}>
+                        <button onClick={() => setProjectsOpen(!projectsOpen)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", fontSize: 10, padding: "6px 12px", display: "flex", alignItems: "center", gap: 4, width: "100%", textAlign: "left" }}>
+                          <span style={{ fontSize: 8, transition: "transform 0.2s", transform: projectsOpen ? "rotate(90deg)" : "rotate(0deg)", display: "inline-block" }}>{"\u25B6"}</span>
+                          <span style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, fontSize: 9, letterSpacing: 1, textTransform: "uppercase" }}>Projects</span>
+                          <span style={{ fontSize: 9, color: "var(--text-faint)" }}>({(projects || []).length})</span>
+                        </button>
+                        {projectsOpen && (
+                          <ProjectsSection projects={projects || []} onSave={saveProjectsData} onArchive={archiveProject} />
                         )}
                       </div>
                       {/* Quick Notes */}
@@ -2844,8 +3111,19 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
                     {laterOpen && (
                       <div style={{ padding: "0px 8px 6px" }}>
                         <DaySection dayInfo={null} columnId="later" tasks={tasks.later} categories={categories} onDragStart={() => {}} onDrop={handleDrop}
-                          onToggle={toggleDone} onDelete={deleteTask} onEdit={editTask} onAdd={addTask} onChangeCategory={changeCategory} onMove={moveTask} onSetRecurring={setRecurring} onSetTime={setTaskTime} onRemoveTime={removeTaskTime} highlightQuery={highlightQuery} taskFontSize={taskFontSize} />
+                          onToggle={toggleDone} onDelete={deleteTask} onEdit={editTask} onAdd={addTask} onChangeCategory={changeCategory} onMove={moveTask} onSetRecurring={setRecurring} onSetTime={setTaskTime} onRemoveTime={removeTaskTime} projects={projects || []} onAssignToProject={assignToProject} highlightQuery={highlightQuery} taskFontSize={taskFontSize} />
                       </div>
+                    )}
+                </div>
+                {/* Collapsible Projects */}
+                <div style={{ borderTop: "1px solid var(--border)", background: "var(--bg-surface)", flexShrink: 0 }}>
+                    <button onClick={() => setProjectsOpen(!projectsOpen)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", fontSize: 10, padding: "6px 12px", display: "flex", alignItems: "center", gap: 4, width: "100%", textAlign: "left" }}>
+                      <span style={{ fontSize: 8, transition: "transform 0.2s", transform: projectsOpen ? "rotate(90deg)" : "rotate(0deg)", display: "inline-block" }}>{"\u25B6"}</span>
+                      <span style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, fontSize: 9, letterSpacing: 1, textTransform: "uppercase" }}>Projects</span>
+                      <span style={{ fontSize: 9, color: "var(--text-faint)" }}>({(projects || []).length})</span>
+                    </button>
+                    {projectsOpen && (
+                      <ProjectsSection projects={projects || []} onSave={saveProjectsData} onArchive={archiveProject} />
                     )}
                 </div>
                 {/* Collapsible Quick Notes */}

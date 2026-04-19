@@ -159,17 +159,17 @@ export function usePlannerData(userId) {
       const weekPath = `users/${userId}/weeks/${wk}`;
       const m = (name) => `users/${userId}/meta/${name}`;
 
-      const [weekDoc, futureDoc, notebooksDoc, journalDoc, contactsDoc, archiveDoc, dailyDoc, weeklyDoc, settingsDoc, recurringDoc] = await Promise.all([
+      const [weekDoc, futureDoc, notebooksDoc, journalDoc, contactsDoc, archiveDoc, dailyDoc, weeklyDoc, settingsDoc, recurringDoc, projectsDoc] = await Promise.all([
         readDoc(weekPath), readDoc(m("futureTasks")), readDoc(m("notebooks")), readDoc(m("journal")),
         readDoc(m("contacts")), readDoc(m("archive")), readDoc(m("dailyHabits")), readDoc(m("weeklyHabits")), readDoc(m("settings")),
-        readDoc(m("recurringRules")),
+        readDoc(m("recurringRules")), readDoc(m("projects")),
       ]);
 
       if (cancelled) return;
 
       // If ANY read returned an error (not null, but READ_ERROR), refuse to proceed.
       // This prevents writing defaults over real data when the network is down.
-      const allReads = [weekDoc, futureDoc, notebooksDoc, journalDoc, contactsDoc, archiveDoc, dailyDoc, weeklyDoc, settingsDoc, recurringDoc];
+      const allReads = [weekDoc, futureDoc, notebooksDoc, journalDoc, contactsDoc, archiveDoc, dailyDoc, weeklyDoc, settingsDoc, recurringDoc, projectsDoc];
       const hadError = allReads.some((r) => r === READ_ERROR);
       if (hadError) {
         console.error("One or more Firestore reads failed. Not loading to prevent data loss.");
@@ -353,6 +353,7 @@ export function usePlannerData(userId) {
       const journal = journalDoc?.entries || {};
       const contacts = contactsDoc?.items || [];
       const archive = archiveDoc?.items || [];
+      const projects = projectsDoc?.items || [];
       let dailyHabits = dailyDoc?.items || DEFAULT_DAILY_HABITS;
       let weeklyHabits = weeklyDoc?.items || DEFAULT_WEEKLY_HABITS;
       const dailyWeekKey = dailyDoc?._weekKey || null;
@@ -427,7 +428,7 @@ export function usePlannerData(userId) {
       latestTasksRef.current = tasks;
 
       if (!cancelled) {
-        setData({ tasks, futureTasks, notebooks, journal, contacts, archive, dailyHabits, weeklyHabits, habitHistory, moods,
+        setData({ tasks, futureTasks, notebooks, journal, contacts, archive, projects, dailyHabits, weeklyHabits, habitHistory, moods,
           categories: settings.categories, layout: settings.layout, notes: settings.notes, darkMode: settings.darkMode, taskFontSize: settings.taskFontSize,
           recurringRules: recurringDoc?.items || [] });
         setLoading(false);
@@ -530,6 +531,7 @@ export function usePlannerData(userId) {
   const saveSettings = useCallback((s) => { setData((p) => p ? { ...p, categories: s.categories, layout: s.layout, notes: s.notes, darkMode: s.darkMode, taskFontSize: s.taskFontSize } : p); writeDoc(`users/${userId}/meta/settings`, s); }, [userId]);
   const saveRecurringRules = useCallback((items) => { writeDoc(`users/${userId}/meta/recurringRules`, { items }); }, [userId]);
   const saveMoods = useCallback((entries) => { setData((p) => p ? { ...p, moods: entries } : p); writeDoc(`users/${userId}/meta/moods`, { entries }); }, [userId]);
+  const saveProjects = useCallback((items) => { setData((p) => p ? { ...p, projects: items } : p); writeDoc(`users/${userId}/meta/projects`, { items }); }, [userId]);
 
   // ─── Non-current week read/write ───
   const loadWeekTasks = useCallback(async (weekKey) => {
@@ -683,7 +685,7 @@ export function usePlannerData(userId) {
     return () => clearInterval(interval);
   }, [userId, data !== null, createBackup]);
 
-  return { data, loading, save, saveQuiet, saveFuture, saveNotebooks, saveJournal, saveContacts, saveArchive, saveDailyHabits, saveWeeklyHabits, saveSettings, saveRecurringRules, saveMoods, loadWeekTasks, saveWeekTasks, getBackups, restoreBackup, exportData };
+  return { data, loading, save, saveQuiet, saveFuture, saveNotebooks, saveJournal, saveContacts, saveArchive, saveProjects, saveDailyHabits, saveWeeklyHabits, saveSettings, saveRecurringRules, saveMoods, loadWeekTasks, saveWeekTasks, getBackups, restoreBackup, exportData };
 }
 
 export const DEFAULT_CATEGORIES = [
