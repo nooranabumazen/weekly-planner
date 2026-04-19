@@ -16,19 +16,19 @@ export function formatLocalDate(date) {
   return `${y}-${m}-${d}`;
 }
 
-function getWeekKey() {
+function getWeekKey(offset = 0) {
   const today = new Date();
   const day = today.getDay();
   const monday = new Date(today);
-  monday.setDate(today.getDate() - ((day + 6) % 7));
+  monday.setDate(today.getDate() - ((day + 6) % 7) + offset * 7);
   return formatLocalDate(monday);
 }
 
-export function getWeekDates() {
+export function getWeekDates(offset = 0) {
   const today = new Date();
   const day = today.getDay();
   const monday = new Date(today);
-  monday.setDate(today.getDate() - ((day + 6) % 7));
+  monday.setDate(today.getDate() - ((day + 6) % 7) + offset * 7);
   return DAYS.map((label, i) => {
     const d = new Date(monday);
     d.setDate(monday.getDate() + i);
@@ -273,13 +273,18 @@ export function usePlannerData(userId) {
           });
 
           // Sort carry items into their target days (incomplete tasks stay on their original weekday)
-          const newTasks = { mon: [], tue: [], wed: [], thu: [], fri: [], sat: [], sun: [], later: pt.later || [] };
+          // Check if next week already has tasks (from forward navigation)
+          const existingDoc = await readDoc(weekPath);
+          const existingTasks = (existingDoc && existingDoc !== READ_ERROR && existingDoc.tasks) ? existingDoc.tasks : null;
+          const newTasks = existingTasks
+            ? { mon: [...(existingTasks.mon || [])], tue: [...(existingTasks.tue || [])], wed: [...(existingTasks.wed || [])], thu: [...(existingTasks.thu || [])], fri: [...(existingTasks.fri || [])], sat: [...(existingTasks.sat || [])], sun: [...(existingTasks.sun || [])], later: [...(existingTasks.later || []), ...(pt.later || [])] }
+            : { mon: [], tue: [], wed: [], thu: [], fri: [], sat: [], sun: [], later: pt.later || [] };
           carry.forEach((t) => {
-            if (t._targetDay && dayKeys.includes(t._targetDay)) {
-              const { _targetDay, ...clean } = t;
-              newTasks[_targetDay].push(clean);
-            } else {
-              newTasks.mon.push(t); // fallback for items without a source day
+            const day = (t._targetDay && dayKeys.includes(t._targetDay)) ? t._targetDay : "mon";
+            const { _targetDay, ...clean } = t;
+            // Avoid duplicates: skip if same text already exists on the same day
+            if (!newTasks[day].some((x) => x.text === clean.text && !x.done)) {
+              newTasks[day].push(clean);
             }
           });
 
@@ -526,6 +531,19 @@ export function usePlannerData(userId) {
   const saveRecurringRules = useCallback((items) => { writeDoc(`users/${userId}/meta/recurringRules`, { items }); }, [userId]);
   const saveMoods = useCallback((entries) => { setData((p) => p ? { ...p, moods: entries } : p); writeDoc(`users/${userId}/meta/moods`, { entries }); }, [userId]);
 
+  // ─── Non-current week read/write ───
+  const loadWeekTasks = useCallback(async (weekKey) => {
+    if (!userId) return null;
+    const doc = await readDoc(`users/${userId}/weeks/${weekKey}`);
+    if (doc && doc !== READ_ERROR && doc.tasks) return doc.tasks;
+    return null;
+  }, [userId]);
+
+  const saveWeekTasks = useCallback((weekKey, tasks) => {
+    if (!userId) return;
+    writeDoc(`users/${userId}/weeks/${weekKey}`, { tasks, _lastModified: Date.now() });
+  }, [userId]);
+
   // ─── Backup System ───
   const MAX_BACKUPS = 7;
 
@@ -665,7 +683,7 @@ export function usePlannerData(userId) {
     return () => clearInterval(interval);
   }, [userId, data !== null, createBackup]);
 
-  return { data, loading, save, saveQuiet, saveFuture, saveNotebooks, saveJournal, saveContacts, saveArchive, saveDailyHabits, saveWeeklyHabits, saveSettings, saveRecurringRules, saveMoods, getBackups, restoreBackup, exportData };
+  return { data, loading, save, saveQuiet, saveFuture, saveNotebooks, saveJournal, saveContacts, saveArchive, saveDailyHabits, saveWeeklyHabits, saveSettings, saveRecurringRules, saveMoods, loadWeekTasks, saveWeekTasks, getBackups, restoreBackup, exportData };
 }
 
 export const DEFAULT_CATEGORIES = [
@@ -673,6 +691,7 @@ export const DEFAULT_CATEGORIES = [
   { id: "cat_cooking", name: "Cooking", color: "#E8C9B7" },
   { id: "cat_learning", name: "Learning", color: "#D5E8B7" },
   { id: "cat_crafts", name: "Crafts/Art/Reading", color: "#D5B7E8" },
+  { id: "cat_sporas", name: "Sporas", color: "#E8B7D5" },
   { id: "cat_events", name: "Events", color: "#B7E8D5" },
   { id: "cat_volunteering", name: "Volunteering", color: "#E8D5B7" },
   { id: "cat_gardening", name: "Gardening", color: "#c8e8b0" },

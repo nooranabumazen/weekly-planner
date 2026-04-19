@@ -101,8 +101,9 @@ const CATEGORY_KEYWORDS = {
   cat_cooking: ["cook", "bake", "recipe", "meal", "dinner", "lunch", "breakfast", "prep food", "grocery", "groceries", "kitchen", "roast", "grill", "fry", "soup", "salad"],
   cat_learning: ["learn", "module","study", "course", "lecture", "class", "homework", "research", "practice", "lesson", "tutorial", "certificate", "training", "coursera"],
   cat_crafts: ["read", "book", "draw", "paint", "craft", "art", "sketch", "sew", "knit", "crochet", "journal", "write", "pottery", "collage", "creative", "tatreez", "embroidery"],
+  cat_sporas: ["sporas", "poetry", "land day", "olive branch", "magazine", "diaspora", "abulhawa", "book club"],
   cat_events: ["event", "party", "birthday", "dinner party", "gathering", "celebration", "concert", "show", "festival", "conference", "workshop"],
-  cat_volunteering: ["volunteer", "community", "donate", "fundraise", "advocacy"],
+  cat_volunteering: ["volunteer", "red raccoon", "bike rescue", "house of friendship", "community", "donate", "fundraise", "advocacy"],
   cat_gardening: ["garden", "plant", "seed", "water", "prune", "harvest", "compost", "soil", "flower", "weed", "transplant", "mulch", "jerash"],
   cat_selfcare: ["shower", "tweeze", "brush", "hair", "nails", "exercise", "shave"],
 };
@@ -833,8 +834,8 @@ function TaskCard({ task, columnId, categories, onDragStart, onToggle, onDelete,
       onTouchCancel={cancelLongPress}
       style={{
         padding: isMobile ? "8px 12px" : "2px 4px",
-        borderLeft: `3px solid ${catColor}`,
-        background: hover ? "var(--bg-hover)" : `${catColor}18`,
+        borderLeft: task._isUpcoming ? `3px dashed var(--text-faint)` : `3px solid ${catColor}`,
+        background: hover ? "var(--bg-hover)" : task._isUpcoming ? "transparent" : `${catColor}18`,
         cursor: editing ? "text" : "grab",
         opacity: task.done ? 0.45 : 1, transition: "opacity 0.2s, background 0.15s",
         fontSize: isMobile ? 16 : (taskFontSize || 13), lineHeight: 1.4, userSelect: "none", position: "relative",
@@ -853,6 +854,7 @@ function TaskCard({ task, columnId, categories, onDragStart, onToggle, onDelete,
       ) : (
         <span onDoubleClick={() => { setEditing(true); setEditText(task.text); }}
           style={{ flex: 1, minWidth: 0, textDecoration: task.done ? "line-through" : "none", cursor: "pointer", color: task.done ? "var(--text-muted)" : "var(--text)", wordBreak: "break-word" }}>
+          {task._isUpcoming && <span title="From upcoming" style={{ fontSize: 10, marginRight: 4, opacity: 0.6 }}>{"\u{1F4C5}"}</span>}
           {task.startTime && <span style={{ fontSize: 10, color: "var(--text-muted)", marginRight: 5, fontFamily: "'JetBrains Mono', monospace", fontWeight: 600 }}>{formatTime12(task.startTime)}</span>}
           <HighlightText text={task.text} query={highlightQuery} />
           {task.recurring && <span title={`Repeats ${task.recurring.type === "weeks" ? task.recurring.count + " weeks" : task.recurring.type === "monthly" ? "monthly" : "until " + task.recurring.until}`} style={{ fontSize: 9, marginLeft: 4, color: "var(--text-faint)" }}>{"\uD83D\uDD01"}</span>}
@@ -1069,10 +1071,10 @@ function DaySection({ dayInfo, columnId, tasks, categories, onDragStart, onDrop,
         </span>
         {!isLater && <span style={{ fontSize: isMobile ? 14 : 11, color: "var(--text-muted)", fontWeight: 400 }}>{dayInfo?.date}</span>}
         {isToday && <span style={{ fontSize: isMobile ? 10 : 8, background: "#8B6914", color: "#fff", padding: "1px 5px", borderRadius: 3, fontWeight: 600 }}>TODAY</span>}
-        <button onClick={() => setAdding(true)} title="Add task"
+        {onAdd && <button onClick={() => setAdding(true)} title="Add task"
           style={{ marginLeft: "auto", background: "none", border: "none", cursor: "pointer", color: "var(--text-faint)", fontSize: isMobile ? 16 : 13, fontFamily: "'JetBrains Mono', monospace", fontWeight: 400, padding: 0, width: isMobile ? 22 : 18, height: isMobile ? 22 : 18, display: "flex", alignItems: "center", justifyContent: "center", lineHeight: 1 }}
           onMouseEnter={(e) => (e.target.style.color = "var(--text)")}
-          onMouseLeave={(e) => (e.target.style.color = "var(--text-faint)")}>+</button>
+          onMouseLeave={(e) => (e.target.style.color = "var(--text-faint)")}>+</button>}
       </div>
 
       {/* Task list */}
@@ -1087,8 +1089,8 @@ function DaySection({ dayInfo, columnId, tasks, categories, onDragStart, onDrop,
         <DoneCollapse doneTasks={doneTasks} columnId={columnId} categories={categories} onDragStart={onDragStart} onToggle={onToggle} onDelete={onDelete} onEdit={onEdit} onChangeCategory={onChangeCategory} onMove={onMove} onSetRecurring={onSetRecurring} onSetTime={onSetTime} onRemoveTime={onRemoveTime} highlightQuery={highlightQuery} isMobile={isMobile} taskFontSize={taskFontSize} />
       </div>
 
-      {/* Add task form (only shown when adding) */}
-      {adding && (
+      {/* Add task form (only shown when adding and not read-only) */}
+      {onAdd && adding && (
         <div style={{ padding: isMobile ? "6px 10px 6px 20px" : "4px 10px 4px 26px" }}>
           <input ref={addRef} value={newText} onChange={isLater ? (e) => setNewText(e.target.value) : handleTextChange}
             onKeyDown={(e) => { if (e.key === "Enter") submitAdd(); if (e.key === "Escape") setAdding(false); }}
@@ -1520,7 +1522,7 @@ function FutureSidebar({ futureTasks, onAddFuture, onDeleteFuture, onEditFuture,
   const submitAdd = () => { if (newText.trim() && newDate) { onAddFuture(newText.trim(), newDate); setNewText(""); setNewDate(""); } setAdding(false); };
   const count = futureTasks.length;
   const taskDates = new Set(futureTasks.map((t) => t.date));
-  const todayStr = new Date().toISOString().split("T")[0];
+  const todayStr = (() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; })();
 
   const MNAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
   const DLABELS = ["M","T","W","T","F","S","S"];
@@ -1669,7 +1671,7 @@ function FutureSidebar({ futureTasks, onAddFuture, onDeleteFuture, onEditFuture,
 }
 
 /* ─── Main Planner ─── */
-export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSaveNotebooks, onSaveJournal, onSaveContacts, onSaveArchive, onSaveDailyHabits, onSaveWeeklyHabits, onSaveSettings, onSaveRecurringRules, onSaveMoods, onGetBackups, onRestoreBackup, onExportData, onLogout, userEmail, userId }) {
+export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSaveNotebooks, onSaveJournal, onSaveContacts, onSaveArchive, onSaveDailyHabits, onSaveWeeklyHabits, onSaveSettings, onSaveRecurringRules, onSaveMoods, onLoadWeekTasks, onSaveWeekTasks, onGetBackups, onRestoreBackup, onExportData, onLogout, userEmail, userId }) {
   const isMobile = useIsMobile();
   const [mobileAddingFuture, setMobileAddingFuture] = useState(false);
   const [mobileFutureCtx, setMobileFutureCtx] = useState(null);
@@ -1685,8 +1687,50 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
   }, [mobileFutureCtx]);
   const [mobileNewFutureText, setMobileNewFutureText] = useState("");
   const [mobileNewFutureDate, setMobileNewFutureDate] = useState("");
-  const weekDates = getWeekDates();
-  const { tasks, futureTasks, dailyHabits, weeklyHabits, notes, habitHistory, moods } = data;
+  const [weekOffset, setWeekOffset] = useState(0);
+  const isCurrentWeek = weekOffset === 0;
+  const isPastWeek = weekOffset < 0;
+  const isFutureWeek = weekOffset > 0;
+  const isReadOnly = isPastWeek;
+  const weekDates = getWeekDates(weekOffset);
+  const viewedWeekKey = (() => { const d = new Date(); d.setDate(d.getDate() - ((d.getDay() + 6) % 7) + weekOffset * 7); return formatLocalDate(d); })();
+  // Off-week task loading
+  const [offWeekTasks, setOffWeekTasks] = useState(null);
+  const [offWeekLoading, setOffWeekLoading] = useState(false);
+  useEffect(() => {
+    if (weekOffset === 0) { setOffWeekTasks(null); return; }
+    let cancelled = false;
+    setOffWeekLoading(true);
+    onLoadWeekTasks(viewedWeekKey).then((t) => {
+      if (!cancelled) { setOffWeekTasks(t); setOffWeekLoading(false); }
+    }).catch(() => { if (!cancelled) { setOffWeekTasks(null); setOffWeekLoading(false); } });
+    return () => { cancelled = true; };
+  }, [weekOffset, viewedWeekKey]);
+  const { tasks: currentTasks, futureTasks, dailyHabits, weeklyHabits, notes, habitHistory, moods } = data;
+  // Merge upcoming tasks into future week view
+  const viewedTasks = (() => {
+    if (isCurrentWeek) return currentTasks;
+    const base = offWeekTasks || { mon: [], tue: [], wed: [], thu: [], fri: [], sat: [], sun: [], later: [] };
+    if (!isFutureWeek || !futureTasks) return base;
+    // Find upcoming tasks whose dates fall in this viewed week
+    const dayKeys = ["mon","tue","wed","thu","fri","sat","sun"];
+    const weekDateMap = {};
+    weekDates.forEach((wd, i) => { weekDateMap[wd.fullDate] = dayKeys[i]; });
+    const merged = { ...base };
+    dayKeys.forEach((d) => { merged[d] = [...(base[d] || [])]; });
+    merged.later = [...(base.later || [])];
+    futureTasks.forEach((ft) => {
+      const dayCol = weekDateMap[ft.date];
+      if (dayCol) {
+        // Check for duplicates
+        if (!merged[dayCol].some((t) => t.text === ft.text && t._futureId === ft.id)) {
+          merged[dayCol].push({ id: ft.id, text: ft.text, done: false, category: "cat_none", startTime: ft.startTime || undefined, _futureId: ft.id, _isUpcoming: true });
+        }
+      }
+    });
+    return merged;
+  })();
+  const tasks = viewedTasks;
   const [activeView, setActiveViewState] = useState(() => {
     try { return localStorage.getItem("planner_activeTab") || "planner"; } catch { return "planner"; }
   });
@@ -1804,12 +1848,26 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
   }, []);
 
   const update = (changes) => {
-    const latest = dataRef.current;
-    onSave({ ...latest, ...changes });
+    if (weekOffset === 0) {
+      // Current week: use the normal save path
+      const latest = dataRef.current;
+      onSave({ ...latest, ...changes });
+    } else if (weekOffset > 0 && changes.tasks) {
+      // Future week: save to the off-week doc and update local state
+      // Filter out upcoming-task ghosts before saving (they live in futureTasks, not in the week doc)
+      const cleanTasks = {};
+      const dayKeys = ["mon","tue","wed","thu","fri","sat","sun","later"];
+      dayKeys.forEach((d) => {
+        cleanTasks[d] = (changes.tasks[d] || []).filter((t) => !t._isUpcoming);
+      });
+      onSaveWeekTasks(viewedWeekKey, cleanTasks);
+      setOffWeekTasks(cleanTasks);
+    }
   };
 
-  // Auto-promote upcoming tasks whose dates fall within the current week
+  // Auto-promote upcoming tasks whose dates fall within the current week (only when viewing current week)
   useEffect(() => {
+    if (weekOffset !== 0) return;
     if (!futureTasks || futureTasks.length === 0) return;
     const weekDateMap = {};
     const dayKeys = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
@@ -2161,6 +2219,36 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
   const addFuture = (text, date) => { const parsed = parseTimeFromText(text); const finalText = parsed ? parsed.cleanText : text; const entry = { id: "f" + Date.now(), text: finalText, date }; if (parsed) entry.startTime = parsed.startTime; const nf = [...futureTasks, entry]; update({ futureTasks: nf }); onSaveFuture(nf); };
   const deleteFuture = (id) => { pushUndo(); const nf = futureTasks.filter((t) => t.id !== id); update({ futureTasks: nf }); onSaveFuture(nf); };
   const editFuture = (id, text, date, startTime) => { const nf = futureTasks.map((t) => { if (t.id !== id) return t; const u = { ...t, text: text !== undefined ? text : t.text, date: date !== undefined ? date : t.date }; if (startTime === null) delete u.startTime; else if (startTime !== undefined) u.startTime = startTime; return u; }); update({ futureTasks: nf }); onSaveFuture(nf); };
+
+  // Wrappers that intercept operations on upcoming-task ghosts in the week view
+  // and redirect them to futureTasks instead of the week doc
+  const wrappedDeleteTask = useCallback((col, id) => {
+    const task = (tasks[col] || []).find((t) => t.id === id);
+    if (task && task._isUpcoming && task._futureId) {
+      deleteFuture(task._futureId);
+      return;
+    }
+    deleteTask(col, id);
+  }, [tasks, deleteTask]);
+
+  const wrappedEditTask = useCallback((col, id, text) => {
+    const task = (tasks[col] || []).find((t) => t.id === id);
+    if (task && task._isUpcoming && task._futureId) {
+      editFuture(task._futureId, text);
+      return;
+    }
+    editTask(col, id, text);
+  }, [tasks, editTask]);
+
+  const wrappedToggleDone = useCallback((col, id) => {
+    const task = (tasks[col] || []).find((t) => t.id === id);
+    if (task && task._isUpcoming && task._futureId) {
+      // Completing an upcoming task: remove from futureTasks
+      deleteFuture(task._futureId);
+      return;
+    }
+    toggleDone(col, id);
+  }, [tasks, toggleDone]);
   const updateNotebooks = (nbs) => { update({ notebooks: nbs }); onSaveNotebooks(nbs); };
   const updateJournal = (j) => { update({ journal: j }); onSaveJournal(j); };
   const updateContacts = (c) => { update({ contacts: c }); onSaveContacts(c); };
@@ -2331,9 +2419,27 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
 
         {activeView === "planner" && (
           <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
-            <div style={{ padding: isMobile ? "8px 12px 4px" : "10px 16px 6px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap" }}>
+            <div style={{ padding: isMobile ? "8px 12px 4px" : "10px 16px 6px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
               <h1 style={{ margin: 0, fontSize: isMobile ? 20 : 18, fontWeight: 700, letterSpacing: -0.5 }}>Weekly Planner</h1>
-              <span style={{ fontSize: isMobile ? 13 : 11, color: "var(--text-muted)" }}>{weekDates[0]?.date} - {weekDates[6]?.date}</span>
+              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <button onClick={() => setWeekOffset(weekOffset - 1)} title="Previous week"
+                  style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", fontSize: 16, padding: "0 4px", lineHeight: 1 }}
+                  onMouseEnter={(e) => e.target.style.color = "var(--text)"} onMouseLeave={(e) => e.target.style.color = "var(--text-muted)"}>{"\u2039"}</button>
+                <span style={{ fontSize: isMobile ? 13 : 11, color: isCurrentWeek ? "var(--text-muted)" : "var(--accent)", fontWeight: isCurrentWeek ? 400 : 600 }}>{weekDates[0]?.date} - {weekDates[6]?.date}</span>
+                <button onClick={() => setWeekOffset(weekOffset + 1)} title="Next week"
+                  style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", fontSize: 16, padding: "0 4px", lineHeight: 1 }}
+                  onMouseEnter={(e) => e.target.style.color = "var(--text)"} onMouseLeave={(e) => e.target.style.color = "var(--text-muted)"}>{"\u203A"}</button>
+              </div>
+              {!isCurrentWeek && (
+                <button onClick={() => setWeekOffset(0)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-faint)", fontSize: 9, padding: 0, textDecoration: "underline", fontFamily: "'JetBrains Mono', monospace" }}
+                  onMouseEnter={(e) => e.target.style.color = "var(--text-muted)"} onMouseLeave={(e) => e.target.style.color = "var(--text-faint)"}>this week</button>
+              )}
+              {isReadOnly && (
+                <span style={{ fontSize: 9, background: "var(--border)", color: "var(--text-muted)", padding: "1px 6px", borderRadius: 3, fontFamily: "'JetBrains Mono', monospace", fontWeight: 600 }}>VIEW ONLY</span>
+              )}
+              {offWeekLoading && (
+                <span style={{ fontSize: 9, color: "var(--text-faint)" }}>loading...</span>
+              )}
             </div>
             {!isMobile && layout !== "horizontal" && (
               <div style={{ display: "flex", alignItems: "center", borderBottom: "1px solid var(--border)", padding: "0 12px" }}>
@@ -2361,8 +2467,8 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
                 {(isMobile || layout === "vertical") ? (
                   <div style={{ padding: isMobile ? "4px 4px" : "4px 8px", display: "flex", flexDirection: "column", gap: 2 }}>
                     {DAYS.map((day, i) => (
-                      <DaySection key={day} dayInfo={weekDates[i]} columnId={day.toLowerCase()} tasks={tasks[day.toLowerCase()]} categories={categories}
-                        onDragStart={() => {}} onDrop={handleDrop} onToggle={toggleDone} onDelete={deleteTask} onEdit={editTask} onAdd={addTask} onChangeCategory={changeCategory} isMobile={isMobile} onMove={moveTask} onSetRecurring={setRecurring} onSetTime={setTaskTime} onRemoveTime={removeTaskTime} highlightQuery={highlightQuery} taskFontSize={taskFontSize} />
+                      <DaySection key={day} dayInfo={weekDates[i]} columnId={day.toLowerCase()} tasks={tasks[day.toLowerCase()] || []} categories={categories}
+                        onDragStart={() => {}} onDrop={isReadOnly ? () => {} : handleDrop} onToggle={isReadOnly ? () => {} : wrappedToggleDone} onDelete={isReadOnly ? () => {} : wrappedDeleteTask} onEdit={isReadOnly ? () => {} : wrappedEditTask} onAdd={isReadOnly ? null : addTask} onChangeCategory={isReadOnly ? () => {} : changeCategory} isMobile={isMobile} onMove={isReadOnly ? () => {} : moveTask} onSetRecurring={isReadOnly ? () => {} : setRecurring} onSetTime={isReadOnly ? () => {} : setTaskTime} onRemoveTime={isReadOnly ? () => {} : removeTaskTime} highlightQuery={highlightQuery} taskFontSize={taskFontSize} />
                     ))}
                     {isMobile && (
                       <DaySection dayInfo={null} columnId="later" tasks={tasks.later} categories={categories} onDragStart={() => {}} onDrop={handleDrop}
