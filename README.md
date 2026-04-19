@@ -4,7 +4,6 @@
 
 Plan your tasks, schedule them by time, track habits, log your mood, write journal entries, manage contacts, and take notes, all in one place. Built as a Progressive Web App with Firebase sync and offline support.
 
-<!-- Replace with your own screenshot -->
 ![Main planner view](screenshots/planner-view.png)
 
 ---
@@ -99,7 +98,6 @@ A toggle button in the left sidebar (above the search icon) flips between the tw
 
 In horizontal mode, drag handles at the top and bottom of the time grid let you hide early-morning or late-night hours.
 
-<!-- Replace with a screenshot showing horizontal column layout -->
 ![Layout options](screenshots/layout-options.png)
 
 ### Anchor-Based Task Ordering
@@ -141,7 +139,6 @@ A built-in notes system with multiple notebooks and a full rich text editor.
 
 Notebooks are listed in a collapsible sidebar. Drag to reorder. Double-click to rename.
 
-<!-- Replace with a screenshot of the notebooks panel -->
 ![Notebooks](screenshots/notebooks.png)
 
 ### Journal
@@ -150,7 +147,6 @@ Write daily entries with the same rich text editor. A mini calendar shows green 
 
 Mobile shows a feed-style view with 4-line previews of recent entries. Tap any entry to expand and edit.
 
-<!-- Replace with a screenshot of the journal -->
 ![Journal](screenshots/journal.png)
 
 ### People and Birthday Reminders
@@ -196,8 +192,12 @@ On screens under 640px, the app switches to a mobile-optimized layout:
 - Inputs sized to prevent iOS auto-zoom
 - Mobile upcoming view supports the same set-time / edit / delete options as desktop
 
-<!-- Replace with a screenshot on a phone -->
-![Mobile view planner](screenshots/mobile-planner.png) ![Mobile view habits](screenshots/mobile-habits.png) ![Mobile view journal](screenshots/mobile-journal.png) ![Mobile view settings](screenshots/mobile-settings.png)
+<p align="center">
+  <img src="screenshots/mobile-planner.png" alt="Mobile Planner" width="24%" />
+  <img src="screenshots/mobile-habits.png" alt="Mobile Habits" width="24%" />
+  <img src="screenshots/mobile-journal.png" alt="Mobile Journal" width="24%" />
+  <img src="screenshots/mobile-settings.png" alt="Mobile Settings" width="24%" />
+</p>
 
 ### Cross-Device Sync
 
@@ -281,26 +281,5 @@ SETUP_GUIDE.md         Detailed setup instructions
 
 ---
 
-## Screenshots
-
-To add your own screenshots, create a `screenshots/` folder and save images with these names:
-
-| Filename | What to capture |
-|---|---|
-| `planner-view.png` | Main weekly view with tasks |
-| `tasks-categories.png` | Tasks showing category color stripes |
-| `layout-options.png` | Horizontal column layout with time grid |
-| `habits.png` | Habits section with daily and weekly |
-| `mood.png` | Mood tracker with the 7-face week view |
-| `notebooks.png` | Notebook editor, ideally with a table |
-| `journal.png` | Journal with calendar sidebar visible |
-| `dark-mode.png` | Any view in dark mode |
-| `mobile.png` | The app on a phone |
-
-Then commit and push. GitHub renders them automatically.
-
----
-
 ## License
 
-This is a personal project. You own it completely. Do whatever you want with it.
