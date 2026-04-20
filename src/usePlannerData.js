@@ -326,14 +326,22 @@ export function usePlannerData(userId) {
               if (targetDay) { shouldRepeat = true; newRule = { ...rule }; }
             }
             if (shouldRepeat) {
-              const day = targetDay || rule.day || "mon";
-              const existing = dayKeys.includes(day) ? newTasks[day].some((t) => t.text === rule.text) : newTasks.later.some((t) => t.text === rule.text);
-              if (!existing) {
-                const newTask = { id: "t" + Date.now() + "_" + Math.random().toString(36).slice(2,6), text: rule.text, done: false, category: rule.category || "cat_none", recurring: newRule || undefined };
-                if (dayKeys.includes(day)) newTasks[day].push(newTask);
-                else newTasks.later.push(newTask);
+              // Check if this week is in the skip list
+              if (rule.skipWeeks && rule.skipWeeks.includes(wk)) {
+                // Skipped this week, but keep the rule for future weeks (remove this week from skipWeeks)
+                const cleanedRule = { ...rule, skipWeeks: rule.skipWeeks.filter((w) => w !== wk) };
+                if (newRule) updatedRules.push({ ...newRule, skipWeeks: cleanedRule.skipWeeks });
+                else updatedRules.push(cleanedRule);
+              } else {
+                const day = targetDay || rule.day || "mon";
+                const existing = dayKeys.includes(day) ? newTasks[day].some((t) => t.text === rule.text) : newTasks.later.some((t) => t.text === rule.text);
+                if (!existing) {
+                  const newTask = { id: "t" + Date.now() + "_" + Math.random().toString(36).slice(2,6), text: rule.text, done: false, category: rule.category || "cat_none", recurring: newRule || undefined };
+                  if (dayKeys.includes(day)) newTasks[day].push(newTask);
+                  else newTasks.later.push(newTask);
+                }
+                if (newRule) updatedRules.push(newRule);
               }
-              if (newRule) updatedRules.push(newRule);
             }
             // Monthly rules persist forever, weekly/until rules expire when done
             if (!shouldRepeat && rule.type === "monthly") updatedRules.push(rule);
