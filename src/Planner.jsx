@@ -501,13 +501,14 @@ function ResizeHandle({ currentHeight, minHeight, maxHeight, onHeightChange }) {
 }
 
 /* ─── Habits Tracker ─── */
-function HabitsTracker({ dailyHabits, weeklyHabits, habitHistory, moods, onToggleDaily, onToggleWeekly, onAddDaily, onAddWeekly, onDeleteDaily, onDeleteWeekly, onEditDaily, onEditWeekly, onReorderDaily, onReorderWeekly, onSaveMoods }) {
+function HabitsTracker({ dailyHabits, weeklyHabits, habitHistory, moods, onToggleDaily, onToggleWeekly, onAddDaily, onAddWeekly, onDeleteDaily, onDeleteWeekly, onEditDaily, onEditWeekly, onEditWeeklyNote, onReorderDaily, onReorderWeekly, onSaveMoods }) {
   const [addingDaily, setAddingDaily] = useState(false);
   const [addingWeekly, setAddingWeekly] = useState(false);
   const [newDaily, setNewDaily] = useState("");
   const [newWeekly, setNewWeekly] = useState("");
   const [editingHabit, setEditingHabit] = useState(null);
   const [editText, setEditText] = useState("");
+  const [weeklyNoteId, setWeeklyNoteId] = useState(null);
   const [splitPct, setSplitPctState] = useState(() => { try { const v = localStorage.getItem("planner_habitSplit"); return v ? parseFloat(v) : 55; } catch { return 55; } });
   const setSplitPct = (v) => { setSplitPctState(v); try { localStorage.setItem("planner_habitSplit", v); } catch {} };
   const [dragHabit, setDragHabit] = useState(null);
@@ -663,9 +664,10 @@ function HabitsTracker({ dailyHabits, weeklyHabits, habitHistory, moods, onToggl
             <div style={{ fontSize: 9, fontWeight: 600, letterSpacing: 0.5, fontFamily: "'JetBrains Mono', monospace" }}>&nbsp;</div>
           </div> {/* Invisible spacer matching daily habits day header row */}
           {weeklyHabits.map((h) => (
-            <div key={h.id} draggable onDragStart={() => setDragHabit({ id: h.id, type: "weekly" })} onDragOver={(e) => e.preventDefault()} onDrop={() => handleWeeklyDrop(h.id)}
+            <div key={h.id}>
+            <div draggable onDragStart={() => setDragHabit({ id: h.id, type: "weekly" })} onDragOver={(e) => e.preventDefault()} onDrop={() => handleWeeklyDrop(h.id)}
               style={{ display: "flex", alignItems: "center", gap: 6, cursor: "grab" }}>
-              <div onClick={() => onToggleWeekly(h.id)} style={chk(h.done)}>{h.done && "\u2713"}</div>
+              <div onClick={() => { onToggleWeekly(h.id); if (!h.done) setWeeklyNoteId(h.id); else setWeeklyNoteId(null); }} style={chk(h.done)}>{h.done && "\u2713"}</div>
               {editingHabit?.id === h.id && editingHabit?.type === "weekly" ? (
                 <input ref={editRef} value={editText} onChange={(e) => setEditText(e.target.value)} onBlur={saveEdit}
                   onKeyDown={(e) => { if (e.key === "Enter") saveEdit(); if (e.key === "Escape") setEditingHabit(null); }}
@@ -674,7 +676,16 @@ function HabitsTracker({ dailyHabits, weeklyHabits, habitHistory, moods, onToggl
                 <span onDoubleClick={() => { setEditingHabit({ id: h.id, type: "weekly" }); setEditText(h.name); }}
                   style={{ fontSize: 12, color: h.done ? "var(--text-muted)" : "var(--text)", textDecoration: h.done ? "line-through" : "none", wordBreak: "break-word", minWidth: 0, cursor: "grab" }}>{h.name}</span>
               )}
-              <button onClick={() => onDeleteWeekly(h.id)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-faint)", fontSize: 13, padding: 0, marginLeft: "auto", fontWeight: 600, flexShrink: 0 }} onMouseEnter={(e) => (e.target.style.color = "#c44")} onMouseLeave={(e) => (e.target.style.color = "var(--text-faint)")}>&times;</button>
+              {h.done && h.note && <span title={h.note} style={{ fontSize: 9, color: "var(--text-faint)", marginLeft: "auto", flexShrink: 0, cursor: "help" }}>{"\u{1F4AC}"}</span>}
+              <button onClick={() => onDeleteWeekly(h.id)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-faint)", fontSize: 13, padding: 0, marginLeft: h.done && h.note ? 4 : "auto", fontWeight: 600, flexShrink: 0 }} onMouseEnter={(e) => (e.target.style.color = "#c44")} onMouseLeave={(e) => (e.target.style.color = "var(--text-faint)")}>&times;</button>
+            </div>
+            {weeklyNoteId === h.id && h.done && (
+              <input value={h.note || ""} onChange={(e) => onEditWeeklyNote && onEditWeeklyNote(h.id, e.target.value)} placeholder="Note (e.g. recipe name, details...)"
+                onKeyDown={(e) => { if (e.key === "Enter") setWeeklyNoteId(null); }}
+                onBlur={() => setWeeklyNoteId(null)}
+                autoFocus
+                style={{ width: "100%", border: "1px solid var(--border)", borderRadius: 3, padding: "3px 6px", fontSize: 10, outline: "none", background: "var(--input-bg)", color: "var(--text)", boxSizing: "border-box", marginTop: 2, marginBottom: 2 }} />
+            )}
             </div>
           ))}
           {addingWeekly ? (<input ref={weeklyRef} value={newWeekly} onChange={(e) => setNewWeekly(e.target.value)} onBlur={addWH} onKeyDown={(e) => { if (e.key === "Enter") addWH(); if (e.key === "Escape") setAddingWeekly(false); }} placeholder="Habit name..." style={{ border: "1px solid var(--border)", borderRadius: 4, padding: "3px 6px", fontSize: 11, outline: "none", background: "var(--input-bg)", color: "var(--text)" }} />
@@ -1233,7 +1244,7 @@ function DropZone({ onDrop }) {
 }
 
 /* ─── Day Section ─── */
-function DaySection({ dayInfo, columnId, tasks, categories, onDragStart, onDrop, onToggle, onDelete, onEdit, onAdd, onChangeCategory, isMobile, onMove, onSetRecurring, onSetTime, onRemoveTime, onSkipRecurring, projects, onAssignToProject, onUnlink, highlightQuery, taskFontSize }) {
+function DaySection({ dayInfo, columnId, tasks, categories, onDragStart, onDrop, onToggle, onDelete, onEdit, onAdd, onChangeCategory, isMobile, onMove, onSetRecurring, onSetTime, onRemoveTime, onSkipRecurring, projects, onAssignToProject, onUnlink, highlightQuery, taskFontSize, isReadOnly }) {
   const [dragOver, setDragOver] = useState(false);
   const [adding, setAdding] = useState(false);
   const [newText, setNewText] = useState("");
@@ -1320,7 +1331,7 @@ function DaySection({ dayInfo, columnId, tasks, categories, onDragStart, onDrop,
           </div>
         ))}
         <DropZone onDrop={(e) => handleDropAtIndex(e, null)} />
-        <DoneCollapse doneTasks={doneTasks} columnId={columnId} categories={categories} onDragStart={onDragStart} onToggle={onToggle} onDelete={onDelete} onEdit={onEdit} onChangeCategory={onChangeCategory} onMove={onMove} onSetRecurring={onSetRecurring} onSkipRecurring={onSkipRecurring} onSetTime={onSetTime} onRemoveTime={onRemoveTime} projects={projects} onAssignToProject={onAssignToProject} onUnlink={onUnlink} highlightQuery={highlightQuery} isMobile={isMobile} taskFontSize={taskFontSize} />
+        <DoneCollapse doneTasks={doneTasks} columnId={columnId} categories={categories} onDragStart={onDragStart} onToggle={onToggle} onDelete={onDelete} onEdit={onEdit} onChangeCategory={onChangeCategory} onMove={onMove} onSetRecurring={onSetRecurring} onSkipRecurring={onSkipRecurring} onSetTime={onSetTime} onRemoveTime={onRemoveTime} projects={projects} onAssignToProject={onAssignToProject} onUnlink={onUnlink} highlightQuery={highlightQuery} isMobile={isMobile} taskFontSize={taskFontSize} defaultExpanded={isReadOnly} />
       </div>
 
       {/* Add task form (only shown when adding and not read-only) */}
@@ -1636,8 +1647,8 @@ function UnscheduledCol({ col, untimed, done, categories, taskFontSize, toggleDo
   );
 }
 
-function DoneCollapse({ doneTasks, columnId, categories, onDragStart, onToggle, onDelete, onEdit, onChangeCategory, onMove, onSetRecurring, onSetTime, onRemoveTime, onSkipRecurring, projects, onAssignToProject, onUnlink, highlightQuery, isToday, isMobile, taskFontSize }) {
-  const [expanded, setExpanded] = useState(false);
+function DoneCollapse({ doneTasks, columnId, categories, onDragStart, onToggle, onDelete, onEdit, onChangeCategory, onMove, onSetRecurring, onSetTime, onRemoveTime, onSkipRecurring, projects, onAssignToProject, onUnlink, highlightQuery, isToday, isMobile, taskFontSize, defaultExpanded }) {
+  const [expanded, setExpanded] = useState(defaultExpanded || false);
   if (doneTasks.length === 0) return null;
   return (
     <>
@@ -1701,7 +1712,7 @@ function DayColumn({ dayInfo, columnId, tasks, categories, onDragStart, onDrop, 
           </div>
         ))}
         <DropZone onDrop={(e) => handleDropAtIndex(e, null)} />
-        <DoneCollapse doneTasks={doneTasks} columnId={columnId} categories={categories} onDragStart={onDragStart} onToggle={onToggle} onDelete={onDelete} onEdit={onEdit} onChangeCategory={onChangeCategory} onMove={onMove} onSetRecurring={onSetRecurring} onSkipRecurring={onSkipRecurring} onSetTime={onSetTime} onRemoveTime={onRemoveTime} projects={projects} onAssignToProject={onAssignToProject} onUnlink={onUnlink} highlightQuery={highlightQuery} isToday={isToday} taskFontSize={taskFontSize} />
+        <DoneCollapse doneTasks={doneTasks} columnId={columnId} categories={categories} onDragStart={onDragStart} onToggle={onToggle} onDelete={onDelete} onEdit={onEdit} onChangeCategory={onChangeCategory} onMove={onMove} onSetRecurring={onSetRecurring} onSkipRecurring={onSkipRecurring} onSetTime={onSetTime} onRemoveTime={onRemoveTime} projects={projects} onAssignToProject={onAssignToProject} onUnlink={onUnlink} highlightQuery={highlightQuery} isToday={isToday} taskFontSize={taskFontSize} defaultExpanded={isReadOnly} />
       </div>
       {adding ? (
         <div style={{ marginTop: 2, flexShrink: 0 }}>
@@ -2513,6 +2524,7 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
   const deleteWeekly = (id) => { const updated = weeklyHabits.filter((h) => h.id !== id); update({ weeklyHabits: updated }); onSaveWeeklyHabits(updated); };
   const editDaily = (id, name) => { const updated = dailyHabits.map((h) => h.id === id ? { ...h, name } : h); update({ dailyHabits: updated }); onSaveDailyHabits(updated); };
   const editWeekly = (id, name) => { const updated = weeklyHabits.map((h) => h.id === id ? { ...h, name } : h); update({ weeklyHabits: updated }); onSaveWeeklyHabits(updated); };
+  const editWeeklyNote = (id, note) => { const updated = weeklyHabits.map((h) => h.id === id ? { ...h, note } : h); update({ weeklyHabits: updated }); onSaveWeeklyHabits(updated); };
   const reorderDaily = (items) => { update({ dailyHabits: items }); onSaveDailyHabits(items); };
   const reorderWeekly = (items) => { update({ weeklyHabits: items }); onSaveWeeklyHabits(items); };
   const addFuture = (text, date) => { const parsed = parseTimeFromText(text); const finalText = parsed ? parsed.cleanText : text; const entry = { id: "f" + Date.now(), text: finalText, date }; if (parsed) entry.startTime = parsed.startTime; const nf = [...futureTasks, entry]; update({ futureTasks: nf }); onSaveFuture(nf); };
@@ -2829,10 +2841,16 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
                 </button>
               </div>
             )}
-            {!isMobile && layout !== "horizontal" && habitsOpen && (
-              <HabitsTracker dailyHabits={dailyHabits} weeklyHabits={weeklyHabits} habitHistory={habitHistory || {}} moods={moods || {}} onSaveMoods={onSaveMoods} onToggleDaily={toggleDaily} onToggleWeekly={toggleWeekly}
-                onAddDaily={addDailyHabit} onAddWeekly={addWeeklyHabit} onDeleteDaily={deleteDaily} onDeleteWeekly={deleteWeekly} onEditDaily={editDaily} onEditWeekly={editWeekly} onReorderDaily={reorderDaily} onReorderWeekly={reorderWeekly} />
-            )}
+            {!isMobile && layout !== "horizontal" && habitsOpen && (() => {
+              const histWeek = isPastWeek && habitHistory ? habitHistory[viewedWeekKey] : null;
+              const viewDailyHabits = histWeek?.daily || dailyHabits;
+              const viewWeeklyHabits = histWeek?.weekly || weeklyHabits;
+              const noop = () => {};
+              return (
+              <HabitsTracker dailyHabits={viewDailyHabits} weeklyHabits={viewWeeklyHabits} habitHistory={habitHistory || {}} moods={moods || {}} onSaveMoods={isPastWeek ? noop : onSaveMoods} onToggleDaily={isPastWeek ? noop : toggleDaily} onToggleWeekly={isPastWeek ? noop : toggleWeekly}
+                onAddDaily={isPastWeek ? noop : addDailyHabit} onAddWeekly={isPastWeek ? noop : addWeeklyHabit} onDeleteDaily={isPastWeek ? noop : deleteDaily} onDeleteWeekly={isPastWeek ? noop : deleteWeekly} onEditDaily={isPastWeek ? noop : editDaily} onEditWeekly={isPastWeek ? noop : editWeekly} onEditWeeklyNote={isPastWeek ? noop : editWeeklyNote} onReorderDaily={isPastWeek ? noop : reorderDaily} onReorderWeekly={isPastWeek ? noop : reorderWeekly} />
+              );
+            })()}
             <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
               <div ref={scrollRef} onDragOver={(e) => {
                 e.preventDefault();
@@ -2848,7 +2866,7 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
                   <div style={{ padding: isMobile ? "4px 4px" : "4px 8px", display: "flex", flexDirection: "column", gap: 2 }}>
                     {DAYS.map((day, i) => (
                       <DaySection key={day} dayInfo={weekDates[i]} columnId={day.toLowerCase()} tasks={tasks[day.toLowerCase()] || []} categories={categories}
-                        onDragStart={() => {}} onDrop={isReadOnly ? () => {} : handleDrop} onToggle={isReadOnly ? () => {} : wrappedToggleDone} onDelete={isReadOnly ? () => {} : wrappedDeleteTask} onEdit={isReadOnly ? () => {} : wrappedEditTask} onAdd={isReadOnly ? null : addTask} onChangeCategory={isReadOnly ? () => {} : changeCategory} isMobile={isMobile} onMove={isReadOnly ? () => {} : moveTask} onSetRecurring={isReadOnly ? () => {} : setRecurring} onSkipRecurring={isReadOnly ? () => {} : skipRecurring} onSetTime={isReadOnly ? () => {} : setTaskTime} onRemoveTime={isReadOnly ? () => {} : removeTaskTime} projects={projects || []} onAssignToProject={assignToProject} onUnlink={unlinkTask} highlightQuery={highlightQuery} taskFontSize={taskFontSize} />
+                        onDragStart={() => {}} onDrop={isReadOnly ? () => {} : handleDrop} onToggle={isReadOnly ? () => {} : wrappedToggleDone} onDelete={isReadOnly ? () => {} : wrappedDeleteTask} onEdit={isReadOnly ? () => {} : wrappedEditTask} onAdd={isReadOnly ? null : addTask} onChangeCategory={isReadOnly ? () => {} : changeCategory} isMobile={isMobile} onMove={isReadOnly ? () => {} : moveTask} onSetRecurring={isReadOnly ? () => {} : setRecurring} onSkipRecurring={isReadOnly ? () => {} : skipRecurring} onSetTime={isReadOnly ? () => {} : setTaskTime} onRemoveTime={isReadOnly ? () => {} : removeTaskTime} projects={projects || []} onAssignToProject={assignToProject} onUnlink={unlinkTask} highlightQuery={highlightQuery} taskFontSize={taskFontSize} isReadOnly={isReadOnly} />
                     ))}
                     {isMobile && (
                       <DaySection dayInfo={null} columnId="later" tasks={tasks.later} categories={categories} onDragStart={() => {}} onDrop={handleDrop}
@@ -3174,10 +3192,16 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
                             <span style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, fontSize: 9, letterSpacing: 1, textTransform: "uppercase" }}>Habits</span>
                           </button>
                         </div>
-                        {habitsOpen && (
-                          <HabitsTracker dailyHabits={dailyHabits} weeklyHabits={weeklyHabits} habitHistory={habitHistory || {}} moods={moods || {}} onSaveMoods={onSaveMoods} onToggleDaily={toggleDaily} onToggleWeekly={toggleWeekly}
-                            onAddDaily={addDailyHabit} onAddWeekly={addWeeklyHabit} onDeleteDaily={deleteDaily} onDeleteWeekly={deleteWeekly} onEditDaily={editDaily} onEditWeekly={editWeekly} onReorderDaily={reorderDaily} onReorderWeekly={reorderWeekly} />
-                        )}
+                        {habitsOpen && (() => {
+                          const histWeek = isPastWeek && habitHistory ? habitHistory[viewedWeekKey] : null;
+                          const viewDailyHabits = histWeek?.daily || dailyHabits;
+                          const viewWeeklyHabits = histWeek?.weekly || weeklyHabits;
+                          const noop = () => {};
+                          return (
+                          <HabitsTracker dailyHabits={viewDailyHabits} weeklyHabits={viewWeeklyHabits} habitHistory={habitHistory || {}} moods={moods || {}} onSaveMoods={isPastWeek ? noop : onSaveMoods} onToggleDaily={isPastWeek ? noop : toggleDaily} onToggleWeekly={isPastWeek ? noop : toggleWeekly}
+                            onAddDaily={isPastWeek ? noop : addDailyHabit} onAddWeekly={isPastWeek ? noop : addWeeklyHabit} onDeleteDaily={isPastWeek ? noop : deleteDaily} onDeleteWeekly={isPastWeek ? noop : deleteWeekly} onEditDaily={isPastWeek ? noop : editDaily} onEditWeekly={isPastWeek ? noop : editWeekly} onEditWeeklyNote={isPastWeek ? noop : editWeeklyNote} onReorderDaily={isPastWeek ? noop : reorderDaily} onReorderWeekly={isPastWeek ? noop : reorderWeekly} />
+                          );
+                        })()}
                       </div>
                       {/* Later */}
                       <div style={{ background: "var(--bg-surface)", borderBottom: "1px solid var(--border)" }}>
@@ -3625,7 +3649,7 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
                                   const existed = !!habit;
                                   return (
                                     <td key={wk} style={{ textAlign: "center", padding: "1px 8px", borderLeft: wi > 0 ? "1px solid var(--border)" : "none" }}>
-                                      {existed ? <span style={{ fontSize: 11, color: habit.done ? "#6a9955" : "#c47a20" }}>{habit.done ? "\u2713" : "\u2717"}</span> : <span style={{ fontSize: 9, color: "var(--text-faint)" }}>&ndash;</span>}
+                                      {existed ? <span title={habit.done && habit.note ? habit.note : ""} style={{ fontSize: 11, color: habit.done ? "#6a9955" : "#c47a20", cursor: habit.done && habit.note ? "help" : "default" }}>{habit.done ? "\u2713" : "\u2717"}</span> : <span style={{ fontSize: 9, color: "var(--text-faint)" }}>&ndash;</span>}
                                     </td>
                                   );
                                 })}
