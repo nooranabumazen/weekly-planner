@@ -1015,47 +1015,36 @@ function TaskCard({ task, columnId, categories, onDragStart, onToggle, onDelete,
   };
 
   return (
-    <div style={{
-        borderLeft: task._isUpcoming ? `3px dashed var(--text-faint)` : `3px solid ${catColor}`,
-        background: hover ? "var(--bg-hover)" : task._isUpcoming ? "transparent" : `${catColor}18`,
-        opacity: task.done ? 0.45 : 1, transition: "opacity 0.2s, background 0.15s",
-        marginBottom: 0, position: "relative",
-      }}
+    <div style={{ borderLeft: task._isUpcoming ? `3px dashed var(--text-faint)` : `3px solid ${catColor}`, background: hover ? "var(--bg-hover)" : task._isUpcoming ? "transparent" : `${catColor}18`, opacity: task.done ? 0.45 : 1, transition: "opacity 0.2s, background 0.15s", marginBottom: 0, position: "relative" }}
       onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}>
-    <div draggable={!editing}
-      onDragStart={(e) => { e.dataTransfer.setData("text/plain", JSON.stringify({ taskId: task.id, from: columnId })); e.dataTransfer.effectAllowed = "move"; onDragStart(); }}
-      onContextMenu={handleContextMenu}
-      onTouchStart={handleTouchStart}
-      onTouchEnd={cancelLongPress}
-      onTouchMove={cancelLongPress}
-      onTouchCancel={cancelLongPress}
-      style={{
-        padding: isMobile ? "8px 12px" : "2px 4px",
-        cursor: editing ? "text" : "grab",
-        fontSize: isMobile ? 16 : (taskFontSize || 13), lineHeight: 1.4, userSelect: "none",
-        display: "flex", alignItems: "flex-start", gap: isMobile ? 10 : 5,
-      }}>
-      <input type="checkbox" checked={task.done} onChange={() => onToggle(columnId, task.id)}
-        style={{ cursor: "pointer", accentColor: "#5a5a5a", width: isMobile ? 20 : 15, height: isMobile ? 20 : 15, marginTop: 2, flexShrink: 0 }} />
-      {editing ? (
-        <textarea ref={inputRef} value={editText} onChange={(e) => { setEditText(e.target.value); e.target.style.height = "auto"; e.target.style.height = e.target.scrollHeight + "px"; }}
-          onBlur={save}
-          onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); save(); } if (e.key === "Escape") setEditing(false); }}
-          rows={1}
-          style={{ flex: 1, minWidth: 0, border: "none", background: "transparent", font: "inherit", outline: "none", padding: 0, fontSize: isMobile ? 16 : (taskFontSize || 13), lineHeight: 1.4, resize: "none", overflow: "hidden", color: "var(--text)", boxSizing: "border-box" }}
-          onFocus={(e) => { e.target.style.height = "auto"; e.target.style.height = e.target.scrollHeight + "px"; }} />
-      ) : (
-        <span onDoubleClick={() => { setEditing(true); setEditText(task.text); }}
-          style={{ flex: 1, minWidth: 0, textDecoration: task.done ? "line-through" : "none", cursor: "pointer", color: task.done ? "var(--text-muted)" : "var(--text)", wordBreak: "break-word" }}>
-          {task._isUpcoming && <span title="From upcoming" style={{ fontSize: 10, marginRight: 4, opacity: 0.6 }}>{"\u{1F4C5}"}</span>}
-          {task.startTime && <span style={{ fontSize: 10, color: "var(--text-muted)", marginRight: 5, fontFamily: "'JetBrains Mono', monospace", fontWeight: 600 }}>{formatTime12(task.startTime)}</span>}
-          <HighlightText text={task.text} query={highlightQuery} />
-          {task.recurring && <span title={`Repeats ${task.recurring.type === "weeks" ? task.recurring.count + " weeks" : task.recurring.type === "monthly" ? "monthly" : "until " + task.recurring.until}`} style={{ fontSize: 9, marginLeft: 4, color: "var(--text-faint)" }}>{"\uD83D\uDD01"}</span>}
-          {task.projectId && projects && (() => { const p = projects.find((pr) => pr.id === task.projectId); return p ? <span style={{ fontSize: 9, marginLeft: 6, color: "var(--text-faint)", background: "var(--border-light)", padding: "0px 4px", borderRadius: 3, fontFamily: "'JetBrains Mono', monospace", whiteSpace: "nowrap", textDecoration: "none" }}>{p.text}</span> : null; })()}
-        </span>
-      )}
-    </div>
-      {/* Subtasks - always visible below task text */}
+      <div draggable={!editing}
+        onDragStart={(e) => { e.dataTransfer.setData("text/plain", JSON.stringify({ taskId: task.id, from: columnId })); e.dataTransfer.effectAllowed = "move"; onDragStart(); }}
+        onContextMenu={handleContextMenu}
+        onTouchStart={handleTouchStart}
+        onTouchEnd={cancelLongPress}
+        onTouchMove={cancelLongPress}
+        onTouchCancel={cancelLongPress}
+        style={{ padding: isMobile ? "8px 12px" : "2px 4px", cursor: editing ? "text" : "grab", fontSize: isMobile ? 16 : (taskFontSize || 13), lineHeight: 1.4, userSelect: "none", display: "flex", alignItems: "flex-start", gap: isMobile ? 10 : 5 }}>
+        <input type="checkbox" checked={task.done} onChange={() => onToggle(columnId, task.id)}
+          style={{ cursor: "pointer", accentColor: "#5a5a5a", width: isMobile ? 20 : 15, height: isMobile ? 20 : 15, marginTop: 2, flexShrink: 0 }} />
+        {editing ? (
+          <textarea ref={inputRef} value={editText} onChange={(e) => { setEditText(e.target.value); e.target.style.height = "auto"; e.target.style.height = e.target.scrollHeight + "px"; }}
+            onBlur={save}
+            onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); save(); } if (e.key === "Escape") setEditing(false); }}
+            rows={1}
+            style={{ flex: 1, minWidth: 0, border: "none", background: "transparent", font: "inherit", outline: "none", padding: 0, fontSize: isMobile ? 16 : (taskFontSize || 13), lineHeight: 1.4, resize: "none", overflow: "hidden", color: "var(--text)", boxSizing: "border-box" }}
+            onFocus={(e) => { e.target.style.height = "auto"; e.target.style.height = e.target.scrollHeight + "px"; }} />
+        ) : (
+          <span onDoubleClick={() => { setEditing(true); setEditText(task.text); }}
+            style={{ flex: 1, minWidth: 0, textDecoration: task.done ? "line-through" : "none", cursor: "pointer", color: task.done ? "var(--text-muted)" : "var(--text)", wordBreak: "break-word" }}>
+            {task._isUpcoming && <span title="From upcoming" style={{ fontSize: 10, marginRight: 4, opacity: 0.6 }}>{"\u{1F4C5}"}</span>}
+            {task.startTime && <span style={{ fontSize: 10, color: "var(--text-muted)", marginRight: 5, fontFamily: "'JetBrains Mono', monospace", fontWeight: 600 }}>{formatTime12(task.startTime)}</span>}
+            <HighlightText text={task.text} query={highlightQuery} />
+            {task.recurring && <span title={`Repeats ${task.recurring.type === "weeks" ? task.recurring.count + " weeks" : task.recurring.type === "monthly" ? "monthly" : "until " + task.recurring.until}`} style={{ fontSize: 9, marginLeft: 4, color: "var(--text-faint)" }}>{"\uD83D\uDD01"}</span>}
+            {task.projectId && projects && (() => { const p = projects.find((pr) => pr.id === task.projectId); return p ? <span style={{ fontSize: 9, marginLeft: 6, color: "var(--text-faint)", background: "var(--border-light)", padding: "0px 4px", borderRadius: 3, fontFamily: "'JetBrains Mono', monospace", whiteSpace: "nowrap", textDecoration: "none" }}>{p.text}</span> : null; })()}
+          </span>
+        )}
+      </div>
       {task.subtasks && task.subtasks.length > 0 && (
         <div style={{ padding: "2px 0 2px 22px" }}>
           {task.subtasks.map((sub) => (
