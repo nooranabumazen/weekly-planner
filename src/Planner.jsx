@@ -501,7 +501,7 @@ function ResizeHandle({ currentHeight, minHeight, maxHeight, onHeightChange }) {
 }
 
 /* ─── Habits Tracker ─── */
-function HabitsTracker({ dailyHabits, weeklyHabits, habitHistory, moods, onToggleDaily, onToggleWeekly, onAddDaily, onAddWeekly, onDeleteDaily, onDeleteWeekly, onEditDaily, onEditWeekly, onEditWeeklyNote, onReorderDaily, onReorderWeekly, onSaveMoods }) {
+function HabitsTracker({ dailyHabits, weeklyHabits, habitHistory, moods, onToggleDaily, onToggleWeekly, onAddDaily, onAddWeekly, onDeleteDaily, onDeleteWeekly, onEditDaily, onEditWeekly, onEditWeeklyNote, onReorderDaily, onReorderWeekly, onSaveMoods, weekOffset }) {
   const [addingDaily, setAddingDaily] = useState(false);
   const [addingWeekly, setAddingWeekly] = useState(false);
   const [newDaily, setNewDaily] = useState("");
@@ -517,22 +517,14 @@ function HabitsTracker({ dailyHabits, weeklyHabits, habitHistory, moods, onToggl
   // Local-date YYYY-MM-DD (avoids UTC offset issues)
   const fmtLocal = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
   const todayStr = fmtLocal(new Date());
-  const [moodWeekOffset, setMoodWeekOffset] = useState(0); // 0 = current week, -1 = one week back, etc.
-  // Build the Mon..Sun week based on offset
+  // Build the Mon..Sun week based on main planner weekOffset
   const moodWeekDates = (() => {
     const today = new Date(); today.setHours(0, 0, 0, 0);
     const day = today.getDay();
-    const monday = new Date(today); monday.setDate(today.getDate() - ((day + 6) % 7) + moodWeekOffset * 7);
+    const monday = new Date(today); monday.setDate(today.getDate() - ((day + 6) % 7) + (weekOffset || 0) * 7);
     const out = [];
     for (let i = 0; i < 7; i++) { const d = new Date(monday); d.setDate(monday.getDate() + i); out.push({ dateStr: fmtLocal(d), label: ["M","T","W","T","F","S","S"][i], isToday: fmtLocal(d) === todayStr, isFuture: d > today }); }
     return out;
-  })();
-  const moodWeekRangeLabel = (() => {
-    if (moodWeekOffset === 0) return null;
-    const first = moodWeekDates[0];
-    const last = moodWeekDates[6];
-    const fmt = (s) => { const d = new Date(s + "T12:00:00"); return d.toLocaleDateString("en-US", { month: "short", day: "numeric" }); };
-    return `${fmt(first.dateStr)} - ${fmt(last.dateStr)}`;
   })();
   const [activeMoodDate, setActiveMoodDate] = useState(null); // which day's picker is open
   const [openNoteDate, setOpenNoteDate] = useState(null); // which day's note bubble is shown
@@ -702,20 +694,8 @@ function HabitsTracker({ dailyHabits, weeklyHabits, habitHistory, moods, onToggl
       </div>
       {showMood && (
         <div style={{ padding: "6px 12px 8px", display: "flex", flexDirection: "column", gap: 6, alignItems: "center" }}>
-          {/* Week range label (only shown when viewing past weeks) */}
-          {moodWeekRangeLabel && (
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <span style={{ fontSize: 10, color: "var(--text-muted)", fontFamily: "'JetBrains Mono', monospace", letterSpacing: 0.3 }}>{moodWeekRangeLabel}</span>
-              <button onClick={() => setMoodWeekOffset(0)} title="Back to this week"
-                style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-faint)", fontSize: 9, padding: 0, textDecoration: "underline", fontFamily: "'JetBrains Mono', monospace" }}
-                onMouseEnter={(e) => e.target.style.color = "var(--text-muted)"} onMouseLeave={(e) => e.target.style.color = "var(--text-faint)"}>return to now</button>
-            </div>
-          )}
-          {/* Nav arrows + 7 day-of-week faces */}
+          {/* 7 day-of-week faces (synced with main planner week view) */}
           <div style={{ display: "flex", gap: 4, alignItems: "center", width: "100%", maxWidth: 380 }}>
-            <button onClick={() => setMoodWeekOffset(moodWeekOffset - 1)} title="Previous week"
-              style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-faint)", fontSize: 14, padding: "4px 6px", lineHeight: 1, flexShrink: 0 }}
-              onMouseEnter={(e) => e.target.style.color = "var(--text-muted)"} onMouseLeave={(e) => e.target.style.color = "var(--text-faint)"}>{"\u2039"}</button>
             <div style={{ display: "flex", gap: 4, justifyContent: "center", flex: 1 }}>
             {moodWeekDates.map((d) => {
               const entry = (moods || {})[d.dateStr] || { mood: "", note: "" };
@@ -743,9 +723,6 @@ function HabitsTracker({ dailyHabits, weeklyHabits, habitHistory, moods, onToggl
               );
             })}
             </div>
-            <button onClick={() => setMoodWeekOffset(moodWeekOffset + 1)} title="Next week" disabled={moodWeekOffset >= 0}
-              style={{ background: "none", border: "none", cursor: moodWeekOffset >= 0 ? "default" : "pointer", color: moodWeekOffset >= 0 ? "transparent" : "var(--text-faint)", fontSize: 14, padding: "4px 6px", lineHeight: 1, flexShrink: 0 }}
-              onMouseEnter={(e) => { if (moodWeekOffset < 0) e.target.style.color = "var(--text-muted)"; }} onMouseLeave={(e) => { if (moodWeekOffset < 0) e.target.style.color = "var(--text-faint)"; }}>{"\u203A"}</button>
           </div>
           {/* Picker for the active day */}
           {activeMoodDate && (
@@ -1071,7 +1048,7 @@ function TaskCard({ task, columnId, categories, onDragStart, onToggle, onDelete,
           {task.startTime && <span style={{ fontSize: 10, color: "var(--text-muted)", marginRight: 5, fontFamily: "'JetBrains Mono', monospace", fontWeight: 600 }}>{formatTime12(task.startTime)}</span>}
           <HighlightText text={task.text} query={highlightQuery} />
           {task.recurring && <span title={`Repeats ${task.recurring.type === "weeks" ? task.recurring.count + " weeks" : task.recurring.type === "monthly" ? "monthly" : "until " + task.recurring.until}`} style={{ fontSize: 9, marginLeft: 4, color: "var(--text-faint)" }}>{"\uD83D\uDD01"}</span>}
-          {task.projectId && projects && (() => { const p = projects.find((pr) => pr.id === task.projectId); return p ? <span style={{ fontSize: 9, marginLeft: 6, color: "var(--text-faint)", background: "var(--border-light)", padding: "0px 4px", borderRadius: 3, fontFamily: "'JetBrains Mono', monospace", whiteSpace: "nowrap" }}>{p.text}</span> : null; })()}
+          {task.projectId && projects && (() => { const p = projects.find((pr) => pr.id === task.projectId); return p ? <span style={{ fontSize: 9, marginLeft: 6, color: "var(--text-faint)", background: "var(--border-light)", padding: "0px 4px", borderRadius: 3, fontFamily: "'JetBrains Mono', monospace", whiteSpace: "nowrap", textDecoration: "none" }}>{p.text}</span> : null; })()}
         </span>
       )}
       {(hover || showCatPicker) && !editing && (
@@ -2497,25 +2474,17 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
     // Delete the task from this week (it was already generated)
     const newTasks = { ...t, [col]: t[col].filter((x) => x.id !== id) };
     update({ tasks: newTasks });
-    // Add current week key to skipWeeks on the recurring rule so it doesn't regenerate
-    if (onSaveRecurringRules) {
-      recurringQueueRef.current = recurringQueueRef.current.then(async () => {
-        try {
-          const { getDoc: gd, doc: d } = await import('firebase/firestore');
-          const snap = await gd(d(db, `users/${userId}/meta/recurringRules`));
-          const existing = snap.exists() ? (snap.data().items || []) : [];
-          const currentWk = viewedWeekKey;
-          const updated = existing.map((r) => {
-            if (r.text === task.text && r.day === col) {
-              return { ...r, skipWeeks: [...(r.skipWeeks || []), currentWk] };
-            }
-            return r;
-          });
-          onSaveRecurringRules(updated);
-        } catch (err) { console.error("Failed to skip recurring:", err); }
-      });
-    }
-  }, [userId, onSaveRecurringRules, viewedWeekKey]);
+    // Add current week key to skipWeeks on the persistent recurring rule
+    const currentWk = viewedWeekKey;
+    const rules = dataRef.current.recurringRules || [];
+    const updated = rules.map((r) => {
+      if (r.text === task.text && r.day === col) {
+        return { ...r, skipWeeks: [...(r.skipWeeks || []), currentWk] };
+      }
+      return r;
+    });
+    if (onSaveRecurringRules) onSaveRecurringRules(updated);
+  }, [onSaveRecurringRules, viewedWeekKey]);
   const toggleDaily = (hid, day) => { const updated = dailyHabits.map((h) => h.id === hid ? { ...h, checks: { ...h.checks, [day]: !h.checks[day] } } : h); update({ dailyHabits: updated }); onSaveDailyHabits(updated); };
   const toggleWeekly = (hid) => { const updated = weeklyHabits.map((h) => h.id === hid ? { ...h, done: !h.done } : h); update({ weeklyHabits: updated }); onSaveWeeklyHabits(updated); };
   const addDailyHabit = (name) => { const updated = [...dailyHabits, { id: "dh" + Date.now(), name, checks: { mon: false, tue: false, wed: false, thu: false, fri: false, sat: false, sun: false } }]; update({ dailyHabits: updated }); onSaveDailyHabits(updated); };
@@ -2848,7 +2817,7 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
               const noop = () => {};
               return (
               <HabitsTracker dailyHabits={viewDailyHabits} weeklyHabits={viewWeeklyHabits} habitHistory={habitHistory || {}} moods={moods || {}} onSaveMoods={isPastWeek ? noop : onSaveMoods} onToggleDaily={isPastWeek ? noop : toggleDaily} onToggleWeekly={isPastWeek ? noop : toggleWeekly}
-                onAddDaily={isPastWeek ? noop : addDailyHabit} onAddWeekly={isPastWeek ? noop : addWeeklyHabit} onDeleteDaily={isPastWeek ? noop : deleteDaily} onDeleteWeekly={isPastWeek ? noop : deleteWeekly} onEditDaily={isPastWeek ? noop : editDaily} onEditWeekly={isPastWeek ? noop : editWeekly} onEditWeeklyNote={isPastWeek ? noop : editWeeklyNote} onReorderDaily={isPastWeek ? noop : reorderDaily} onReorderWeekly={isPastWeek ? noop : reorderWeekly} />
+                onAddDaily={isPastWeek ? noop : addDailyHabit} onAddWeekly={isPastWeek ? noop : addWeeklyHabit} onDeleteDaily={isPastWeek ? noop : deleteDaily} onDeleteWeekly={isPastWeek ? noop : deleteWeekly} onEditDaily={isPastWeek ? noop : editDaily} onEditWeekly={isPastWeek ? noop : editWeekly} onEditWeeklyNote={isPastWeek ? noop : editWeeklyNote} onReorderDaily={isPastWeek ? noop : reorderDaily} onReorderWeekly={isPastWeek ? noop : reorderWeekly} weekOffset={weekOffset} />
               );
             })()}
             <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
@@ -3199,7 +3168,7 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
                           const noop = () => {};
                           return (
                           <HabitsTracker dailyHabits={viewDailyHabits} weeklyHabits={viewWeeklyHabits} habitHistory={habitHistory || {}} moods={moods || {}} onSaveMoods={isPastWeek ? noop : onSaveMoods} onToggleDaily={isPastWeek ? noop : toggleDaily} onToggleWeekly={isPastWeek ? noop : toggleWeekly}
-                            onAddDaily={isPastWeek ? noop : addDailyHabit} onAddWeekly={isPastWeek ? noop : addWeeklyHabit} onDeleteDaily={isPastWeek ? noop : deleteDaily} onDeleteWeekly={isPastWeek ? noop : deleteWeekly} onEditDaily={isPastWeek ? noop : editDaily} onEditWeekly={isPastWeek ? noop : editWeekly} onEditWeeklyNote={isPastWeek ? noop : editWeeklyNote} onReorderDaily={isPastWeek ? noop : reorderDaily} onReorderWeekly={isPastWeek ? noop : reorderWeekly} />
+                            onAddDaily={isPastWeek ? noop : addDailyHabit} onAddWeekly={isPastWeek ? noop : addWeeklyHabit} onDeleteDaily={isPastWeek ? noop : deleteDaily} onDeleteWeekly={isPastWeek ? noop : deleteWeekly} onEditDaily={isPastWeek ? noop : editDaily} onEditWeekly={isPastWeek ? noop : editWeekly} onEditWeeklyNote={isPastWeek ? noop : editWeeklyNote} onReorderDaily={isPastWeek ? noop : reorderDaily} onReorderWeekly={isPastWeek ? noop : reorderWeekly} weekOffset={weekOffset} />
                           );
                         })()}
                       </div>
