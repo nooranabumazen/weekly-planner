@@ -1050,9 +1050,15 @@ function TaskCard({ task, columnId, categories, onDragStart, onToggle, onDelete,
           <HighlightText text={task.text} query={highlightQuery} />
           {task.recurring && <span title={`Repeats ${task.recurring.type === "weeks" ? task.recurring.count + " weeks" : task.recurring.type === "monthly" ? "monthly" : "until " + task.recurring.until}`} style={{ fontSize: 9, marginLeft: 4, color: "var(--text-faint)" }}>{"\uD83D\uDD01"}</span>}
           {task.projectId && projects && (() => { const p = projects.find((pr) => pr.id === task.projectId); return p ? <span style={{ fontSize: 9, marginLeft: 6, color: "var(--text-faint)", background: "var(--border-light)", padding: "0px 4px", borderRadius: 3, fontFamily: "'JetBrains Mono', monospace", whiteSpace: "nowrap", textDecoration: "none" }}>{p.text}</span> : null; })()}
-          {task.subtasks && task.subtasks.length > 0 && (() => { const done = task.subtasks.filter((s) => s.done).length; return <span onClick={(e) => { e.stopPropagation(); setSubtasksOpen(!subtasksOpen); }} style={{ fontSize: 9, marginLeft: 6, color: done === task.subtasks.length ? "#6a9955" : "var(--text-muted)", fontFamily: "'JetBrains Mono', monospace", fontWeight: 600, cursor: "pointer", textDecoration: "none", background: "var(--border-light)", padding: "0 4px", borderRadius: 3 }}>{subtasksOpen ? "\u25BC" : "\u25B6"} {done}/{task.subtasks.length}</span>; })()}
         </span>
       )}
+      {/* Subtask progress badge - below task text */}
+      {task.subtasks && task.subtasks.length > 0 && (() => { const done = task.subtasks.filter((s) => s.done).length; return (
+        <div onClick={(e) => { e.stopPropagation(); setSubtasksOpen(!subtasksOpen); }} style={{ padding: "1px 0 1px 22px", cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}>
+          <span style={{ fontSize: 8, color: "var(--text-faint)", transform: subtasksOpen ? "rotate(90deg)" : "rotate(0deg)", transition: "transform 0.15s", display: "inline-block" }}>{"\u25B6"}</span>
+          <span style={{ fontSize: 9, color: done === task.subtasks.length ? "#6a9955" : "var(--text-muted)", fontFamily: "'JetBrains Mono', monospace", fontWeight: 600 }}>{done}/{task.subtasks.length} subtasks</span>
+        </div>
+      ); })()}
       {/* Subtask panel - auto-open when subtasks exist but empty (just added) */}
       {(subtasksOpen || (task.subtasks && task.subtasks.length === 0)) && task.subtasks && (
         <div style={{ padding: "4px 0 4px 22px", borderTop: "1px dashed var(--border-light)" }}>
@@ -1315,6 +1321,9 @@ function DaySection({ dayInfo, columnId, tasks, categories, onDragStart, onDrop,
       <div style={{
         padding: isLater ? (isMobile ? "4px 10px 2px" : "2px 10px 2px") : (isMobile ? "6px 10px 2px" : "4px 10px 2px"), display: "flex", alignItems: "baseline", gap: 8,
       }}>
+        {!isLater && onOpenJournal && <button onClick={() => onOpenJournal(dayInfo?.fullDate)} title={hasJournalEntry ? "View journal entry" : "Write journal entry"}
+          style={{ background: "none", border: "none", cursor: "pointer", padding: 0, lineHeight: 1, display: "flex", alignItems: "center", flexShrink: 0, fontSize: isMobile ? 12 : 10, color: hasJournalEntry ? "var(--text-muted)" : "var(--border)", transition: "color 0.2s" }}
+          onMouseEnter={(e) => e.currentTarget.style.color = "var(--text)"} onMouseLeave={(e) => e.currentTarget.style.color = hasJournalEntry ? "var(--text-muted)" : "var(--border)"}>{"\u270E"}</button>}
         <span style={{
           fontFamily: "'JetBrains Mono', monospace", fontWeight: 700,
           fontSize: isMobile ? 16 : 13, color: isToday ? "#8B6914" : "var(--text)", letterSpacing: 0.5,
@@ -1323,9 +1332,6 @@ function DaySection({ dayInfo, columnId, tasks, categories, onDragStart, onDrop,
         </span>
         {!isLater && <span style={{ fontSize: isMobile ? 14 : 11, color: "var(--text-muted)", fontWeight: 400 }}>{dayInfo?.date}</span>}
         {isToday && <span style={{ fontSize: isMobile ? 10 : 8, background: "#8B6914", color: "#fff", padding: "1px 5px", borderRadius: 3, fontWeight: 600 }}>TODAY</span>}
-        {!isLater && onOpenJournal && <button onClick={() => onOpenJournal(dayInfo?.fullDate)} title={hasJournalEntry ? "View journal entry" : "Write journal entry"}
-          style={{ background: "none", border: "none", cursor: "pointer", fontSize: isMobile ? 14 : 11, padding: 0, lineHeight: 1, color: hasJournalEntry ? "#8B6914" : "var(--text-faint)", transition: "color 0.15s" }}
-          onMouseEnter={(e) => e.target.style.color = hasJournalEntry ? "#a07d1a" : "var(--text-muted)"} onMouseLeave={(e) => e.target.style.color = hasJournalEntry ? "#8B6914" : "var(--text-faint)"}>{"\u{1F4DD}"}</button>}
         {onAdd && <button onClick={() => setAdding(true)} title="Add task"
           style={{ marginLeft: "auto", background: "none", border: "none", cursor: "pointer", color: "var(--text-faint)", fontSize: isMobile ? 16 : 13, fontFamily: "'JetBrains Mono', monospace", fontWeight: 400, padding: 0, width: isMobile ? 22 : 18, height: isMobile ? 22 : 18, display: "flex", alignItems: "center", justifyContent: "center", lineHeight: 1 }}
           onMouseEnter={(e) => (e.target.style.color = "var(--text)")}
