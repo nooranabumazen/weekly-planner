@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback, useEffect } from "react";
+import React, { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import { makeTask, getWeekDates, getUpcomingDates, DEFAULT_CATEGORIES, formatLocalDate } from "./usePlannerData";
 import { db } from "./firebase";
 import NotebooksPanel from "./NotebooksSidebar";
@@ -1251,7 +1251,7 @@ function DropZone({ onDrop }) {
 }
 
 /* ─── Day Section ─── */
-function DaySection({ dayInfo, columnId, tasks, categories, onDragStart, onDrop, onToggle, onDelete, onEdit, onAdd, onChangeCategory, isMobile, onMove, onSetRecurring, onSetTime, onRemoveTime, onSkipRecurring, projects, onAssignToProject, onUnlink, onUpdateTask, highlightQuery, taskFontSize, isReadOnly }) {
+function DaySection({ dayInfo, columnId, tasks, categories, onDragStart, onDrop, onToggle, onDelete, onEdit, onAdd, onChangeCategory, isMobile, onMove, onSetRecurring, onSetTime, onRemoveTime, onSkipRecurring, projects, onAssignToProject, onUnlink, onUpdateTask, highlightQuery, taskFontSize, isReadOnly, hasJournalEntry, onOpenJournal }) {
   const [dragOver, setDragOver] = useState(false);
   const [adding, setAdding] = useState(false);
   const [newText, setNewText] = useState("");
@@ -1323,6 +1323,9 @@ function DaySection({ dayInfo, columnId, tasks, categories, onDragStart, onDrop,
         </span>
         {!isLater && <span style={{ fontSize: isMobile ? 14 : 11, color: "var(--text-muted)", fontWeight: 400 }}>{dayInfo?.date}</span>}
         {isToday && <span style={{ fontSize: isMobile ? 10 : 8, background: "#8B6914", color: "#fff", padding: "1px 5px", borderRadius: 3, fontWeight: 600 }}>TODAY</span>}
+        {!isLater && onOpenJournal && <button onClick={() => onOpenJournal(dayInfo?.fullDate)} title={hasJournalEntry ? "View journal entry" : "Write journal entry"}
+          style={{ background: "none", border: "none", cursor: "pointer", fontSize: isMobile ? 14 : 11, padding: 0, lineHeight: 1, color: hasJournalEntry ? "#8B6914" : "var(--text-faint)", transition: "color 0.15s" }}
+          onMouseEnter={(e) => e.target.style.color = hasJournalEntry ? "#a07d1a" : "var(--text-muted)"} onMouseLeave={(e) => e.target.style.color = hasJournalEntry ? "#8B6914" : "var(--text-faint)"}>{"\u{1F4DD}"}</button>}
         {onAdd && <button onClick={() => setAdding(true)} title="Add task"
           style={{ marginLeft: "auto", background: "none", border: "none", cursor: "pointer", color: "var(--text-faint)", fontSize: isMobile ? 16 : 13, fontFamily: "'JetBrains Mono', monospace", fontWeight: 400, padding: 0, width: isMobile ? 22 : 18, height: isMobile ? 22 : 18, display: "flex", alignItems: "center", justifyContent: "center", lineHeight: 1 }}
           onMouseEnter={(e) => (e.target.style.color = "var(--text)")}
@@ -2006,6 +2009,8 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
     try { return localStorage.getItem("planner_activeTab") || "planner"; } catch { return "planner"; }
   });
   const setActiveView = (view) => { setActiveViewState(view); try { localStorage.setItem("planner_activeTab", view); } catch {} };
+  const [journalDate, setJournalDate] = useState(null);
+  const openJournal = useCallback((dateStr) => { setJournalDate(dateStr); setActiveView("journal"); }, []);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
   const [highlightQuery, setHighlightQuery] = useState(""); // persists after search close to highlight matches
@@ -2027,6 +2032,13 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
   const setGridEndHour = (v) => { const h = Math.max(gridStartHour + 2, Math.min(24, v)); setGridEndHourState(h); try { localStorage.setItem("planner_gridEndHour", h); } catch {} };
   const notebooks = data.notebooks || [];
   const journal = data.journal || {};
+  const journalEntryDates = useMemo(() => {
+    const s = new Set();
+    Object.entries(journal).forEach(([date, html]) => {
+      if (html && html.trim() !== "" && html !== "<p></p>" && html !== "<br>") s.add(date);
+    });
+    return s;
+  }, [journal]);
   const contacts = data.contacts || [];
   const archive = data.archive || [];
   const categories = data.categories || [];
@@ -2868,7 +2880,7 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
                   <div style={{ padding: isMobile ? "4px 4px" : "4px 8px", display: "flex", flexDirection: "column", gap: 2 }}>
                     {DAYS.map((day, i) => (
                       <DaySection key={day} dayInfo={weekDates[i]} columnId={day.toLowerCase()} tasks={tasks[day.toLowerCase()] || []} categories={categories}
-                        onDragStart={() => {}} onDrop={isReadOnly ? () => {} : handleDrop} onToggle={isReadOnly ? () => {} : wrappedToggleDone} onDelete={isReadOnly ? () => {} : wrappedDeleteTask} onEdit={isReadOnly ? () => {} : wrappedEditTask} onAdd={isReadOnly ? null : addTask} onChangeCategory={isReadOnly ? () => {} : changeCategory} isMobile={isMobile} onMove={isReadOnly ? () => {} : moveTask} onSetRecurring={isReadOnly ? () => {} : setRecurring} onSkipRecurring={isReadOnly ? () => {} : skipRecurring} onSetTime={isReadOnly ? () => {} : setTaskTime} onRemoveTime={isReadOnly ? () => {} : removeTaskTime} projects={projects || []} onAssignToProject={assignToProject} onUnlink={unlinkTask} onUpdateTask={updateTask} highlightQuery={highlightQuery} taskFontSize={taskFontSize} isReadOnly={isReadOnly} />
+                        onDragStart={() => {}} onDrop={isReadOnly ? () => {} : handleDrop} onToggle={isReadOnly ? () => {} : wrappedToggleDone} onDelete={isReadOnly ? () => {} : wrappedDeleteTask} onEdit={isReadOnly ? () => {} : wrappedEditTask} onAdd={isReadOnly ? null : addTask} onChangeCategory={isReadOnly ? () => {} : changeCategory} isMobile={isMobile} onMove={isReadOnly ? () => {} : moveTask} onSetRecurring={isReadOnly ? () => {} : setRecurring} onSkipRecurring={isReadOnly ? () => {} : skipRecurring} onSetTime={isReadOnly ? () => {} : setTaskTime} onRemoveTime={isReadOnly ? () => {} : removeTaskTime} projects={projects || []} onAssignToProject={assignToProject} onUnlink={unlinkTask} onUpdateTask={updateTask} highlightQuery={highlightQuery} taskFontSize={taskFontSize} isReadOnly={isReadOnly} hasJournalEntry={journalEntryDates.has(weekDates[i]?.fullDate)} onOpenJournal={openJournal} />
                     ))}
                     {isMobile && (
                       <DaySection dayInfo={null} columnId="later" tasks={tasks.later} categories={categories} onDragStart={() => {}} onDrop={handleDrop}
@@ -3307,7 +3319,7 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
         )}
 
         {activeView === "notebooks" && <NotebooksPanel notebooks={notebooks} onChange={updateNotebooks} userId={userId} isMobile={isMobile} />}
-        {activeView === "journal" && <JournalPanel journal={journal} onChange={updateJournal} userId={userId} isMobile={isMobile} />}
+        {activeView === "journal" && <JournalPanel journal={journal} onChange={updateJournal} userId={userId} isMobile={isMobile} initialDate={journalDate} />}
         {activeView === "contacts" && <ContactsPanel contacts={contacts} onChange={updateContacts} highlightQuery={highlightQuery} taskFontSize={taskFontSize} />}
         {activeView === "categories" && <CategoryManager categories={categories} onChange={updateCategories} layout={layout} onLayoutChange={(l) => { update({ layout: l }); onSaveSettings({ categories, layout: l, notes, darkMode, taskFontSize }); }} darkMode={darkMode} onDarkModeChange={(dm) => { update({ darkMode: dm }); onSaveSettings({ categories, layout, notes, darkMode: dm, taskFontSize }); }} taskFontSize={taskFontSize} onTaskFontSizeChange={(sz) => { update({ taskFontSize: sz }); onSaveSettings({ categories, layout, notes, darkMode, taskFontSize: sz }); }} onGetBackups={onGetBackups} onRestoreBackup={onRestoreBackup} onExportData={onExportData} />}
 

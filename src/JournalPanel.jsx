@@ -143,43 +143,22 @@ function JournalEditor({ content, onChange, userId }) {
         [contenteditable] p { margin: 4px 0 8px; }
         [contenteditable] h2 { font-size: 18px; font-weight: 700; margin: 14px 0 8px; color: var(--text); }
         [contenteditable] hr { border: none; border-top: 1px solid var(--text-faint); margin: 14px 0; }
-        [contenteditable] img { border: 2px solid transparent; border-radius: 4px; transition: border-color 0.15s; cursor: pointer; }
-        [contenteditable] img:hover { border-color: rgba(139,105,20,0.3); }
-        [contenteditable] img.img-selected { border-color: #8B6914; cursor: nwse-resize; }
       `}} />
       <div ref={editorRef} contentEditable onInput={handleInput} onBlur={handleInput} onPaste={handlePaste}
-        onClick={(e) => {
-          if (e.target.tagName === "A" && e.target.href) { e.preventDefault(); window.open(e.target.href, "_blank"); }
-          const editor = editorRef.current;
-          if (editor) editor.querySelectorAll("img.img-selected").forEach((i) => i.classList.remove("img-selected"));
-          if (e.target.tagName === "IMG") { e.target.classList.add("img-selected"); }
-        }}
-        onMouseDown={(e) => {
-          if (e.target.tagName !== "IMG" || e.button !== 0) return;
-          const img = e.target;
-          const rect = img.getBoundingClientRect();
-          const cornerSize = 16;
-          if (e.clientX < rect.right - cornerSize || e.clientY < rect.bottom - cornerSize) return;
-          e.preventDefault();
-          const startX = e.clientX;
-          const startW = img.offsetWidth;
-          const aspect = img.offsetWidth / (img.offsetHeight || 1);
-          const onMove = (ev) => { const newW = Math.max(50, startW + (ev.clientX - startX)); img.style.width = newW + "px"; img.style.height = Math.round(newW / aspect) + "px"; };
-          const onUp = () => { document.removeEventListener("mousemove", onMove); document.removeEventListener("mouseup", onUp); handleInput(); };
-          document.addEventListener("mousemove", onMove);
-          document.addEventListener("mouseup", onUp);
-        }}
+        onClick={(e) => { if (e.target.tagName === "A" && e.target.href) { e.preventDefault(); window.open(e.target.href, "_blank"); } }}
         suppressContentEditableWarning
         style={{ flex: 1, overflowY: "auto", padding: "14px 24px 14px 48px", fontSize: 13, lineHeight: 1.7, outline: "none", color: "var(--text)", fontFamily: "'DM Sans', sans-serif" }} />
     </div>
   );
 }
 
-export default function JournalPanel({ journal, onChange, userId, isMobile }) {
+export default function JournalPanel({ journal, onChange, userId, isMobile, initialDate }) {
   const today = new Date().toISOString().split("T")[0];
-  const [selectedDate, setSelectedDate] = useState(today);
+  const [selectedDate, setSelectedDate] = useState(initialDate || today);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mobileEditing, setMobileEditing] = useState(false);
+  // Sync with external initialDate changes
+  useEffect(() => { if (initialDate) setSelectedDate(initialDate); }, [initialDate]);
 
   if (!journal) return null;
 
