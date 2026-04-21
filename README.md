@@ -10,7 +10,7 @@ Plan your tasks, schedule them by time, track habits, log your mood, write journ
 
 ## Try It Now
 
-**[Open Weekly Planner](https://nner-dudo.vercel.app)** -- no account needed, works instantly in your browser.
+**[Open Weekly Planner](https://weekly-planner-dudo.vercel.app/)** -- no account needed, works instantly in your browser.
 
 Your data saves to your browser's local storage. No sign-up, no server, no tracking. Install it as a desktop or mobile app from your browser for the full experience.
 
