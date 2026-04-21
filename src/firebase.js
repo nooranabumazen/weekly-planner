@@ -12,7 +12,17 @@ const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID,
 };
 
-const app = initializeApp(firebaseConfig);
-export const auth = getAuth(app);
-export const db = getFirestore(app);
-export const storage = getStorage(app);
+let auth, db, storage;
+
+try {
+  if (firebaseConfig.apiKey) {
+    const app = initializeApp(firebaseConfig);
+    auth = getAuth(app);
+    db = getFirestore(app);
+    storage = getStorage(app);
+  }
+} catch (err) {
+  console.warn("Firebase init failed, running in local-only mode:", err.message);
+}
+
+export { auth, db, storage };
