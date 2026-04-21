@@ -7,6 +7,7 @@ import Planner from './Planner';
 
 function useAuthMode() {
   return useMemo(() => {
+    if (window.location.pathname === '/cloud' || window.location.pathname === '/cloud/') return true;
     const params = new URLSearchParams(window.location.search);
     return params.get('auth') === 'true';
   }, []);

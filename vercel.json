@@ -1,0 +1,6 @@
+{
+  "rewrites": [
+    { "source": "/cloud", "destination": "/index.html" },
+    { "source": "/cloud/(.*)", "destination": "/index.html" }
+  ]
+}
