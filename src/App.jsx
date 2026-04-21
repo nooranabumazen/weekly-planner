@@ -7,9 +7,17 @@ import Planner from './Planner';
 
 function useAuthMode() {
   return useMemo(() => {
-    if (window.location.pathname === '/cloud' || window.location.pathname === '/cloud/') return true;
+    // Check URL triggers first
+    const isCloudUrl = window.location.pathname === '/cloud' || window.location.pathname === '/cloud/';
     const params = new URLSearchParams(window.location.search);
-    return params.get('auth') === 'true';
+    const isAuthParam = params.get('auth') === 'true';
+    // If URL says cloud, set the flag for future visits (PWA install strips URL)
+    if (isCloudUrl || isAuthParam) {
+      try { localStorage.setItem('planner_cloud_mode', 'true'); } catch {}
+      return true;
+    }
+    // Otherwise check the persistent flag
+    try { return localStorage.getItem('planner_cloud_mode') === 'true'; } catch { return false; }
   }, []);
 }
 
@@ -56,7 +64,7 @@ function CloudApp() {
       onSaveRecurringRules={saveRecurringRules} onSaveMoods={saveMoods}
       onLoadWeekTasks={loadWeekTasks} onSaveWeekTasks={saveWeekTasks}
       onGetBackups={getBackups} onRestoreBackup={restoreBackup} onExportData={exportData}
-      onLogout={logout} userEmail={user.email} userId={user.uid}
+      onLogout={() => { try { localStorage.removeItem('planner_cloud_mode'); } catch {} logout(); }} userEmail={user.email} userId={user.uid}
     />
   );
 }
