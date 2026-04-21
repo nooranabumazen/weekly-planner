@@ -965,7 +965,7 @@ function TaskCard({ task, columnId, categories, onDragStart, onToggle, onDelete,
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [timeInput, setTimeInput] = useState(task.startTime || "09:00");
   const [showProjectMenu, setShowProjectMenu] = useState(false);
-  const [subtasksOpen, setSubtasksOpen] = useState(false);
+  const [subtasksOpen, setSubtasksOpen] = useState(true);
   const [newSubtaskText, setNewSubtaskText] = useState("");
   const [editing, setEditing] = useState(false);
   const [editText, setEditText] = useState(task.text);
@@ -1042,14 +1042,19 @@ function TaskCard({ task, columnId, categories, onDragStart, onToggle, onDelete,
             <HighlightText text={task.text} query={highlightQuery} />
             {task.recurring && <span title={`Repeats ${task.recurring.type === "weeks" ? task.recurring.count + " weeks" : task.recurring.type === "monthly" ? "monthly" : "until " + task.recurring.until}`} style={{ fontSize: 9, marginLeft: 4, color: "var(--text-faint)" }}>{"\uD83D\uDD01"}</span>}
             {task.projectId && projects && (() => { const p = projects.find((pr) => pr.id === task.projectId); return p ? <span style={{ fontSize: 9, marginLeft: 6, color: "var(--text-faint)", background: "var(--border-light)", padding: "0px 4px", borderRadius: 3, fontFamily: "'JetBrains Mono', monospace", whiteSpace: "nowrap", textDecoration: "none" }}>{p.text}</span> : null; })()}
+            {task.subtasks && task.subtasks.length > 0 && (() => { const done = task.subtasks.filter((s) => s.done).length; return <span onClick={(e) => { e.stopPropagation(); setSubtasksOpen(!subtasksOpen); }} style={{ fontSize: 9, marginLeft: 6, color: done === task.subtasks.length ? "#6a9955" : "var(--text-faint)", fontFamily: "'JetBrains Mono', monospace", fontWeight: 600, textDecoration: "none", cursor: "pointer" }}>{subtasksOpen ? "\u25BC" : "\u25B6"} {done}/{task.subtasks.length}</span>; })()}
           </span>
         )}
       </div>
-      {task.subtasks && task.subtasks.length > 0 && (
+      {task.subtasks && task.subtasks.length > 0 && subtasksOpen && (
         <div style={{ padding: "2px 0 2px 22px" }}>
           {task.subtasks.map((sub) => (
             <div key={sub.id} style={{ display: "flex", alignItems: "center", gap: 5, padding: "1px 0" }}>
-              <div onClick={() => onUpdateTask && onUpdateTask(columnId, task.id, { subtasks: task.subtasks.map((s) => s.id === sub.id ? { ...s, done: !s.done } : s) })}
+              <div onClick={() => {
+                  const newSubs = task.subtasks.map((s) => s.id === sub.id ? { ...s, done: !s.done } : s);
+                  onUpdateTask && onUpdateTask(columnId, task.id, { subtasks: newSubs });
+                  if (!sub.done && newSubs.every((s) => s.done)) { setTimeout(() => onToggle(columnId, task.id), 100); }
+                }}
                 style={{ width: 13, height: 13, border: sub.done ? "1.5px solid #6a9955" : "1.5px solid var(--text-faint)", borderRadius: 3, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", fontSize: 9, color: sub.done ? "#6a9955" : "transparent", background: sub.done ? "rgba(106,153,85,0.15)" : "transparent", flexShrink: 0, transition: "all 0.15s" }}>
                 {sub.done && "\u2713"}
               </div>
@@ -1063,9 +1068,6 @@ function TaskCard({ task, columnId, categories, onDragStart, onToggle, onDelete,
             onKeyDown={(e) => { if (e.key === "Enter" && newSubtaskText.trim()) { onUpdateTask && onUpdateTask(columnId, task.id, { subtasks: [...(task.subtasks || []), { id: "st" + Date.now(), text: newSubtaskText.trim(), done: false }] }); setNewSubtaskText(""); } }}
             placeholder="Add subtask..."
             style={{ width: "100%", border: "1px solid var(--border)", borderRadius: 3, padding: "3px 6px", fontSize: 11, outline: "none", background: "var(--input-bg)", color: "var(--text)", boxSizing: "border-box", marginTop: 2 }} />}
-          {!editing && (() => { const done = task.subtasks.filter((s) => s.done).length; return (
-            <span style={{ fontSize: 9, color: done === task.subtasks.length ? "#6a9955" : "var(--text-faint)", fontFamily: "'JetBrains Mono', monospace", fontWeight: 600 }}>{done}/{task.subtasks.length}</span>
-          ); })()}
         </div>
       )}
       {(hover || showCatPicker) && !editing && (
