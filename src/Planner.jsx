@@ -1015,9 +1015,15 @@ function TaskCard({ task, columnId, categories, onDragStart, onToggle, onDelete,
   };
 
   return (
+    <div style={{
+        borderLeft: task._isUpcoming ? `3px dashed var(--text-faint)` : `3px solid ${catColor}`,
+        background: hover ? "var(--bg-hover)" : task._isUpcoming ? "transparent" : `${catColor}18`,
+        opacity: task.done ? 0.45 : 1, transition: "opacity 0.2s, background 0.15s",
+        marginBottom: 0, position: "relative",
+      }}
+      onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}>
     <div draggable={!editing}
       onDragStart={(e) => { e.dataTransfer.setData("text/plain", JSON.stringify({ taskId: task.id, from: columnId })); e.dataTransfer.effectAllowed = "move"; onDragStart(); }}
-      onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}
       onContextMenu={handleContextMenu}
       onTouchStart={handleTouchStart}
       onTouchEnd={cancelLongPress}
@@ -1025,13 +1031,9 @@ function TaskCard({ task, columnId, categories, onDragStart, onToggle, onDelete,
       onTouchCancel={cancelLongPress}
       style={{
         padding: isMobile ? "8px 12px" : "2px 4px",
-        borderLeft: task._isUpcoming ? `3px dashed var(--text-faint)` : `3px solid ${catColor}`,
-        background: hover ? "var(--bg-hover)" : task._isUpcoming ? "transparent" : `${catColor}18`,
         cursor: editing ? "text" : "grab",
-        opacity: task.done ? 0.45 : 1, transition: "opacity 0.2s, background 0.15s",
-        fontSize: isMobile ? 16 : (taskFontSize || 13), lineHeight: 1.4, userSelect: "none", position: "relative",
+        fontSize: isMobile ? 16 : (taskFontSize || 13), lineHeight: 1.4, userSelect: "none",
         display: "flex", alignItems: "flex-start", gap: isMobile ? 10 : 5,
-        marginBottom: 0,
       }}>
       <input type="checkbox" checked={task.done} onChange={() => onToggle(columnId, task.id)}
         style={{ cursor: "pointer", accentColor: "#5a5a5a", width: isMobile ? 20 : 15, height: isMobile ? 20 : 15, marginTop: 2, flexShrink: 0 }} />
@@ -1052,32 +1054,29 @@ function TaskCard({ task, columnId, categories, onDragStart, onToggle, onDelete,
           {task.projectId && projects && (() => { const p = projects.find((pr) => pr.id === task.projectId); return p ? <span style={{ fontSize: 9, marginLeft: 6, color: "var(--text-faint)", background: "var(--border-light)", padding: "0px 4px", borderRadius: 3, fontFamily: "'JetBrains Mono', monospace", whiteSpace: "nowrap", textDecoration: "none" }}>{p.text}</span> : null; })()}
         </span>
       )}
-      {/* Subtask progress badge - below task text */}
-      {task.subtasks && task.subtasks.length > 0 && (() => { const done = task.subtasks.filter((s) => s.done).length; return (
-        <div onClick={(e) => { e.stopPropagation(); setSubtasksOpen(!subtasksOpen); }} style={{ padding: "1px 0 1px 22px", cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}>
-          <span style={{ fontSize: 8, color: "var(--text-faint)", transform: subtasksOpen ? "rotate(90deg)" : "rotate(0deg)", transition: "transform 0.15s", display: "inline-block" }}>{"\u25B6"}</span>
-          <span style={{ fontSize: 9, color: done === task.subtasks.length ? "#6a9955" : "var(--text-muted)", fontFamily: "'JetBrains Mono', monospace", fontWeight: 600 }}>{done}/{task.subtasks.length} subtasks</span>
-        </div>
-      ); })()}
-      {/* Subtask panel - auto-open when subtasks exist but empty (just added) */}
-      {(subtasksOpen || (task.subtasks && task.subtasks.length === 0)) && task.subtasks && (
-        <div style={{ padding: "4px 0 4px 22px", borderTop: "1px dashed var(--border-light)" }}>
+    </div>
+      {/* Subtasks - always visible below task text */}
+      {task.subtasks && task.subtasks.length > 0 && (
+        <div style={{ padding: "2px 0 2px 22px" }}>
           {task.subtasks.map((sub) => (
-            <div key={sub.id} style={{ display: "flex", alignItems: "center", gap: 5, padding: "2px 0" }}>
+            <div key={sub.id} style={{ display: "flex", alignItems: "center", gap: 5, padding: "1px 0" }}>
               <div onClick={() => onUpdateTask && onUpdateTask(columnId, task.id, { subtasks: task.subtasks.map((s) => s.id === sub.id ? { ...s, done: !s.done } : s) })}
                 style={{ width: 13, height: 13, border: sub.done ? "1.5px solid #6a9955" : "1.5px solid var(--text-faint)", borderRadius: 3, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", fontSize: 9, color: sub.done ? "#6a9955" : "transparent", background: sub.done ? "rgba(106,153,85,0.15)" : "transparent", flexShrink: 0, transition: "all 0.15s" }}>
                 {sub.done && "\u2713"}
               </div>
               <span style={{ fontSize: 11, color: sub.done ? "var(--text-muted)" : "var(--text)", textDecoration: sub.done ? "line-through" : "none", flex: 1, wordBreak: "break-word" }}>{sub.text}</span>
-              <button onClick={() => onUpdateTask && onUpdateTask(columnId, task.id, { subtasks: task.subtasks.filter((s) => s.id !== sub.id) })}
+              {editing && <button onClick={() => onUpdateTask && onUpdateTask(columnId, task.id, { subtasks: task.subtasks.filter((s) => s.id !== sub.id) })}
                 style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-faint)", fontSize: 11, padding: 0, flexShrink: 0 }}
-                onMouseEnter={(e) => e.target.style.color = "#c44"} onMouseLeave={(e) => e.target.style.color = "var(--text-faint)"}>&times;</button>
+                onMouseEnter={(e) => e.target.style.color = "#c44"} onMouseLeave={(e) => e.target.style.color = "var(--text-faint)"}>&times;</button>}
             </div>
           ))}
-          <input value={newSubtaskText} onChange={(e) => setNewSubtaskText(e.target.value)}
-            onKeyDown={(e) => { if (e.key === "Enter" && newSubtaskText.trim()) { onUpdateTask && onUpdateTask(columnId, task.id, { subtasks: [...(task.subtasks || []), { id: "st" + Date.now(), text: newSubtaskText.trim(), done: false }] }); setNewSubtaskText(""); } if (e.key === "Escape") setSubtasksOpen(false); }}
-            placeholder="Add subtask..." autoFocus
-            style={{ width: "100%", border: "1px solid var(--border)", borderRadius: 3, padding: "3px 6px", fontSize: 11, outline: "none", background: "var(--input-bg)", color: "var(--text)", boxSizing: "border-box", marginTop: 3 }} />
+          {editing && <input value={newSubtaskText} onChange={(e) => setNewSubtaskText(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter" && newSubtaskText.trim()) { onUpdateTask && onUpdateTask(columnId, task.id, { subtasks: [...(task.subtasks || []), { id: "st" + Date.now(), text: newSubtaskText.trim(), done: false }] }); setNewSubtaskText(""); } }}
+            placeholder="Add subtask..."
+            style={{ width: "100%", border: "1px solid var(--border)", borderRadius: 3, padding: "3px 6px", fontSize: 11, outline: "none", background: "var(--input-bg)", color: "var(--text)", boxSizing: "border-box", marginTop: 2 }} />}
+          {!editing && (() => { const done = task.subtasks.filter((s) => s.done).length; return (
+            <span style={{ fontSize: 9, color: done === task.subtasks.length ? "#6a9955" : "var(--text-faint)", fontFamily: "'JetBrains Mono', monospace", fontWeight: 600 }}>{done}/{task.subtasks.length}</span>
+          ); })()}
         </div>
       )}
       {(hover || showCatPicker) && !editing && (
@@ -1140,7 +1139,7 @@ function TaskCard({ task, columnId, categories, onDragStart, onToggle, onDelete,
             </div>
           )}
           {!task.subtasks && onUpdateTask && (
-            <div onClick={() => { onUpdateTask(columnId, task.id, { subtasks: [] }); setSubtasksOpen(true); setCtxMenu(null); }}
+            <div onClick={() => { onUpdateTask(columnId, task.id, { subtasks: [] }); setEditing(true); setEditText(task.text); setCtxMenu(null); }}
               style={{ padding: "6px 14px", cursor: "pointer", fontSize: 12, color: "var(--text)" }}
               onMouseEnter={(e) => e.currentTarget.style.background = "var(--bg-hover)"} onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}>
               Add subtasks
@@ -1237,6 +1236,7 @@ function TaskCard({ task, columnId, categories, onDragStart, onToggle, onDelete,
           </div>
         </div>
       )}
+    </div>
     </div>
   );
 }
