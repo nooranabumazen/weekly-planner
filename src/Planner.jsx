@@ -1014,7 +1014,7 @@ function TaskCard({ task, columnId, categories, onDragStart, onToggle, onDelete,
     if (longPressTimerRef.current) { clearTimeout(longPressTimerRef.current); longPressTimerRef.current = null; }
   };
 
-  return (
+  return (<>
     <div style={{ borderLeft: task._isUpcoming ? `3px dashed var(--text-faint)` : `3px solid ${catColor}`, background: hover ? "var(--bg-hover)" : task._isUpcoming ? "transparent" : `${catColor}18`, opacity: task.done ? 0.45 : 1, transition: "opacity 0.2s, background 0.15s", marginBottom: 0, position: "relative" }}
       onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}>
       <div draggable={!editing}
@@ -1225,9 +1225,8 @@ function TaskCard({ task, columnId, categories, onDragStart, onToggle, onDelete,
           </div>
         </div>
       )}
-      </div>
     </div>
-  );
+  </>);
 }
 
 /* ─── Drop Zone ─── */
