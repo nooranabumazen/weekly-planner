@@ -537,7 +537,7 @@ export function usePlannerData(userId) {
   const saveDailyHabits = useCallback((items) => { setData((p) => p ? { ...p, dailyHabits: items } : p); writeDoc(`users/${userId}/meta/dailyHabits`, { items, _weekKey: weekKeyRef.current }); }, [userId]);
   const saveWeeklyHabits = useCallback((items) => { setData((p) => p ? { ...p, weeklyHabits: items } : p); writeDoc(`users/${userId}/meta/weeklyHabits`, { items, _weekKey: weekKeyRef.current }); }, [userId]);
   const saveSettings = useCallback((s) => { setData((p) => p ? { ...p, categories: s.categories, layout: s.layout, notes: s.notes, darkMode: s.darkMode, taskFontSize: s.taskFontSize } : p); writeDoc(`users/${userId}/meta/settings`, s); }, [userId]);
-  const saveRecurringRules = useCallback((items) => { writeDoc(`users/${userId}/meta/recurringRules`, { items }); }, [userId]);
+  const saveRecurringRules = useCallback((items) => { setData((p) => p ? { ...p, recurringRules: items } : p); writeDoc(`users/${userId}/meta/recurringRules`, { items }); }, [userId]);
   const saveMoods = useCallback((entries) => { setData((p) => p ? { ...p, moods: entries } : p); writeDoc(`users/${userId}/meta/moods`, { entries }); }, [userId]);
   const saveProjects = useCallback((items) => { setData((p) => p ? { ...p, projects: items } : p); writeDoc(`users/${userId}/meta/projects`, { items }); }, [userId]);
 
@@ -697,13 +697,10 @@ export function usePlannerData(userId) {
 }
 
 export const DEFAULT_CATEGORIES = [
-  { id: "cat_cleaning", name: "Cleaning", color: "#B7D5E8" },
-  { id: "cat_cooking", name: "Cooking", color: "#E8C9B7" },
-  { id: "cat_learning", name: "Learning", color: "#D5E8B7" },
-  { id: "cat_crafts", name: "Crafts/Art/Reading", color: "#D5B7E8" },
-  { id: "cat_sporas", name: "Sporas", color: "#E8B7D5" },
-  { id: "cat_events", name: "Events", color: "#B7E8D5" },
-  { id: "cat_volunteering", name: "Volunteering", color: "#E8D5B7" },
-  { id: "cat_gardening", name: "Gardening", color: "#c8e8b0" },
+  { id: "cat_work", name: "Work", color: "#B7D5E8" },
+  { id: "cat_personal", name: "Personal", color: "#E8C9B7" },
+  { id: "cat_health", name: "Health", color: "#D5E8B7" },
+  { id: "cat_errands", name: "Errands", color: "#FFDAB8" },
+  { id: "cat_learning", name: "Learning", color: "#D5B7E8" },
   { id: "cat_none", name: "Other", color: "#e0ddd6" },
 ];

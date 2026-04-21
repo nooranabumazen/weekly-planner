@@ -112,37 +112,6 @@ function RichEditor({ content, onChange, userId }) {
     onChange(editorRef.current.innerHTML);
   };
 
-  // Auto-detect list shortcuts: "- " or "* " → bullet list, "1. " → numbered list
-  const handleEditorKeyDown = (e) => {
-    // Ctrl+Shift+8 for unordered, Ctrl+Shift+7 for ordered (existing shortcuts)
-    if (e.ctrlKey && e.shiftKey && e.key === "*") { e.preventDefault(); exec("insertUnorderedList"); return; }
-    if (e.ctrlKey && e.shiftKey && e.key === "&") { e.preventDefault(); exec("insertOrderedList"); return; }
-    if (e.key !== " ") return;
-    const sel = window.getSelection();
-    if (!sel || sel.rangeCount === 0) return;
-    const range = sel.getRangeAt(0);
-    const node = range.startContainer;
-    if (node.nodeType !== 3) return; // text node only
-    const textBefore = node.textContent.slice(0, range.startOffset);
-    // Check if we're at the start of a block with "- ", "* ", or "1. " prefix
-    const block = node.parentElement?.closest("p, div, li, h1, h2, h3, h4, h5, h6");
-    if (!block || block.tagName === "LI") return; // already in a list
-    // Get all text before cursor in this block
-    const blockText = textBefore.trim();
-    if (blockText === "-" || blockText === "*") {
-      e.preventDefault();
-      // Clear the prefix
-      node.textContent = node.textContent.slice(range.startOffset);
-      document.execCommand("insertUnorderedList");
-      handleInput();
-    } else if (/^\d+\.$/.test(blockText)) {
-      e.preventDefault();
-      node.textContent = node.textContent.slice(range.startOffset);
-      document.execCommand("insertOrderedList");
-      handleInput();
-    }
-  };
-
   const exec = (cmd, val = null) => {
     editorRef.current.focus();
     document.execCommand(cmd, false, val);
@@ -376,10 +345,34 @@ function RichEditor({ content, onChange, userId }) {
         [contenteditable] p { margin: 4px 0 8px; }
         [contenteditable] ul, [contenteditable] ol { margin: 4px 0 8px; padding-left: 24px; }
         [contenteditable] li { margin-bottom: 2px; }
+        [contenteditable] img { border: 2px solid transparent; border-radius: 4px; transition: border-color 0.15s; cursor: pointer; }
+        [contenteditable] img:hover { border-color: rgba(139,105,20,0.3); }
+        [contenteditable] img.img-selected { border-color: #8B6914; cursor: nwse-resize; }
       `}} />
-      <div ref={editorRef} contentEditable onInput={handleInput} onBlur={handleInput} onPaste={handlePaste} onKeyDown={handleEditorKeyDown}
-        onClick={(e) => { if (e.target.tagName === "A" && e.target.href) { e.preventDefault(); window.open(e.target.href, "_blank"); } }}
+      <div ref={editorRef} contentEditable onInput={handleInput} onBlur={handleInput} onPaste={handlePaste}
+        onClick={(e) => {
+          if (e.target.tagName === "A" && e.target.href) { e.preventDefault(); window.open(e.target.href, "_blank"); }
+          const editor = editorRef.current;
+          if (editor) editor.querySelectorAll("img.img-selected").forEach((i) => i.classList.remove("img-selected"));
+          if (e.target.tagName === "IMG") { e.target.classList.add("img-selected"); }
+        }}
+        onMouseDown={(e) => {
+          if (e.target.tagName !== "IMG" || e.button !== 0) return;
+          const img = e.target;
+          const rect = img.getBoundingClientRect();
+          const cornerSize = 16;
+          if (e.clientX < rect.right - cornerSize || e.clientY < rect.bottom - cornerSize) return;
+          e.preventDefault();
+          const startX = e.clientX;
+          const startW = img.offsetWidth;
+          const aspect = img.offsetWidth / (img.offsetHeight || 1);
+          const onMove = (ev) => { const newW = Math.max(50, startW + (ev.clientX - startX)); img.style.width = newW + "px"; img.style.height = Math.round(newW / aspect) + "px"; };
+          const onUp = () => { document.removeEventListener("mousemove", onMove); document.removeEventListener("mouseup", onUp); handleInput(); };
+          document.addEventListener("mousemove", onMove);
+          document.addEventListener("mouseup", onUp);
+        }}
         onContextMenu={handleContextMenu}
+        onKeyDown={handleEditorKeyDown}
         suppressContentEditableWarning
         style={{ flex: 1, overflowY: "auto", padding: "14px 24px 14px 48px", fontSize: 13, lineHeight: 1.6, outline: "none", color: "var(--text)", fontFamily: "'DM Sans', sans-serif", minHeight: 100, position: "relative" }} />
       {ctxMenu && (

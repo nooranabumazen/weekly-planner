@@ -97,15 +97,12 @@ function getCatName(categories, catId) {
 
 /* ─── Auto-detect category from task text ─── */
 const CATEGORY_KEYWORDS = {
-  cat_cleaning: ["clean", "vacuum", "mop", "dust", "laundry", "wash", "dishes", "tidy", "organize", "declutter", "wipe", "scrub", "sweep"],
-  cat_cooking: ["cook", "bake", "recipe", "meal", "dinner", "lunch", "breakfast", "prep food", "grocery", "groceries", "kitchen", "roast", "grill", "fry", "soup", "salad"],
-  cat_learning: ["learn", "module","study", "course", "lecture", "class", "homework", "research", "practice", "lesson", "tutorial", "certificate", "training", "coursera"],
-  cat_crafts: ["read", "book", "draw", "paint", "craft", "art", "sketch", "sew", "knit", "crochet", "journal", "write", "pottery", "collage", "creative", "tatreez", "embroidery"],
-  cat_sporas: ["sporas", "poetry", "land day", "olive branch", "magazine", "diaspora", "abulhawa", "book club"],
-  cat_events: ["event", "party", "birthday", "dinner party", "gathering", "celebration", "concert", "show", "festival", "conference", "workshop"],
-  cat_volunteering: ["volunteer", "red raccoon", "bike rescue", "house of friendship", "community", "donate", "fundraise", "advocacy"],
-  cat_gardening: ["garden", "plant", "seed", "water", "prune", "harvest", "compost", "soil", "flower", "weed", "transplant", "mulch", "jerash"],
-  cat_selfcare: ["shower", "tweeze", "brush", "hair", "nails", "exercise", "shave"],
+  cat_work: ["meeting", "email", "report", "deadline", "presentation", "project", "client", "office", "review", "submit"],
+  cat_personal: ["call", "visit", "birthday", "gift", "family", "friend", "party", "event", "dinner", "gathering"],
+  cat_health: ["exercise", "gym", "run", "walk", "yoga", "stretch", "doctor", "dentist", "meditate", "sleep"],
+  cat_errands: ["grocery", "groceries", "bank", "post office", "pharmacy", "pick up", "drop off", "appointment", "return", "buy"],
+  cat_learning: ["learn", "study", "course", "read", "book", "lecture", "class", "homework", "research", "practice", "tutorial"],
+  cat_selfcare: ["shower", "hair", "nails", "skincare"],
 };
 
 function autoDetectCategory(text, categories) {
@@ -331,7 +328,7 @@ function CategoryManager({ categories, onChange, layout, onLayoutChange, darkMod
       </div>
       <div style={{ flex: 1, overflowY: "auto", padding: "4px 16px", maxWidth: 500 }}>
         {categories.map((cat) => (
-          <div key={cat.id} style={{ padding: "8px 0", borderBottom: "1px solid var(--border-light)" }}>
+          <div key={cat.id} ref={editingId === cat.id ? (el) => { if (el) setTimeout(() => el.scrollIntoView({ behavior: "smooth", block: "nearest" }), 50); } : undefined} style={{ padding: "8px 0", borderBottom: "1px solid var(--border-light)" }}>
             {editingId === cat.id ? (
               <div>
                 <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
@@ -342,9 +339,10 @@ function CategoryManager({ categories, onChange, layout, onLayoutChange, darkMod
                 </div>
                 <div style={{ marginBottom: 4 }}>
                   <div style={{ fontSize: 9, color: "var(--text-muted)", marginBottom: 2, fontFamily: "'JetBrains Mono', monospace", textTransform: "uppercase", letterSpacing: 0.5 }}>Auto-detect keywords (comma separated)</div>
-                  <input value={editKeywords} onChange={(e) => setEditKeywords(e.target.value)}
+                  <textarea value={editKeywords} onChange={(e) => setEditKeywords(e.target.value)}
                     placeholder="e.g. clean, vacuum, mop, dust"
-                    style={{ width: "100%", border: "1px solid var(--border)", borderRadius: 4, padding: "5px 8px", fontSize: 12, outline: "none", background: "var(--bg-card)", color: "var(--text)", boxSizing: "border-box" }} />
+                    style={{ width: "100%", border: "1px solid var(--border)", borderRadius: 4, padding: "5px 8px", fontSize: 12, outline: "none", background: "var(--bg-card)", color: "var(--text)", boxSizing: "border-box", resize: "none", overflow: "hidden", fontFamily: "'DM Sans', sans-serif", lineHeight: 1.5 }}
+                    ref={(el) => { if (el) { el.style.height = "auto"; el.style.height = Math.max(32, el.scrollHeight) + "px"; } }} />
                 </div>
                 <ColorGrid selected={editColor} onPick={setEditColor} />
                 <div style={{ display: "flex", gap: 4, marginTop: 6 }}>
@@ -387,9 +385,10 @@ function CategoryManager({ categories, onChange, layout, onLayoutChange, darkMod
             </div>
             <div style={{ marginBottom: 4 }}>
               <div style={{ fontSize: 9, color: "var(--text-muted)", marginBottom: 2, fontFamily: "'JetBrains Mono', monospace", textTransform: "uppercase", letterSpacing: 0.5 }}>Auto-detect keywords (comma separated)</div>
-              <input value={newKeywords} onChange={(e) => setNewKeywords(e.target.value)}
+              <textarea value={newKeywords} onChange={(e) => setNewKeywords(e.target.value)}
                 placeholder="e.g. cook, bake, recipe, meal"
-                style={{ width: "100%", border: "1px solid var(--border)", borderRadius: 4, padding: "5px 8px", fontSize: 12, outline: "none", background: "var(--bg-card)", color: "var(--text)", boxSizing: "border-box" }} />
+                style={{ width: "100%", border: "1px solid var(--border)", borderRadius: 4, padding: "5px 8px", fontSize: 12, outline: "none", background: "var(--bg-card)", color: "var(--text)", boxSizing: "border-box", resize: "none", overflow: "hidden", fontFamily: "'DM Sans', sans-serif", lineHeight: 1.5 }}
+                ref={(el) => { if (el) { el.style.height = "auto"; el.style.height = Math.max(32, el.scrollHeight) + "px"; } }} />
             </div>
             <ColorGrid selected={newColor} onPick={setNewColor} />
             <div style={{ display: "flex", gap: 4, marginTop: 6 }}>
@@ -962,10 +961,12 @@ function NotesSection({ notes, onChange }) {
 }
 
 /* ─── Task Card ─── */
-function TaskCard({ task, columnId, categories, onDragStart, onToggle, onDelete, onEdit, onChangeCategory, isMobile, onMove, onSetRecurring, onSkipRecurring, onSetTime, onRemoveTime, projects, onAssignToProject, onUnlink, highlightQuery, taskFontSize }) {
+function TaskCard({ task, columnId, categories, onDragStart, onToggle, onDelete, onEdit, onChangeCategory, isMobile, onMove, onSetRecurring, onSkipRecurring, onSetTime, onRemoveTime, projects, onAssignToProject, onUnlink, onUpdateTask, highlightQuery, taskFontSize }) {
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [timeInput, setTimeInput] = useState(task.startTime || "09:00");
   const [showProjectMenu, setShowProjectMenu] = useState(false);
+  const [subtasksOpen, setSubtasksOpen] = useState(false);
+  const [newSubtaskText, setNewSubtaskText] = useState("");
   const [editing, setEditing] = useState(false);
   const [editText, setEditText] = useState(task.text);
   const [hover, setHover] = useState(false);
@@ -1049,7 +1050,29 @@ function TaskCard({ task, columnId, categories, onDragStart, onToggle, onDelete,
           <HighlightText text={task.text} query={highlightQuery} />
           {task.recurring && <span title={`Repeats ${task.recurring.type === "weeks" ? task.recurring.count + " weeks" : task.recurring.type === "monthly" ? "monthly" : "until " + task.recurring.until}`} style={{ fontSize: 9, marginLeft: 4, color: "var(--text-faint)" }}>{"\uD83D\uDD01"}</span>}
           {task.projectId && projects && (() => { const p = projects.find((pr) => pr.id === task.projectId); return p ? <span style={{ fontSize: 9, marginLeft: 6, color: "var(--text-faint)", background: "var(--border-light)", padding: "0px 4px", borderRadius: 3, fontFamily: "'JetBrains Mono', monospace", whiteSpace: "nowrap", textDecoration: "none" }}>{p.text}</span> : null; })()}
+          {task.subtasks && task.subtasks.length > 0 && (() => { const done = task.subtasks.filter((s) => s.done).length; return <span onClick={(e) => { e.stopPropagation(); setSubtasksOpen(!subtasksOpen); }} style={{ fontSize: 9, marginLeft: 6, color: done === task.subtasks.length ? "#6a9955" : "var(--text-muted)", fontFamily: "'JetBrains Mono', monospace", fontWeight: 600, cursor: "pointer", textDecoration: "none" }}>{done}/{task.subtasks.length}</span>; })()}
         </span>
+      )}
+      {/* Subtask panel */}
+      {subtasksOpen && task.subtasks && (
+        <div style={{ padding: "2px 0 2px 22px", borderTop: "1px dashed var(--border-light)" }}>
+          {task.subtasks.map((sub) => (
+            <div key={sub.id} style={{ display: "flex", alignItems: "center", gap: 4, padding: "1px 0" }}>
+              <div onClick={() => onUpdateTask && onUpdateTask(columnId, task.id, { subtasks: task.subtasks.map((s) => s.id === sub.id ? { ...s, done: !s.done } : s) })}
+                style={{ width: 12, height: 12, border: "1.5px solid var(--border)", borderRadius: 2, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", fontSize: 8, color: sub.done ? "#6a9955" : "transparent", background: sub.done ? "rgba(106,153,85,0.1)" : "transparent", flexShrink: 0 }}>
+                {sub.done && "\u2713"}
+              </div>
+              <span style={{ fontSize: 10, color: sub.done ? "var(--text-muted)" : "var(--text)", textDecoration: sub.done ? "line-through" : "none", flex: 1, wordBreak: "break-word" }}>{sub.text}</span>
+              <button onClick={() => onUpdateTask && onUpdateTask(columnId, task.id, { subtasks: task.subtasks.filter((s) => s.id !== sub.id) })}
+                style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-faint)", fontSize: 10, padding: 0, flexShrink: 0 }}
+                onMouseEnter={(e) => e.target.style.color = "#c44"} onMouseLeave={(e) => e.target.style.color = "var(--text-faint)"}>&times;</button>
+            </div>
+          ))}
+          <input value={newSubtaskText} onChange={(e) => setNewSubtaskText(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter" && newSubtaskText.trim()) { onUpdateTask && onUpdateTask(columnId, task.id, { subtasks: [...task.subtasks, { id: "st" + Date.now(), text: newSubtaskText.trim(), done: false }] }); setNewSubtaskText(""); } if (e.key === "Escape") setSubtasksOpen(false); }}
+            placeholder="Add subtask..." autoFocus
+            style={{ width: "100%", border: "1px solid var(--border)", borderRadius: 3, padding: "2px 4px", fontSize: 10, outline: "none", background: "var(--input-bg)", color: "var(--text)", boxSizing: "border-box", marginTop: 2 }} />
+        </div>
       )}
       {(hover || showCatPicker) && !editing && (
         <div style={{ position: "absolute", top: 1, right: 2, display: "flex", gap: 2, alignItems: "center", background: hover ? "var(--bg-hover)" : `${catColor}18`, padding: "0 2px" }}>
@@ -1108,6 +1131,13 @@ function TaskCard({ task, columnId, categories, onDragStart, onToggle, onDelete,
               style={{ padding: "6px 14px", cursor: "pointer", fontSize: 12, color: "var(--text)" }}
               onMouseEnter={(e) => e.currentTarget.style.background = "var(--bg-hover)"} onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}>
               Remove time
+            </div>
+          )}
+          {!task.subtasks && onUpdateTask && (
+            <div onClick={() => { onUpdateTask(columnId, task.id, { subtasks: [] }); setSubtasksOpen(true); setCtxMenu(null); }}
+              style={{ padding: "6px 14px", cursor: "pointer", fontSize: 12, color: "var(--text)" }}
+              onMouseEnter={(e) => e.currentTarget.style.background = "var(--bg-hover)"} onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}>
+              Add subtasks
             </div>
           )}
           {projects && projects.length > 0 && !task.projectId && (
@@ -1221,7 +1251,7 @@ function DropZone({ onDrop }) {
 }
 
 /* ─── Day Section ─── */
-function DaySection({ dayInfo, columnId, tasks, categories, onDragStart, onDrop, onToggle, onDelete, onEdit, onAdd, onChangeCategory, isMobile, onMove, onSetRecurring, onSetTime, onRemoveTime, onSkipRecurring, projects, onAssignToProject, onUnlink, highlightQuery, taskFontSize, isReadOnly }) {
+function DaySection({ dayInfo, columnId, tasks, categories, onDragStart, onDrop, onToggle, onDelete, onEdit, onAdd, onChangeCategory, isMobile, onMove, onSetRecurring, onSetTime, onRemoveTime, onSkipRecurring, projects, onAssignToProject, onUnlink, onUpdateTask, highlightQuery, taskFontSize, isReadOnly }) {
   const [dragOver, setDragOver] = useState(false);
   const [adding, setAdding] = useState(false);
   const [newText, setNewText] = useState("");
@@ -1304,11 +1334,11 @@ function DaySection({ dayInfo, columnId, tasks, categories, onDragStart, onDrop,
         {incompleteTasks.map((task, idx) => (
           <div key={task.id}>
             <DropZone onDrop={(e) => handleDropAtIndex(e, task.id)} />
-            <TaskCard task={task} columnId={columnId} categories={categories} onDragStart={onDragStart} onToggle={onToggle} onDelete={onDelete} onEdit={onEdit} onChangeCategory={onChangeCategory} isMobile={isMobile} onMove={onMove} onSetRecurring={onSetRecurring} onSkipRecurring={onSkipRecurring} onSetTime={onSetTime} onRemoveTime={onRemoveTime} projects={projects} onAssignToProject={onAssignToProject} onUnlink={onUnlink} highlightQuery={highlightQuery} taskFontSize={taskFontSize} />
+            <TaskCard task={task} columnId={columnId} categories={categories} onDragStart={onDragStart} onToggle={onToggle} onDelete={onDelete} onEdit={onEdit} onChangeCategory={onChangeCategory} isMobile={isMobile} onMove={onMove} onSetRecurring={onSetRecurring} onSkipRecurring={onSkipRecurring} onSetTime={onSetTime} onRemoveTime={onRemoveTime} projects={projects} onAssignToProject={onAssignToProject} onUnlink={onUnlink} onUpdateTask={onUpdateTask} highlightQuery={highlightQuery} taskFontSize={taskFontSize} />
           </div>
         ))}
         <DropZone onDrop={(e) => handleDropAtIndex(e, null)} />
-        <DoneCollapse doneTasks={doneTasks} columnId={columnId} categories={categories} onDragStart={onDragStart} onToggle={onToggle} onDelete={onDelete} onEdit={onEdit} onChangeCategory={onChangeCategory} onMove={onMove} onSetRecurring={onSetRecurring} onSkipRecurring={onSkipRecurring} onSetTime={onSetTime} onRemoveTime={onRemoveTime} projects={projects} onAssignToProject={onAssignToProject} onUnlink={onUnlink} highlightQuery={highlightQuery} isMobile={isMobile} taskFontSize={taskFontSize} defaultExpanded={isReadOnly} />
+        <DoneCollapse doneTasks={doneTasks} columnId={columnId} categories={categories} onDragStart={onDragStart} onToggle={onToggle} onDelete={onDelete} onEdit={onEdit} onChangeCategory={onChangeCategory} onMove={onMove} onSetRecurring={onSetRecurring} onSkipRecurring={onSkipRecurring} onSetTime={onSetTime} onRemoveTime={onRemoveTime} projects={projects} onAssignToProject={onAssignToProject} onUnlink={onUnlink} onUpdateTask={onUpdateTask} highlightQuery={highlightQuery} isMobile={isMobile} taskFontSize={taskFontSize} defaultExpanded={isReadOnly} />
       </div>
 
       {/* Add task form (only shown when adding and not read-only) */}
@@ -1624,7 +1654,7 @@ function UnscheduledCol({ col, untimed, done, categories, taskFontSize, toggleDo
   );
 }
 
-function DoneCollapse({ doneTasks, columnId, categories, onDragStart, onToggle, onDelete, onEdit, onChangeCategory, onMove, onSetRecurring, onSetTime, onRemoveTime, onSkipRecurring, projects, onAssignToProject, onUnlink, highlightQuery, isToday, isMobile, taskFontSize, defaultExpanded }) {
+function DoneCollapse({ doneTasks, columnId, categories, onDragStart, onToggle, onDelete, onEdit, onChangeCategory, onMove, onSetRecurring, onSetTime, onRemoveTime, onSkipRecurring, projects, onAssignToProject, onUnlink, onUpdateTask, highlightQuery, isToday, isMobile, taskFontSize, defaultExpanded }) {
   const [expanded, setExpanded] = useState(defaultExpanded || false);
   if (doneTasks.length === 0) return null;
   return (
@@ -1634,7 +1664,7 @@ function DoneCollapse({ doneTasks, columnId, categories, onDragStart, onToggle, 
         <span style={{ fontSize: 8, color: "var(--text-faint)" }}>{doneTasks.length} done</span>
       </div>
       {expanded && doneTasks.map((task) => (
-        <TaskCard key={task.id} task={task} columnId={columnId} categories={categories} onDragStart={onDragStart} onToggle={onToggle} onDelete={onDelete} onEdit={onEdit} onChangeCategory={onChangeCategory} isMobile={isMobile} onMove={onMove} onSetRecurring={onSetRecurring} onSkipRecurring={onSkipRecurring} onSetTime={onSetTime} onRemoveTime={onRemoveTime} projects={projects} onAssignToProject={onAssignToProject} onUnlink={onUnlink} highlightQuery={highlightQuery} taskFontSize={taskFontSize} />
+        <TaskCard key={task.id} task={task} columnId={columnId} categories={categories} onDragStart={onDragStart} onToggle={onToggle} onDelete={onDelete} onEdit={onEdit} onChangeCategory={onChangeCategory} isMobile={isMobile} onMove={onMove} onSetRecurring={onSetRecurring} onSkipRecurring={onSkipRecurring} onSetTime={onSetTime} onRemoveTime={onRemoveTime} projects={projects} onAssignToProject={onAssignToProject} onUnlink={onUnlink} onUpdateTask={onUpdateTask} highlightQuery={highlightQuery} taskFontSize={taskFontSize} />
       ))}
     </>
   );
@@ -1685,11 +1715,11 @@ function DayColumn({ dayInfo, columnId, tasks, categories, onDragStart, onDrop, 
         {incompleteTasks.map((task, idx) => (
           <div key={task.id}>
             <DropZone onDrop={(e) => handleDropAtIndex(e, task.id)} />
-            <TaskCard task={task} columnId={columnId} categories={categories} onDragStart={onDragStart} onToggle={onToggle} onDelete={onDelete} onEdit={onEdit} onChangeCategory={onChangeCategory} onMove={onMove} onSetRecurring={onSetRecurring} onSkipRecurring={onSkipRecurring} onSetTime={onSetTime} onRemoveTime={onRemoveTime} projects={projects} onAssignToProject={onAssignToProject} onUnlink={onUnlink} highlightQuery={highlightQuery} taskFontSize={taskFontSize} />
+            <TaskCard task={task} columnId={columnId} categories={categories} onDragStart={onDragStart} onToggle={onToggle} onDelete={onDelete} onEdit={onEdit} onChangeCategory={onChangeCategory} onMove={onMove} onSetRecurring={onSetRecurring} onSkipRecurring={onSkipRecurring} onSetTime={onSetTime} onRemoveTime={onRemoveTime} projects={projects} onAssignToProject={onAssignToProject} onUnlink={onUnlink} onUpdateTask={onUpdateTask} highlightQuery={highlightQuery} taskFontSize={taskFontSize} />
           </div>
         ))}
         <DropZone onDrop={(e) => handleDropAtIndex(e, null)} />
-        <DoneCollapse doneTasks={doneTasks} columnId={columnId} categories={categories} onDragStart={onDragStart} onToggle={onToggle} onDelete={onDelete} onEdit={onEdit} onChangeCategory={onChangeCategory} onMove={onMove} onSetRecurring={onSetRecurring} onSkipRecurring={onSkipRecurring} onSetTime={onSetTime} onRemoveTime={onRemoveTime} projects={projects} onAssignToProject={onAssignToProject} onUnlink={onUnlink} highlightQuery={highlightQuery} isToday={isToday} taskFontSize={taskFontSize} defaultExpanded={isReadOnly} />
+        <DoneCollapse doneTasks={doneTasks} columnId={columnId} categories={categories} onDragStart={onDragStart} onToggle={onToggle} onDelete={onDelete} onEdit={onEdit} onChangeCategory={onChangeCategory} onMove={onMove} onSetRecurring={onSetRecurring} onSkipRecurring={onSkipRecurring} onSetTime={onSetTime} onRemoveTime={onRemoveTime} projects={projects} onAssignToProject={onAssignToProject} onUnlink={onUnlink} onUpdateTask={onUpdateTask} highlightQuery={highlightQuery} isToday={isToday} taskFontSize={taskFontSize} defaultExpanded={isReadOnly} />
       </div>
       {adding ? (
         <div style={{ marginTop: 2, flexShrink: 0 }}>
@@ -2381,6 +2411,7 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
 
   const deleteTask = useCallback((col, id) => { pushUndo(); const t = dataRef.current.tasks; update({ tasks: { ...t, [col]: t[col].filter((x) => x.id !== id) } }); }, [pushUndo]);
   const editTask = useCallback((col, id, text) => { const t = dataRef.current.tasks; update({ tasks: { ...t, [col]: t[col].map((x) => (x.id === id ? { ...x, text } : x)) } }); }, []);
+  const updateTask = useCallback((col, id, patch) => { const t = dataRef.current.tasks; update({ tasks: { ...t, [col]: t[col].map((x) => (x.id === id ? { ...x, ...patch } : x)) } }); }, []);
   const setTaskTime = useCallback((col, id, newStartTime) => {
     const t = dataRef.current.tasks;
     const task = t[col]?.find((x) => x.id === id);
@@ -2483,6 +2514,8 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
       }
       return r;
     });
+    // Update local state immediately so it persists
+    dataRef.current = { ...dataRef.current, recurringRules: updated };
     if (onSaveRecurringRules) onSaveRecurringRules(updated);
   }, [onSaveRecurringRules, viewedWeekKey]);
   const toggleDaily = (hid, day) => { const updated = dailyHabits.map((h) => h.id === hid ? { ...h, checks: { ...h.checks, [day]: !h.checks[day] } } : h); update({ dailyHabits: updated }); onSaveDailyHabits(updated); };
@@ -2835,11 +2868,11 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
                   <div style={{ padding: isMobile ? "4px 4px" : "4px 8px", display: "flex", flexDirection: "column", gap: 2 }}>
                     {DAYS.map((day, i) => (
                       <DaySection key={day} dayInfo={weekDates[i]} columnId={day.toLowerCase()} tasks={tasks[day.toLowerCase()] || []} categories={categories}
-                        onDragStart={() => {}} onDrop={isReadOnly ? () => {} : handleDrop} onToggle={isReadOnly ? () => {} : wrappedToggleDone} onDelete={isReadOnly ? () => {} : wrappedDeleteTask} onEdit={isReadOnly ? () => {} : wrappedEditTask} onAdd={isReadOnly ? null : addTask} onChangeCategory={isReadOnly ? () => {} : changeCategory} isMobile={isMobile} onMove={isReadOnly ? () => {} : moveTask} onSetRecurring={isReadOnly ? () => {} : setRecurring} onSkipRecurring={isReadOnly ? () => {} : skipRecurring} onSetTime={isReadOnly ? () => {} : setTaskTime} onRemoveTime={isReadOnly ? () => {} : removeTaskTime} projects={projects || []} onAssignToProject={assignToProject} onUnlink={unlinkTask} highlightQuery={highlightQuery} taskFontSize={taskFontSize} isReadOnly={isReadOnly} />
+                        onDragStart={() => {}} onDrop={isReadOnly ? () => {} : handleDrop} onToggle={isReadOnly ? () => {} : wrappedToggleDone} onDelete={isReadOnly ? () => {} : wrappedDeleteTask} onEdit={isReadOnly ? () => {} : wrappedEditTask} onAdd={isReadOnly ? null : addTask} onChangeCategory={isReadOnly ? () => {} : changeCategory} isMobile={isMobile} onMove={isReadOnly ? () => {} : moveTask} onSetRecurring={isReadOnly ? () => {} : setRecurring} onSkipRecurring={isReadOnly ? () => {} : skipRecurring} onSetTime={isReadOnly ? () => {} : setTaskTime} onRemoveTime={isReadOnly ? () => {} : removeTaskTime} projects={projects || []} onAssignToProject={assignToProject} onUnlink={unlinkTask} onUpdateTask={updateTask} highlightQuery={highlightQuery} taskFontSize={taskFontSize} isReadOnly={isReadOnly} />
                     ))}
                     {isMobile && (
                       <DaySection dayInfo={null} columnId="later" tasks={tasks.later} categories={categories} onDragStart={() => {}} onDrop={handleDrop}
-                        onToggle={toggleDone} onDelete={deleteTask} onEdit={editTask} onAdd={addTask} onChangeCategory={changeCategory} isMobile={isMobile} onMove={moveTask} onSetRecurring={setRecurring} onSkipRecurring={skipRecurring} onSetTime={setTaskTime} onRemoveTime={removeTaskTime} projects={projects || []} onAssignToProject={assignToProject} onUnlink={unlinkTask} highlightQuery={highlightQuery} taskFontSize={taskFontSize} />
+                        onToggle={toggleDone} onDelete={deleteTask} onEdit={editTask} onAdd={addTask} onChangeCategory={changeCategory} isMobile={isMobile} onMove={moveTask} onSetRecurring={setRecurring} onSkipRecurring={skipRecurring} onSetTime={setTaskTime} onRemoveTime={removeTaskTime} projects={projects || []} onAssignToProject={assignToProject} onUnlink={unlinkTask} onUpdateTask={updateTask} highlightQuery={highlightQuery} taskFontSize={taskFontSize} />
                     )}
                     {/* Mobile upcoming section */}
                     {isMobile && (() => {
@@ -3182,7 +3215,7 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
                         {laterOpen && (
                           <div style={{ padding: "0px 8px 6px" }}>
                             <DaySection dayInfo={null} columnId="later" tasks={tasks.later} categories={categories} onDragStart={() => {}} onDrop={handleDrop}
-                              onToggle={toggleDone} onDelete={deleteTask} onEdit={editTask} onAdd={addTask} onChangeCategory={changeCategory} onMove={moveTask} onSetRecurring={setRecurring} onSkipRecurring={skipRecurring} onSetTime={setTaskTime} onRemoveTime={removeTaskTime} projects={projects || []} onAssignToProject={assignToProject} onUnlink={unlinkTask} highlightQuery={highlightQuery} taskFontSize={taskFontSize} />
+                              onToggle={toggleDone} onDelete={deleteTask} onEdit={editTask} onAdd={addTask} onChangeCategory={changeCategory} onMove={moveTask} onSetRecurring={setRecurring} onSkipRecurring={skipRecurring} onSetTime={setTaskTime} onRemoveTime={removeTaskTime} projects={projects || []} onAssignToProject={assignToProject} onUnlink={unlinkTask} onUpdateTask={updateTask} highlightQuery={highlightQuery} taskFontSize={taskFontSize} />
                           </div>
                         )}
                       </div>
@@ -3232,7 +3265,7 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
                     {laterOpen && (
                       <div style={{ padding: "0px 8px 6px" }}>
                         <DaySection dayInfo={null} columnId="later" tasks={tasks.later} categories={categories} onDragStart={() => {}} onDrop={handleDrop}
-                          onToggle={toggleDone} onDelete={deleteTask} onEdit={editTask} onAdd={addTask} onChangeCategory={changeCategory} onMove={moveTask} onSetRecurring={setRecurring} onSkipRecurring={skipRecurring} onSetTime={setTaskTime} onRemoveTime={removeTaskTime} projects={projects || []} onAssignToProject={assignToProject} onUnlink={unlinkTask} highlightQuery={highlightQuery} taskFontSize={taskFontSize} />
+                          onToggle={toggleDone} onDelete={deleteTask} onEdit={editTask} onAdd={addTask} onChangeCategory={changeCategory} onMove={moveTask} onSetRecurring={setRecurring} onSkipRecurring={skipRecurring} onSetTime={setTaskTime} onRemoveTime={removeTaskTime} projects={projects || []} onAssignToProject={assignToProject} onUnlink={unlinkTask} onUpdateTask={updateTask} highlightQuery={highlightQuery} taskFontSize={taskFontSize} />
                       </div>
                     )}
                 </div>
