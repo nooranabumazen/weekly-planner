@@ -199,6 +199,8 @@ export function usePlannerData(userId) {
               if (targetDay) shouldRepeat = true;
             }
             if (shouldRepeat) {
+              // Don't regenerate if this week is in the skip list
+              if (rule.skipWeeks && rule.skipWeeks.includes(wk)) continue;
               const day = targetDay || rule.day || "mon";
               if (dayKeys.includes(day)) {
                 const alreadyExists = tasks[day]?.some((t) => t.text === rule.text);

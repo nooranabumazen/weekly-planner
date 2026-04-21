@@ -1050,28 +1050,28 @@ function TaskCard({ task, columnId, categories, onDragStart, onToggle, onDelete,
           <HighlightText text={task.text} query={highlightQuery} />
           {task.recurring && <span title={`Repeats ${task.recurring.type === "weeks" ? task.recurring.count + " weeks" : task.recurring.type === "monthly" ? "monthly" : "until " + task.recurring.until}`} style={{ fontSize: 9, marginLeft: 4, color: "var(--text-faint)" }}>{"\uD83D\uDD01"}</span>}
           {task.projectId && projects && (() => { const p = projects.find((pr) => pr.id === task.projectId); return p ? <span style={{ fontSize: 9, marginLeft: 6, color: "var(--text-faint)", background: "var(--border-light)", padding: "0px 4px", borderRadius: 3, fontFamily: "'JetBrains Mono', monospace", whiteSpace: "nowrap", textDecoration: "none" }}>{p.text}</span> : null; })()}
-          {task.subtasks && task.subtasks.length > 0 && (() => { const done = task.subtasks.filter((s) => s.done).length; return <span onClick={(e) => { e.stopPropagation(); setSubtasksOpen(!subtasksOpen); }} style={{ fontSize: 9, marginLeft: 6, color: done === task.subtasks.length ? "#6a9955" : "var(--text-muted)", fontFamily: "'JetBrains Mono', monospace", fontWeight: 600, cursor: "pointer", textDecoration: "none" }}>{done}/{task.subtasks.length}</span>; })()}
+          {task.subtasks && task.subtasks.length > 0 && (() => { const done = task.subtasks.filter((s) => s.done).length; return <span onClick={(e) => { e.stopPropagation(); setSubtasksOpen(!subtasksOpen); }} style={{ fontSize: 9, marginLeft: 6, color: done === task.subtasks.length ? "#6a9955" : "var(--text-muted)", fontFamily: "'JetBrains Mono', monospace", fontWeight: 600, cursor: "pointer", textDecoration: "none", background: "var(--border-light)", padding: "0 4px", borderRadius: 3 }}>{subtasksOpen ? "\u25BC" : "\u25B6"} {done}/{task.subtasks.length}</span>; })()}
         </span>
       )}
-      {/* Subtask panel */}
-      {subtasksOpen && task.subtasks && (
-        <div style={{ padding: "2px 0 2px 22px", borderTop: "1px dashed var(--border-light)" }}>
+      {/* Subtask panel - auto-open when subtasks exist but empty (just added) */}
+      {(subtasksOpen || (task.subtasks && task.subtasks.length === 0)) && task.subtasks && (
+        <div style={{ padding: "4px 0 4px 22px", borderTop: "1px dashed var(--border-light)" }}>
           {task.subtasks.map((sub) => (
-            <div key={sub.id} style={{ display: "flex", alignItems: "center", gap: 4, padding: "1px 0" }}>
+            <div key={sub.id} style={{ display: "flex", alignItems: "center", gap: 5, padding: "2px 0" }}>
               <div onClick={() => onUpdateTask && onUpdateTask(columnId, task.id, { subtasks: task.subtasks.map((s) => s.id === sub.id ? { ...s, done: !s.done } : s) })}
-                style={{ width: 12, height: 12, border: "1.5px solid var(--border)", borderRadius: 2, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", fontSize: 8, color: sub.done ? "#6a9955" : "transparent", background: sub.done ? "rgba(106,153,85,0.1)" : "transparent", flexShrink: 0 }}>
+                style={{ width: 13, height: 13, border: sub.done ? "1.5px solid #6a9955" : "1.5px solid var(--text-faint)", borderRadius: 3, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", fontSize: 9, color: sub.done ? "#6a9955" : "transparent", background: sub.done ? "rgba(106,153,85,0.15)" : "transparent", flexShrink: 0, transition: "all 0.15s" }}>
                 {sub.done && "\u2713"}
               </div>
-              <span style={{ fontSize: 10, color: sub.done ? "var(--text-muted)" : "var(--text)", textDecoration: sub.done ? "line-through" : "none", flex: 1, wordBreak: "break-word" }}>{sub.text}</span>
+              <span style={{ fontSize: 11, color: sub.done ? "var(--text-muted)" : "var(--text)", textDecoration: sub.done ? "line-through" : "none", flex: 1, wordBreak: "break-word" }}>{sub.text}</span>
               <button onClick={() => onUpdateTask && onUpdateTask(columnId, task.id, { subtasks: task.subtasks.filter((s) => s.id !== sub.id) })}
-                style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-faint)", fontSize: 10, padding: 0, flexShrink: 0 }}
+                style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-faint)", fontSize: 11, padding: 0, flexShrink: 0 }}
                 onMouseEnter={(e) => e.target.style.color = "#c44"} onMouseLeave={(e) => e.target.style.color = "var(--text-faint)"}>&times;</button>
             </div>
           ))}
           <input value={newSubtaskText} onChange={(e) => setNewSubtaskText(e.target.value)}
-            onKeyDown={(e) => { if (e.key === "Enter" && newSubtaskText.trim()) { onUpdateTask && onUpdateTask(columnId, task.id, { subtasks: [...task.subtasks, { id: "st" + Date.now(), text: newSubtaskText.trim(), done: false }] }); setNewSubtaskText(""); } if (e.key === "Escape") setSubtasksOpen(false); }}
+            onKeyDown={(e) => { if (e.key === "Enter" && newSubtaskText.trim()) { onUpdateTask && onUpdateTask(columnId, task.id, { subtasks: [...(task.subtasks || []), { id: "st" + Date.now(), text: newSubtaskText.trim(), done: false }] }); setNewSubtaskText(""); } if (e.key === "Escape") setSubtasksOpen(false); }}
             placeholder="Add subtask..." autoFocus
-            style={{ width: "100%", border: "1px solid var(--border)", borderRadius: 3, padding: "2px 4px", fontSize: 10, outline: "none", background: "var(--input-bg)", color: "var(--text)", boxSizing: "border-box", marginTop: 2 }} />
+            style={{ width: "100%", border: "1px solid var(--border)", borderRadius: 3, padding: "3px 6px", fontSize: 11, outline: "none", background: "var(--input-bg)", color: "var(--text)", boxSizing: "border-box", marginTop: 3 }} />
         </div>
       )}
       {(hover || showCatPicker) && !editing && (
