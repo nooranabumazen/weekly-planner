@@ -372,7 +372,6 @@ function RichEditor({ content, onChange, userId }) {
           document.addEventListener("mouseup", onUp);
         }}
         onContextMenu={handleContextMenu}
-        onKeyDown={handleEditorKeyDown}
         suppressContentEditableWarning
         style={{ flex: 1, overflowY: "auto", padding: "14px 24px 14px 48px", fontSize: 13, lineHeight: 1.6, outline: "none", color: "var(--text)", fontFamily: "'DM Sans', sans-serif", minHeight: 100, position: "relative" }} />
       {ctxMenu && (
