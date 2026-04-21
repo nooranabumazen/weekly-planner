@@ -1236,7 +1236,7 @@ function TaskCard({ task, columnId, categories, onDragStart, onToggle, onDelete,
           </div>
         </div>
       )}
-    </div>
+      </div>
     </div>
   );
 }
