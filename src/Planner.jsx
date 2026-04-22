@@ -1048,7 +1048,7 @@ function TaskCard({ task, columnId, categories, onDragStart, onToggle, onDelete,
           </span>
         )}
       </div>
-      {task.subtasks && task.subtasks.length > 0 && subtasksOpen && (
+      {task.subtasks && (task.subtasks.length > 0 ? subtasksOpen : editing) && (
         <div style={{ padding: "2px 0 2px 22px" }}>
           {task.subtasks.map((sub) => (
             <div key={sub.id} style={{ display: "flex", alignItems: "center", gap: 4, padding: "1px 0" }}>
