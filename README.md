@@ -291,7 +291,8 @@ SETUP_GUIDE.md         Detailed setup instructions for sync mode
 ```
 
 ---
-
 ## License
 
-MIT
+This project is licensed under [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/).
+
+You are free to use, modify, and share this project for non-commercial purposes, as long as you give credit and share any modifications under the same license. Commercial use is not permitted without permission from the author.
