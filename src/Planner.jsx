@@ -1056,12 +1056,12 @@ function TaskCard({ task, columnId, categories, onDragStart, onToggle, onDelete,
         )}
       </div>
       {task.subtasks && (task.subtasks.length > 0 ? subtasksOpen : editing) && (
-        <div style={{ padding: "1px 0 2px 22px" }}>
+        <div style={{ padding: "0 0 0 22px" }}>
           {task.subtasks.map((sub) => {
             return (
-            <div key={sub.id} className="sub-row" style={{ display: "flex", alignItems: "center", gap: 4, padding: "0px 0" }}
-              onMouseEnter={(e) => { const x = e.currentTarget.querySelector(".sub-x"); if (x) x.style.opacity = "1"; }}
-              onMouseLeave={(e) => { const x = e.currentTarget.querySelector(".sub-x"); if (x) x.style.opacity = "0"; }}>
+            <div key={sub.id} style={{ display: "flex", alignItems: "center", gap: 4, padding: "0" }}
+              onMouseEnter={(e) => { if (!editing) { const x = e.currentTarget.querySelector(".sub-x"); if (x) x.style.opacity = "1"; } }}
+              onMouseLeave={(e) => { if (!editing) { const x = e.currentTarget.querySelector(".sub-x"); if (x) x.style.opacity = "0"; } }}>
               <div onMouseDown={(e) => { e.preventDefault(); e.stopPropagation();
                   const newSubs = task.subtasks.map((s) => s.id === sub.id ? { ...s, done: !s.done } : s);
                   onUpdateTask && onUpdateTask(columnId, task.id, { subtasks: newSubs });
@@ -1081,23 +1081,15 @@ function TaskCard({ task, columnId, categories, onDragStart, onToggle, onDelete,
                   style={{ fontSize: 10, color: sub.done ? "var(--text-muted)" : "var(--text)", textDecoration: sub.done ? "line-through" : "none", flex: 1, wordBreak: "break-word", cursor: "text", lineHeight: 1.4 }}>{sub.text}</span>
               )}
               <span className="sub-x" onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); onUpdateTask && onUpdateTask(columnId, task.id, { subtasks: task.subtasks.filter((s) => s.id !== sub.id) }); }}
-                style={{ cursor: "pointer", color: "var(--text-faint)", fontSize: 10, padding: "0 2px", flexShrink: 0, lineHeight: 1, opacity: 0, transition: "opacity 0.1s" }}
+                style={{ cursor: "pointer", color: "var(--text-faint)", fontSize: 13, padding: "0 3px", flexShrink: 0, lineHeight: 1, opacity: editing ? 1 : 0, transition: "opacity 0.1s" }}
                 onMouseEnter={(e) => e.target.style.color = "#c44"} onMouseLeave={(e) => e.target.style.color = "var(--text-faint)"}>&times;</span>
             </div>
           );})}
-          {addingSubtask ? (
-            <div style={{ display: "flex", alignItems: "center", gap: 4, paddingLeft: 16 }}>
-              <input value={newSubtaskText} onChange={(e) => setNewSubtaskText(e.target.value)}
-                onBlur={() => { if (!newSubtaskText.trim()) setAddingSubtask(false); }}
-                onKeyDown={(e) => { if (e.key === "Enter" && newSubtaskText.trim()) { onUpdateTask && onUpdateTask(columnId, task.id, { subtasks: [...(task.subtasks || []), { id: "st" + Date.now(), text: newSubtaskText.trim(), done: false }] }); setNewSubtaskText(""); } if (e.key === "Escape") { setAddingSubtask(false); setNewSubtaskText(""); } }}
-                placeholder="subtask..."
-                autoFocus
-                style={{ flex: 1, border: "none", borderBottom: "1px solid var(--border)", padding: "0", fontSize: 10, outline: "none", background: "transparent", color: "var(--text)" }} />
-            </div>
-          ) : (
-            <span onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); setAddingSubtask(true); }}
-              style={{ fontSize: 9, color: "var(--text-faint)", cursor: "pointer", paddingLeft: 16 }}
-              onMouseEnter={(e) => e.target.style.color = "var(--text-muted)"} onMouseLeave={(e) => e.target.style.color = "var(--text-faint)"}>+</span>
+          {editing && (
+            <input value={newSubtaskText} onChange={(e) => setNewSubtaskText(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter" && newSubtaskText.trim()) { onUpdateTask && onUpdateTask(columnId, task.id, { subtasks: [...(task.subtasks || []), { id: "st" + Date.now(), text: newSubtaskText.trim(), done: false }] }); setNewSubtaskText(""); } }}
+              placeholder="+ subtask"
+              style={{ width: "calc(100% - 16px)", border: "none", padding: "1px 0 1px 16px", fontSize: 10, outline: "none", background: "transparent", color: "var(--text-faint)", marginTop: 0 }} />
           )}
         </div>
       )}
