@@ -995,7 +995,13 @@ function TaskCard({ task, columnId, categories, onDragStart, onToggle, onDelete,
     document.addEventListener("touchstart", close);
     return () => { document.removeEventListener("mousedown", close); document.removeEventListener("touchstart", close); };
   }, [ctxMenu]);
+  const taskCardRef = useRef(null);
   const save = () => { if (editText.trim()) onEdit(columnId, task.id, editText.trim()); setEditing(false); };
+  const handleBlur = (e) => {
+    // Don't exit edit mode if focus moved to another element inside this task card (e.g., subtask input, delete button)
+    if (taskCardRef.current && e.relatedTarget && taskCardRef.current.contains(e.relatedTarget)) return;
+    save();
+  };
   const catColor = getCatColor(categories, task.category);
 
   const handleContextMenu = (e) => {
@@ -1017,7 +1023,7 @@ function TaskCard({ task, columnId, categories, onDragStart, onToggle, onDelete,
   };
 
   return (<>
-    <div style={{ borderLeft: task._isUpcoming ? `3px dashed var(--text-faint)` : `3px solid ${catColor}`, background: hover ? "var(--bg-hover)" : task._isUpcoming ? "transparent" : `${catColor}18`, opacity: task.done ? 0.45 : 1, transition: "opacity 0.2s, background 0.15s", marginBottom: 0, position: "relative" }}
+    <div ref={taskCardRef} style={{ borderLeft: task._isUpcoming ? `3px dashed var(--text-faint)` : `3px solid ${catColor}`, background: hover ? "var(--bg-hover)" : task._isUpcoming ? "transparent" : `${catColor}18`, opacity: task.done ? 0.45 : 1, transition: "opacity 0.2s, background 0.15s", marginBottom: 0, position: "relative" }}
       onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}>
       <div draggable={!editing}
         onDragStart={(e) => { e.dataTransfer.setData("text/plain", JSON.stringify({ taskId: task.id, from: columnId })); e.dataTransfer.effectAllowed = "move"; onDragStart(); }}
@@ -1031,7 +1037,7 @@ function TaskCard({ task, columnId, categories, onDragStart, onToggle, onDelete,
           style={{ cursor: "pointer", accentColor: "#5a5a5a", width: isMobile ? 20 : 15, height: isMobile ? 20 : 15, marginTop: 2, flexShrink: 0 }} />
         {editing ? (
           <textarea ref={inputRef} value={editText} onChange={(e) => { setEditText(e.target.value); e.target.style.height = "auto"; e.target.style.height = e.target.scrollHeight + "px"; }}
-            onBlur={save}
+            onBlur={handleBlur}
             onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); save(); } if (e.key === "Escape") setEditing(false); }}
             rows={1}
             style={{ flex: 1, minWidth: 0, border: "none", background: "transparent", font: "inherit", outline: "none", padding: 0, fontSize: isMobile ? 16 : (taskFontSize || 13), lineHeight: 1.4, resize: "none", overflow: "hidden", color: "var(--text)", boxSizing: "border-box" }}
