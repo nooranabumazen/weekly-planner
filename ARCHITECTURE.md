@@ -209,7 +209,6 @@ service cloud.firestore {
 
 ## Important Conventions
 
-- **No em dashes or en dashes** in user-facing text (owner preference)
 - **No onSnapshot listeners** (data loss risk, use getDoc only)
 - **All styles inline** (no CSS modules, no styled-components)
 - **Fonts:** DM Sans (body), JetBrains Mono (labels/headers)
