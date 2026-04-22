@@ -967,6 +967,8 @@ function TaskCard({ task, columnId, categories, onDragStart, onToggle, onDelete,
   const [showProjectMenu, setShowProjectMenu] = useState(false);
   const [subtasksOpen, setSubtasksOpen] = useState(true);
   const [newSubtaskText, setNewSubtaskText] = useState("");
+  const [editingSubId, setEditingSubId] = useState(null);
+  const [editSubText, setEditSubText] = useState("");
   const [editing, setEditing] = useState(false);
   const [editText, setEditText] = useState(task.text);
   const [hover, setHover] = useState(false);
@@ -1049,7 +1051,7 @@ function TaskCard({ task, columnId, categories, onDragStart, onToggle, onDelete,
       {task.subtasks && task.subtasks.length > 0 && subtasksOpen && (
         <div style={{ padding: "2px 0 2px 22px" }}>
           {task.subtasks.map((sub) => (
-            <div key={sub.id} style={{ display: "flex", alignItems: "center", gap: 5, padding: "1px 0" }}>
+            <div key={sub.id} style={{ display: "flex", alignItems: "center", gap: 4, padding: "1px 0" }}>
               <div onClick={() => {
                   const newSubs = task.subtasks.map((s) => s.id === sub.id ? { ...s, done: !s.done } : s);
                   onUpdateTask && onUpdateTask(columnId, task.id, { subtasks: newSubs });
@@ -1058,9 +1060,18 @@ function TaskCard({ task, columnId, categories, onDragStart, onToggle, onDelete,
                 style={{ width: 13, height: 13, border: sub.done ? "1.5px solid #6a9955" : "1.5px solid var(--text-faint)", borderRadius: 3, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", fontSize: 9, color: sub.done ? "#6a9955" : "transparent", background: sub.done ? "rgba(106,153,85,0.15)" : "transparent", flexShrink: 0, transition: "all 0.15s" }}>
                 {sub.done && "\u2713"}
               </div>
-              <span style={{ fontSize: 11, color: sub.done ? "var(--text-muted)" : "var(--text)", textDecoration: sub.done ? "line-through" : "none", flex: 1, wordBreak: "break-word" }}>{sub.text}</span>
-              {editing && <button onClick={() => onUpdateTask && onUpdateTask(columnId, task.id, { subtasks: task.subtasks.filter((s) => s.id !== sub.id) })}
-                style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-faint)", fontSize: 11, padding: 0, flexShrink: 0 }}
+              {editingSubId === sub.id ? (
+                <input value={editSubText} onChange={(e) => setEditSubText(e.target.value)}
+                  onBlur={() => { if (editSubText.trim()) { onUpdateTask && onUpdateTask(columnId, task.id, { subtasks: task.subtasks.map((s) => s.id === sub.id ? { ...s, text: editSubText.trim() } : s) }); } setEditingSubId(null); }}
+                  onKeyDown={(e) => { if (e.key === "Enter") e.target.blur(); if (e.key === "Escape") setEditingSubId(null); }}
+                  autoFocus
+                  style={{ flex: 1, border: "1px solid var(--border)", borderRadius: 3, padding: "1px 4px", fontSize: 11, outline: "none", background: "var(--input-bg)", color: "var(--text)", minWidth: 0 }} />
+              ) : (
+                <span onDoubleClick={() => { setEditingSubId(sub.id); setEditSubText(sub.text); }}
+                  style={{ fontSize: 11, color: sub.done ? "var(--text-muted)" : "var(--text)", textDecoration: sub.done ? "line-through" : "none", flex: 1, wordBreak: "break-word", cursor: "text" }}>{sub.text}</span>
+              )}
+              {editing && <button onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); onUpdateTask && onUpdateTask(columnId, task.id, { subtasks: task.subtasks.filter((s) => s.id !== sub.id) }); }}
+                style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-faint)", fontSize: 11, padding: "0 2px", flexShrink: 0, lineHeight: 1 }}
                 onMouseEnter={(e) => e.target.style.color = "#c44"} onMouseLeave={(e) => e.target.style.color = "var(--text-faint)"}>&times;</button>}
             </div>
           ))}
