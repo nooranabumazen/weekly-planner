@@ -1345,7 +1345,7 @@ function DaySection({ dayInfo, columnId, tasks, categories, onDragStart, onDrop,
         padding: isLater ? (isMobile ? "4px 10px 2px" : "2px 10px 2px") : (isMobile ? "6px 10px 2px" : "4px 10px 2px"), display: "flex", alignItems: "baseline", gap: 5,
       }}>
         {!isLater && onOpenJournal && <button onClick={() => onOpenJournal(dayInfo?.fullDate)} title={hasJournalEntry ? "View journal entry" : "Write journal entry"}
-          style={{ background: "none", border: "none", cursor: "pointer", padding: 0, lineHeight: 1, display: "flex", alignItems: "center", flexShrink: 0, fontSize: isMobile ? 10 : 8, color: hasJournalEntry ? "var(--text-muted)" : "var(--border)", transition: "color 0.2s" }}
+          style={{ background: "none", border: "none", cursor: "pointer", padding: 0, margin: "0 -2px 0 0", lineHeight: 1, display: "flex", alignItems: "center", flexShrink: 0, fontSize: isMobile ? 11 : 10, color: hasJournalEntry ? "var(--text-muted)" : "var(--border)", transition: "color 0.2s" }}
           onMouseEnter={(e) => e.currentTarget.style.color = "var(--text)"} onMouseLeave={(e) => e.currentTarget.style.color = hasJournalEntry ? "var(--text-muted)" : "var(--border)"}>{"\u270E"}</button>}
         <span style={{
           fontFamily: "'JetBrains Mono', monospace", fontWeight: 700,
