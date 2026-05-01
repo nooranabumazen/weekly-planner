@@ -1159,6 +1159,13 @@ function TaskCard({ task, columnId, categories, onDragStart, onToggle, onDelete,
               Add subtasks
             </div>
           )}
+          {task.subtasks && onUpdateTask && (
+            <div onClick={() => { onUpdateTask(columnId, task.id, { subtasks: undefined }); setCtxMenu(null); }}
+              style={{ padding: "6px 14px", cursor: "pointer", fontSize: 12, color: "var(--text)" }}
+              onMouseEnter={(e) => e.currentTarget.style.background = "var(--bg-hover)"} onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}>
+              Remove subtasks
+            </div>
+          )}
           {projects && projects.length > 0 && !task.projectId && (
             <>
               <div onClick={() => setShowProjectMenu(!showProjectMenu)}
@@ -1276,6 +1283,9 @@ function DaySection({ dayInfo, columnId, tasks, categories, onDragStart, onDrop,
   const [newText, setNewText] = useState("");
   const [newCat, setNewCat] = useState("cat_none");
   const [catManuallySet, setCatManuallySet] = useState(false);
+  const [newSubtasks, setNewSubtasks] = useState([]);
+  const [showSubtaskInput, setShowSubtaskInput] = useState(false);
+  const [newSubInput, setNewSubInput] = useState("");
   const addRef = useRef(null);
   const dragCounter = useRef(0);
   useEffect(() => { if (adding && addRef.current) addRef.current.focus(); }, [adding]);
@@ -1283,7 +1293,7 @@ function DaySection({ dayInfo, columnId, tasks, categories, onDragStart, onDrop,
   const handleDropAtIndex = (e, beforeTaskId) => { const d = parseDrop(e); if (d) onDrop(d.from, columnId, d.taskId, beforeTaskId, d); };
   const handleDropEnd = (e) => { e.preventDefault(); dragCounter.current = 0; setDragOver(false); const d = parseDrop(e); if (d) onDrop(d.from, columnId, d.taskId, null, d); };
   const isLater = columnId === "later";
-  const submitAdd = () => { if (newText.trim()) { onAdd(columnId, newText.trim(), isLater ? "cat_none" : newCat); setNewText(""); setNewCat("cat_none"); setCatManuallySet(false); } setAdding(false); };
+  const submitAdd = () => { if (newText.trim()) { onAdd(columnId, newText.trim(), isLater ? "cat_none" : newCat, newSubtasks.length > 0 ? newSubtasks : undefined); setNewText(""); setNewCat("cat_none"); setCatManuallySet(false); setNewSubtasks([]); setShowSubtaskInput(false); setNewSubInput(""); } setAdding(false); };
   const handleTextChange = (e) => { const val = e.target.value; setNewText(val); if (!catManuallySet) setNewCat(autoDetectCategory(val, categories)); };
   const handleManualCat = (catId) => { setNewCat(catId); setCatManuallySet(true); };
   const isToday = dayInfo?.isToday;
@@ -1332,10 +1342,10 @@ function DaySection({ dayInfo, columnId, tasks, categories, onDragStart, onDrop,
       }}>
       {/* Day header */}
       <div style={{
-        padding: isLater ? (isMobile ? "4px 10px 2px" : "2px 10px 2px") : (isMobile ? "6px 10px 2px" : "4px 10px 2px"), display: "flex", alignItems: "baseline", gap: 8,
+        padding: isLater ? (isMobile ? "4px 10px 2px" : "2px 10px 2px") : (isMobile ? "6px 10px 2px" : "4px 10px 2px"), display: "flex", alignItems: "baseline", gap: 5,
       }}>
         {!isLater && onOpenJournal && <button onClick={() => onOpenJournal(dayInfo?.fullDate)} title={hasJournalEntry ? "View journal entry" : "Write journal entry"}
-          style={{ background: "none", border: "none", cursor: "pointer", padding: 0, lineHeight: 1, display: "flex", alignItems: "center", flexShrink: 0, fontSize: isMobile ? 12 : 10, color: hasJournalEntry ? "var(--text-muted)" : "var(--border)", transition: "color 0.2s" }}
+          style={{ background: "none", border: "none", cursor: "pointer", padding: 0, lineHeight: 1, display: "flex", alignItems: "center", flexShrink: 0, fontSize: isMobile ? 10 : 8, color: hasJournalEntry ? "var(--text-muted)" : "var(--border)", transition: "color 0.2s" }}
           onMouseEnter={(e) => e.currentTarget.style.color = "var(--text)"} onMouseLeave={(e) => e.currentTarget.style.color = hasJournalEntry ? "var(--text-muted)" : "var(--border)"}>{"\u270E"}</button>}
         <span style={{
           fontFamily: "'JetBrains Mono', monospace", fontWeight: 700,
@@ -1367,12 +1377,30 @@ function DaySection({ dayInfo, columnId, tasks, categories, onDragStart, onDrop,
       {onAdd && adding && (
         <div style={{ padding: isMobile ? "6px 10px 6px 20px" : "4px 10px 4px 26px" }}>
           <input ref={addRef} value={newText} onChange={isLater ? (e) => setNewText(e.target.value) : handleTextChange}
-            onKeyDown={(e) => { if (e.key === "Enter") submitAdd(); if (e.key === "Escape") setAdding(false); }}
+            onKeyDown={(e) => { if (e.key === "Enter" && !showSubtaskInput) submitAdd(); if (e.key === "Escape") { setAdding(false); setNewSubtasks([]); setShowSubtaskInput(false); } }}
             placeholder="Task name..." style={{ width: "100%", maxWidth: 400, border: "1px solid var(--border)", borderRadius: 4, padding: isMobile ? "8px 10px" : "5px 8px", fontSize: isMobile ? 16 : 12, outline: "none", background: "var(--input-bg)", color: "var(--text)", boxSizing: "border-box", marginBottom: 4 }} />
+          {showSubtaskInput && (
+            <div style={{ padding: "0 0 4px 14px" }}>
+              {newSubtasks.map((s, i) => (
+                <div key={s.id} style={{ display: "flex", alignItems: "center", gap: 4, padding: "1px 0" }}>
+                  <span style={{ fontSize: 10, color: "var(--text)", flex: 1 }}>{s.text}</span>
+                  <span onClick={() => setNewSubtasks(newSubtasks.filter((_, j) => j !== i))}
+                    style={{ cursor: "pointer", color: "var(--text-faint)", fontSize: 12, padding: "0 2px" }}
+                    onMouseEnter={(e) => e.target.style.color = "#c44"} onMouseLeave={(e) => e.target.style.color = "var(--text-faint)"}>&times;</span>
+                </div>
+              ))}
+              <input value={newSubInput} onChange={(e) => setNewSubInput(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter" && newSubInput.trim()) { setNewSubtasks([...newSubtasks, { id: "st" + Date.now() + "_" + newSubtasks.length, text: newSubInput.trim(), done: false }]); setNewSubInput(""); } if (e.key === "Escape" && !newSubInput) { setShowSubtaskInput(false); } }}
+                placeholder="+ subtask" autoFocus
+                style={{ width: "100%", border: "none", borderBottom: "1px solid var(--border)", padding: "1px 0", fontSize: 10, outline: "none", background: "transparent", color: "var(--text)" }} />
+            </div>
+          )}
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
             {!isLater && <CategoryDot categories={categories} selected={newCat} onSelect={handleManualCat} />}
             <button onClick={submitAdd} style={{ background: "#555", color: "#fff", border: "none", borderRadius: 4, padding: isMobile ? "6px 16px" : "4px 12px", cursor: "pointer", fontSize: isMobile ? 13 : 10 }}>Add</button>
-            <button onClick={() => { setAdding(false); setCatManuallySet(false); }} style={{ background: "var(--border)", color: "var(--text-muted)", border: "none", borderRadius: 4, padding: isMobile ? "6px 14px" : "4px 10px", cursor: "pointer", fontSize: isMobile ? 13 : 10 }}>Cancel</button>
+            <button onClick={() => { setShowSubtaskInput(!showSubtaskInput); }} style={{ background: "none", color: "var(--text-faint)", border: "1px solid var(--border)", borderRadius: 4, padding: isMobile ? "6px 12px" : "4px 8px", cursor: "pointer", fontSize: isMobile ? 13 : 10 }}
+              onMouseEnter={(e) => e.target.style.color = "var(--text-muted)"} onMouseLeave={(e) => e.target.style.color = "var(--text-faint)"}>{showSubtaskInput ? "Hide subtasks" : "Subtasks"}</button>
+            <button onClick={() => { setAdding(false); setCatManuallySet(false); setNewSubtasks([]); setShowSubtaskInput(false); setNewSubInput(""); }} style={{ background: "var(--border)", color: "var(--text-muted)", border: "none", borderRadius: 4, padding: isMobile ? "6px 14px" : "4px 10px", cursor: "pointer", fontSize: isMobile ? 13 : 10 }}>Cancel</button>
           </div>
         </div>
       )}
@@ -2442,7 +2470,7 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
 
   const deleteTask = useCallback((col, id) => { pushUndo(); const t = dataRef.current.tasks; update({ tasks: { ...t, [col]: t[col].filter((x) => x.id !== id) } }); }, [pushUndo]);
   const editTask = useCallback((col, id, text) => { const t = dataRef.current.tasks; update({ tasks: { ...t, [col]: t[col].map((x) => (x.id === id ? { ...x, text } : x)) } }); }, []);
-  const updateTask = useCallback((col, id, patch) => { const t = dataRef.current.tasks; update({ tasks: { ...t, [col]: t[col].map((x) => (x.id === id ? { ...x, ...patch } : x)) } }); }, []);
+  const updateTask = useCallback((col, id, patch) => { const t = dataRef.current.tasks; update({ tasks: { ...t, [col]: t[col].map((x) => { if (x.id !== id) return x; const updated = { ...x, ...patch }; Object.keys(patch).forEach((k) => { if (patch[k] === undefined) delete updated[k]; }); return updated; }) } }); }, []);
   const setTaskTime = useCallback((col, id, newStartTime) => {
     const t = dataRef.current.tasks;
     const task = t[col]?.find((x) => x.id === id);
@@ -2466,7 +2494,7 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
     const clearTime = (x) => { const c = { ...x }; delete c.startTime; delete c.endTime; return c; };
     update({ tasks: { ...t, [col]: t[col].map((x) => x.id === id ? clearTime(x) : x) } });
   }, []);
-  const addTask = useCallback((col, text, catId) => {
+  const addTask = useCallback((col, text, catId, subtasks) => {
     const t = dataRef.current.tasks;
     const parsed = parseTimeFromText(text);
     const finalText = parsed ? parsed.cleanText : text;
@@ -2480,6 +2508,7 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
         taskOpts.endTime = `${String(Math.floor(endMin / 60)).padStart(2, "0")}:${String(endMin % 60).padStart(2, "0")}`;
       }
     }
+    if (subtasks && subtasks.length > 0) taskOpts.subtasks = subtasks;
     const task = makeTask(finalText, taskOpts);
     const laterLenBefore = t?.later?.length || 0;
     const nextList = [...t[col], task];
