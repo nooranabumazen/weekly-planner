@@ -668,14 +668,14 @@ function HabitsTracker({ dailyHabits, weeklyHabits, habitHistory, moods, onToggl
                   style={{ fontSize: 12, color: h.done ? "var(--text-muted)" : "var(--text)", textDecoration: h.done ? "line-through" : "none", wordBreak: "break-word", minWidth: 0, cursor: "grab" }}>{h.name}</span>
               )}
               {h.done && h.note && h.note.trim() && h.note.trim() !== "?" && (
-                <span style={{ position: "relative", marginLeft: "auto", flexShrink: 0, display: "inline-block" }}
+                <span style={{ position: "relative", flexShrink: 0, display: "inline-block", marginLeft: "auto" }}
                   onMouseEnter={(e) => { const tip = e.currentTarget.querySelector(".note-tip"); if (tip) tip.style.display = "block"; }}
                   onMouseLeave={(e) => { const tip = e.currentTarget.querySelector(".note-tip"); if (tip) tip.style.display = "none"; }}>
                   <span style={{ fontSize: 8, color: "var(--text-faint)", cursor: "help", fontFamily: "'JetBrains Mono', monospace", background: "var(--border-light)", padding: "0 3px", borderRadius: 2 }}>note</span>
                   <div className="note-tip" style={{ display: "none", position: "absolute", bottom: "100%", right: 0, marginBottom: 4, background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 4, padding: "6px 10px", fontSize: 11, color: "var(--text)", whiteSpace: "pre-wrap", width: "max-content", maxWidth: 250, minWidth: 80, zIndex: 20, boxShadow: "0 2px 8px rgba(0,0,0,0.2)" }}>{h.note}</div>
                 </span>
               )}
-              <button onClick={() => onDeleteWeekly(h.id)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-faint)", fontSize: 13, padding: 0, marginLeft: h.done && h.note ? 4 : "auto", fontWeight: 600, flexShrink: 0 }} onMouseEnter={(e) => (e.target.style.color = "#c44")} onMouseLeave={(e) => (e.target.style.color = "var(--text-faint)")}>&times;</button>
+              <button onClick={() => onDeleteWeekly(h.id)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-faint)", fontSize: 13, padding: 0, marginLeft: (h.done && h.note && h.note.trim() && h.note.trim() !== "?") ? 4 : "auto", fontWeight: 600, flexShrink: 0 }} onMouseEnter={(e) => (e.target.style.color = "#c44")} onMouseLeave={(e) => (e.target.style.color = "var(--text-faint)")}>&times;</button>
             </div>
             {weeklyNoteId === h.id && h.done && (
               <input value={h.note || ""} onChange={(e) => onEditWeeklyNote && onEditWeeklyNote(h.id, e.target.value)} placeholder="Note (e.g. recipe name, details...)"
