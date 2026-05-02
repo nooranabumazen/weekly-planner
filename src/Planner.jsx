@@ -1,6 +1,5 @@
 import React, { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import { makeTask, getWeekDates, getUpcomingDates, DEFAULT_CATEGORIES, formatLocalDate } from "./usePlannerData";
-import { db } from "./firebase";
 import NotebooksPanel from "./NotebooksSidebar";
 import JournalPanel from "./JournalPanel";
 import ContactsPanel from "./ContactsPanel";
@@ -2020,7 +2019,13 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
   const viewedTasks = (() => {
     if (isCurrentWeek) return currentTasks;
     const base = offWeekTasks || { mon: [], tue: [], wed: [], thu: [], fri: [], sat: [], sun: [], later: [] };
-    if (!isFutureWeek) return base;
+    if (isPastWeek) {
+      // Past weeks: only show completed tasks
+      const filtered = {};
+      const dayKeys = ["mon","tue","wed","thu","fri","sat","sun","later"];
+      dayKeys.forEach((d) => { filtered[d] = (base[d] || []).filter((t) => t.done); });
+      return filtered;
+    }
     const dayKeys = ["mon","tue","wed","thu","fri","sat","sun"];
     const weekDateMap = {};
     weekDates.forEach((wd, i) => { weekDateMap[wd.fullDate] = dayKeys[i]; });
@@ -2502,7 +2507,6 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
     update({ tasks: { ...t, [col]: t[col].map((x) => x.id === id ? clearTime(x) : x) } });
   }, []);
   const addTask = useCallback((col, text, catId, subtasks) => {
-    const t = dataRef.current.tasks;
     const parsed = parseTimeFromText(text);
     const finalText = parsed ? parsed.cleanText : text;
     const taskOpts = { category: catId || "cat_none" };
@@ -2517,29 +2521,19 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
     }
     if (subtasks && subtasks.length > 0) taskOpts.subtasks = subtasks;
     const task = makeTask(finalText, taskOpts);
-    const laterLenBefore = t?.later?.length || 0;
-    const nextList = [...t[col], task];
-    // #region agent log addTask to later
-    if (col === "later") {
-      fetch("http://127.0.0.1:7349/ingest/33b1731a-45e3-48ae-9ad6-aa14cf816181", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "12cfe4" },
-        body: JSON.stringify({
-          sessionId: "12cfe4",
-          runId: "sync_debug_pre",
-          hypothesisId: "H2_state_overwrite",
-          location: "Planner.jsx:addTask(later)",
-          message: "User added a task to Later; about to write week tasks",
-          data: { taskId: task.id, laterLenBefore, laterLenAfter: (laterLenBefore + 1), col },
-          timestamp: Date.now(),
-        }),
-      }).catch(() => {});
+    if (weekOffset !== 0 && weekOffset > 0) {
+      // Future week: write to off-week doc
+      const base = offWeekTasks || { mon: [], tue: [], wed: [], thu: [], fri: [], sat: [], sun: [], later: [] };
+      const newTasks = { ...base, [col]: [...(base[col] || []), task] };
+      onSaveWeekTasks(viewedWeekKey, newTasks);
+      setOffWeekTasks(newTasks);
+    } else {
+      // Current week
+      const t = dataRef.current.tasks;
+      update({ tasks: { ...t, [col]: [...t[col], task] } });
     }
-    // #endregion
-    update({ tasks: { ...t, [col]: nextList } });
-  }, []);
+  }, [weekOffset, offWeekTasks, viewedWeekKey]);
   const changeCategory = useCallback((col, id, catId) => { const t = dataRef.current.tasks; update({ tasks: { ...t, [col]: t[col].map((x) => (x.id === id ? { ...x, category: catId } : x)) } }); }, []);
-  const recurringQueueRef = useRef(Promise.resolve());
 
   const setRecurring = useCallback((col, id, rule) => {
     const t = dataRef.current.tasks;
@@ -2547,23 +2541,16 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
     const newTasks = { ...t, [col]: t[col].map((x) => x.id === id ? { ...x, recurring: rule || undefined } : x) };
     update({ tasks: newTasks });
     if (task && onSaveRecurringRules) {
-      // Queue writes sequentially so they never overlap
-      recurringQueueRef.current = recurringQueueRef.current.then(async () => {
-        try {
-          const { getDoc: gd, doc: d } = await import('firebase/firestore');
-          const snap = await gd(d(db, `users/${userId}/meta/recurringRules`));
-          const existing = snap.exists() ? (snap.data().items || []) : [];
-          const filtered = existing.filter((r) => !(r.text === task.text && r.day === (rule?.day || col)));
-          if (rule) {
-            filtered.push({ ...rule, text: task.text, category: task.category || "cat_none" });
-          }
-          onSaveRecurringRules(filtered);
-        } catch (err) {
-          console.error("Failed to update recurring rules:", err);
-        }
-      });
+      const existing = dataRef.current.recurringRules || [];
+      // Remove any existing rule for this task+day
+      const filtered = existing.filter((r) => !(r.text === task.text && r.day === (rule?.day || col)));
+      if (rule) {
+        filtered.push({ ...rule, text: task.text, day: col, category: task.category || "cat_none" });
+      }
+      dataRef.current = { ...dataRef.current, recurringRules: filtered };
+      onSaveRecurringRules(filtered);
     }
-  }, [userId, onSaveRecurringRules]);
+  }, [onSaveRecurringRules]);
   // Skip a recurring task for the current viewed week
   const skipRecurring = useCallback((col, id) => {
     const t = dataRef.current.tasks;
