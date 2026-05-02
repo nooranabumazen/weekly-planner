@@ -3593,8 +3593,9 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
               const dayKeys = ["mon","tue","wed","thu","fri","sat","sun"];
 
               // Build per-habit grid data: rows = habits, cols = weeks (newest first), cells = day checks
+              const currentDailyNames = new Set(dailyHabits.map((h) => h.name));
               const allHabitNames = new Set();
-              recent4.forEach((wk) => { (hh[wk]?.daily || []).forEach((h) => allHabitNames.add(h.name)); });
+              recent4.forEach((wk) => { (hh[wk]?.daily || []).forEach((h) => { if (currentDailyNames.has(h.name)) allHabitNames.add(h.name); }); });
               dailyHabits.forEach((h) => allHabitNames.add(h.name));
               const habitNames = [...allHabitNames];
 
@@ -3605,8 +3606,9 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
               });
 
               // Weekly habits: per-week detail
+              const currentWeeklyNames = new Set(weeklyHabits.map((h) => h.name));
               const allWeeklyNames = new Set();
-              recent4.forEach((wk) => { (hh[wk]?.weekly || []).forEach((h) => allWeeklyNames.add(h.name)); });
+              recent4.forEach((wk) => { (hh[wk]?.weekly || []).forEach((h) => { if (currentWeeklyNames.has(h.name)) allWeeklyNames.add(h.name); }); });
               weeklyHabits.forEach((h) => allWeeklyNames.add(h.name));
               const weeklyNames = [...allWeeklyNames];
 

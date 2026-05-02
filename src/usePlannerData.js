@@ -407,7 +407,7 @@ export function usePlannerData(userId) {
       } else if (weeklyDoc && weeklyWeekKey !== wk) {
         habitHistory[weeklyWeekKey] = {
           ...(habitHistory[weeklyWeekKey] || {}),
-          weekly: weeklyHabits.map((h) => ({ id: h.id, name: h.name, done: h.done })),
+          weekly: weeklyHabits.map((h) => ({ id: h.id, name: h.name, done: h.done, note: h.note || "" })),
         };
         const sortedKeys = Object.keys(habitHistory).sort().reverse().slice(0, 8);
         const trimmed = {};
