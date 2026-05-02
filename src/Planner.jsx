@@ -1712,6 +1712,7 @@ function UnscheduledCol({ col, untimed, done, categories, taskFontSize, toggleDo
 
 function DoneCollapse({ doneTasks, columnId, categories, onDragStart, onToggle, onDelete, onEdit, onChangeCategory, onMove, onSetRecurring, onSetTime, onRemoveTime, onSkipRecurring, projects, onAssignToProject, onUnlink, onUpdateTask, highlightQuery, isToday, isMobile, taskFontSize, defaultExpanded }) {
   const [expanded, setExpanded] = useState(defaultExpanded || false);
+  useEffect(() => { if (defaultExpanded) setExpanded(true); }, [defaultExpanded]);
   if (doneTasks.length === 0) return null;
   return (
     <>
