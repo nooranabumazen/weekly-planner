@@ -667,12 +667,12 @@ function HabitsTracker({ dailyHabits, weeklyHabits, habitHistory, moods, onToggl
                 <span onDoubleClick={() => { setEditingHabit({ id: h.id, type: "weekly" }); setEditText(h.name); }}
                   style={{ fontSize: 12, color: h.done ? "var(--text-muted)" : "var(--text)", textDecoration: h.done ? "line-through" : "none", wordBreak: "break-word", minWidth: 0, cursor: "grab" }}>{h.name}</span>
               )}
-              {h.done && h.note && (
-                <span style={{ position: "relative", marginLeft: "auto", flexShrink: 0 }}
+              {h.done && h.note && h.note.trim() && h.note.trim() !== "?" && (
+                <span style={{ position: "relative", marginLeft: "auto", flexShrink: 0, display: "inline-block" }}
                   onMouseEnter={(e) => { const tip = e.currentTarget.querySelector(".note-tip"); if (tip) tip.style.display = "block"; }}
                   onMouseLeave={(e) => { const tip = e.currentTarget.querySelector(".note-tip"); if (tip) tip.style.display = "none"; }}>
                   <span style={{ fontSize: 8, color: "var(--text-faint)", cursor: "help", fontFamily: "'JetBrains Mono', monospace", background: "var(--border-light)", padding: "0 3px", borderRadius: 2 }}>note</span>
-                  <div className="note-tip" style={{ display: "none", position: "absolute", bottom: "100%", right: 0, marginBottom: 4, background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 4, padding: "4px 8px", fontSize: 10, color: "var(--text)", whiteSpace: "normal", maxWidth: 200, wordBreak: "break-word", zIndex: 20, boxShadow: "0 2px 8px rgba(0,0,0,0.2)" }}>{h.note}</div>
+                  <div className="note-tip" style={{ display: "none", position: "absolute", bottom: "100%", left: "50%", transform: "translateX(-50%)", marginBottom: 4, background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 4, padding: "6px 10px", fontSize: 11, color: "var(--text)", whiteSpace: "nowrap", zIndex: 20, boxShadow: "0 2px 8px rgba(0,0,0,0.2)" }}>{h.note}</div>
                 </span>
               )}
               <button onClick={() => onDeleteWeekly(h.id)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-faint)", fontSize: 13, padding: 0, marginLeft: h.done && h.note ? 4 : "auto", fontWeight: 600, flexShrink: 0 }} onMouseEnter={(e) => (e.target.style.color = "#c44")} onMouseLeave={(e) => (e.target.style.color = "var(--text-faint)")}>&times;</button>
