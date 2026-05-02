@@ -667,7 +667,7 @@ function HabitsTracker({ dailyHabits, weeklyHabits, habitHistory, moods, onToggl
                 <span onDoubleClick={() => { setEditingHabit({ id: h.id, type: "weekly" }); setEditText(h.name); }}
                   style={{ fontSize: 12, color: h.done ? "var(--text-muted)" : "var(--text)", textDecoration: h.done ? "line-through" : "none", wordBreak: "break-word", minWidth: 0, cursor: "grab" }}>{h.name}</span>
               )}
-              {h.done && h.note && <span title={h.note} style={{ fontSize: 9, color: "var(--text-faint)", marginLeft: "auto", flexShrink: 0, cursor: "help" }}>{"\u{1F4AC}"}</span>}
+              {h.done && h.note && <span title={h.note} style={{ fontSize: 8, color: "var(--text-faint)", marginLeft: "auto", flexShrink: 0, cursor: "help", fontFamily: "'JetBrains Mono', monospace", background: "var(--border-light)", padding: "0 3px", borderRadius: 2 }}>note</span>}
               <button onClick={() => onDeleteWeekly(h.id)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-faint)", fontSize: 13, padding: 0, marginLeft: h.done && h.note ? 4 : "auto", fontWeight: 600, flexShrink: 0 }} onMouseEnter={(e) => (e.target.style.color = "#c44")} onMouseLeave={(e) => (e.target.style.color = "var(--text-faint)")}>&times;</button>
             </div>
             {weeklyNoteId === h.id && h.done && (
