@@ -183,6 +183,48 @@ export function usePlannerData(userId) {
       let isNewWeek = false;
       if (weekDoc && weekDoc.tasks) {
         tasks = weekDoc.tasks;
+
+        // Check if this is a week that just started but already has a doc
+        // (e.g., user pre-added tasks via forward navigation)
+        // If habits haven't been archived for this week yet, carry forward from previous week
+        const prevDailyWeekKey = dailyDoc?._weekKey || null;
+        const needsCarryForward = prevDailyWeekKey && prevDailyWeekKey !== wk;
+
+        if (needsCarryForward) {
+          isNewWeek = true;
+          const prevDoc = await readDoc(`users/${userId}/weeks/${getPrevWeekKey()}`);
+          if (prevDoc && prevDoc !== READ_ERROR && prevDoc.tasks) {
+            const dayKeys = ["mon","tue","wed","thu","fri","sat","sun"];
+            let changed = false;
+            dayKeys.forEach((d) => {
+              (prevDoc.tasks[d] || []).forEach((t) => {
+                if (!t.done) {
+                  const day = d;
+                  if (!tasks[day]) tasks[day] = [];
+                  // Avoid duplicates
+                  if (!tasks[day].some((x) => x.text === t.text && !x.done)) {
+                    tasks[day].push({ ...t, id: "t" + Date.now() + "_" + Math.random().toString(36).slice(2,6) });
+                    changed = true;
+                  }
+                }
+              });
+            });
+            // Also carry forward later tasks
+            if (prevDoc.tasks.later) {
+              if (!tasks.later) tasks.later = [];
+              prevDoc.tasks.later.forEach((t) => {
+                if (!t.done && !tasks.later.some((x) => x.text === t.text)) {
+                  tasks.later.push({ ...t, id: "t" + Date.now() + "_" + Math.random().toString(36).slice(2,6) });
+                  changed = true;
+                }
+              });
+            }
+            if (changed) {
+              writeDoc(weekPath, { tasks, _lastModified: Date.now() });
+            }
+          }
+        }
+
         // Even on existing week, check persistent recurring rules for missing tasks
         const rules = recurringDoc?.items || [];
         if (rules.length > 0) {
