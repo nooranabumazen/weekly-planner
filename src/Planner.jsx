@@ -1346,8 +1346,8 @@ function DaySection({ dayInfo, columnId, tasks, categories, onDragStart, onDrop,
         borderBottom: "1px solid var(--border-light)",
         paddingBottom: 1,
       }}>
-      {/* Day header */}
-      <div style={{
+      {/* Day header - hidden for Later since collapsible wrapper provides it */}
+      {!isLater && <div style={{
         padding: isLater ? (isMobile ? "4px 10px 2px" : "2px 10px 2px") : (isMobile ? "6px 10px 2px" : "4px 10px 2px"), display: "flex", alignItems: "baseline", gap: 5,
       }}>
         {!isLater && onOpenJournal && <button onClick={() => onOpenJournal(dayInfo?.fullDate)} title={hasJournalEntry ? "View journal entry" : "Write journal entry"}
@@ -1365,7 +1365,7 @@ function DaySection({ dayInfo, columnId, tasks, categories, onDragStart, onDrop,
           style={{ marginLeft: "auto", background: "none", border: "none", cursor: "pointer", color: "var(--text-faint)", fontSize: isMobile ? 16 : 13, fontFamily: "'JetBrains Mono', monospace", fontWeight: 400, padding: 0, width: isMobile ? 22 : 18, height: isMobile ? 22 : 18, display: "flex", alignItems: "center", justifyContent: "center", lineHeight: 1 }}
           onMouseEnter={(e) => (e.target.style.color = "var(--text)")}
           onMouseLeave={(e) => (e.target.style.color = "var(--text-faint)")}>+</button>}
-      </div>
+      </div>}
 
       {/* Task list */}
       <div>
@@ -3580,10 +3580,10 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
             {/* Habit Progress */}
             {(() => {
               const hh = habitHistory || {};
-              const weeks = Object.keys(hh).sort();
+              const weeks = Object.keys(hh).sort().reverse();
               if (weeks.length === 0 && dailyHabits.length === 0) return null;
 
-              const recent4 = weeks.slice(0, 4);
+              const recent4 = weeks.slice(0, 6);
               const dayLabels = ["M","T","W","T","F","S","S"];
               const dayKeys = ["mon","tue","wed","thu","fri","sat","sun"];
 

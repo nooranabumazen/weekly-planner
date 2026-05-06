@@ -165,7 +165,7 @@ export function useLocalData() {
         habitHistory[dailyWeekKey] = { ...(habitHistory[dailyWeekKey] || {}), daily: dailyHabits.map((h) => ({ id: h.id, name: h.name, checks: { ...h.checks } })) };
         habitHistory[weeklyWeekKey || dailyWeekKey] = { ...(habitHistory[weeklyWeekKey || dailyWeekKey] || {}), weekly: weeklyHabits.map((h) => ({ id: h.id, name: h.name, done: h.done, note: h.note })) };
         // Keep only last 8 weeks
-        const sortedKeys = Object.keys(habitHistory).sort().reverse().slice(0, 8);
+        const sortedKeys = Object.keys(habitHistory).sort().reverse().slice(0, 6);
         const trimmed = {};
         sortedKeys.forEach((k) => { trimmed[k] = habitHistory[k]; });
         habitHistory = trimmed;

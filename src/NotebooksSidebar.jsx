@@ -325,10 +325,8 @@ function RichEditor({ content, onChange, userId }) {
         <ToolbarButton icon={<span style={{ fontSize: 12 }}>&#128279;</span>} title="Insert link" onClick={insertLink} />
         <ToolbarButton icon={<span style={{ fontSize: 12 }}>&#128444;</span>} title="Insert image" onClick={insertImage} />
         <ToolbarButton icon={<span style={{ fontSize: 10, fontFamily: "monospace" }}>&#9638;</span>} title="Insert table" onClick={insertTable} />
-        <ToolbarButton icon={<span style={{ fontSize: 9, fontFamily: "monospace" }}>+R</span>} title="Add row (click in table first)" onClick={addTableRow} />
-        <ToolbarButton icon={<span style={{ fontSize: 9, fontFamily: "monospace" }}>+C</span>} title="Add column (click in table first)" onClick={addTableCol} />
-        <ToolbarButton icon={<span style={{ fontSize: 9, fontFamily: "monospace", color: "#c44" }}>{"\u2212"}R</span>} title="Remove row" onClick={removeTableRow} />
-        <ToolbarButton icon={<span style={{ fontSize: 9, fontFamily: "monospace", color: "#c44" }}>{"\u2212"}C</span>} title="Remove column" onClick={removeTableCol} />
+        <ToolbarButton icon={<span style={{ fontSize: 11 }}>{"\u2192"}</span>} title="Indent list (Tab)" onClick={() => document.execCommand("indent")} />
+        <ToolbarButton icon={<span style={{ fontSize: 11 }}>{"\u2190"}</span>} title="Outdent list (Shift+Tab)" onClick={() => document.execCommand("outdent")} />
         <div style={{ width: 1, height: 18, background: "var(--border)", margin: "0 3px" }} />
         <ToolbarButton icon={<span style={{ fontSize: 10 }}>&bull; &ndash;</span>} title="Bullet list" onClick={() => exec("insertUnorderedList")} />
         <ToolbarButton icon={<span style={{ fontSize: 10 }}>1. &ndash;</span>} title="Numbered list" onClick={() => exec("insertOrderedList")} />
@@ -370,6 +368,32 @@ function RichEditor({ content, onChange, userId }) {
           const onUp = () => { document.removeEventListener("mousemove", onMove); document.removeEventListener("mouseup", onUp); handleInput(); };
           document.addEventListener("mousemove", onMove);
           document.addEventListener("mouseup", onUp);
+        }}
+        onKeyDown={(e) => {
+          // Tab = indent, Shift+Tab = outdent
+          if (e.key === "Tab") { e.preventDefault(); document.execCommand(e.shiftKey ? "outdent" : "indent"); handleInput(); return; }
+          // Auto-list detection on Space key
+          if (e.key === " ") {
+            const sel = window.getSelection();
+            if (!sel.rangeCount) return;
+            const node = sel.anchorNode;
+            if (node?.nodeType !== 3) return;
+            const text = node.textContent.slice(0, sel.anchorOffset);
+            if (text === "-" || text === "*") {
+              e.preventDefault();
+              node.textContent = node.textContent.slice(sel.anchorOffset);
+              document.execCommand("insertUnorderedList");
+              handleInput();
+            } else if (/^\d+\.$/.test(text)) {
+              e.preventDefault();
+              node.textContent = node.textContent.slice(sel.anchorOffset);
+              document.execCommand("insertOrderedList");
+              handleInput();
+            }
+          }
+          // Ctrl+Shift+8 = bullet list, Ctrl+Shift+7 = numbered list
+          if (e.ctrlKey && e.shiftKey && e.key === "*") { e.preventDefault(); document.execCommand("insertUnorderedList"); handleInput(); }
+          if (e.ctrlKey && e.shiftKey && e.key === "&") { e.preventDefault(); document.execCommand("insertOrderedList"); handleInput(); }
         }}
         onContextMenu={handleContextMenu}
         suppressContentEditableWarning
