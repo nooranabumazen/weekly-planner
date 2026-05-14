@@ -1180,8 +1180,9 @@ function TaskCard({ task, columnId, categories, onDragStart, onToggle, onDelete,
                 <span style={{ fontSize: 10, color: "var(--text-muted)", width: 30 }}>End</span>
                 <input type="time" value={endTimeInput} onChange={(e) => setEndTimeInput(e.target.value)}
                   onKeyDown={(e) => { if (e.key === "Enter") { onSetTime && onSetTime(columnId, task.id, timeInput, endTimeInput || null); setShowTimePicker(false); setCtxMenu(null); } }}
-                  placeholder="optional"
                   style={{ flex: 1, border: "1px solid var(--border)", borderRadius: 3, padding: "3px 5px", fontSize: 11, background: "var(--input-bg)", color: "var(--text)", outline: "none", colorScheme: "dark" }} />
+                {endTimeInput && <span onClick={() => setEndTimeInput("")} style={{ cursor: "pointer", color: "var(--text-faint)", fontSize: 11 }}
+                  onMouseEnter={(e) => e.target.style.color = "#c44"} onMouseLeave={(e) => e.target.style.color = "var(--text-faint)"}>&times;</span>}
               </div>
               <button onClick={() => { onSetTime && onSetTime(columnId, task.id, timeInput, endTimeInput || null); setShowTimePicker(false); setCtxMenu(null); }}
                 style={{ background: "var(--accent)", color: "#fff", border: "none", borderRadius: 3, padding: "3px 8px", fontSize: 10, cursor: "pointer", fontWeight: 600, alignSelf: "flex-end" }}>Set</button>
@@ -2530,11 +2531,9 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
     const updated = { ...task, startTime: newStartTime };
     if (newEndTime) {
       updated.endTime = newEndTime;
-    } else if (!task.endTime) {
-      // No existing end time and none provided: don't auto-generate
+    } else {
       delete updated.endTime;
     }
-    // If end time existed before and user cleared it, keep existing
     delete updated.orderHint;
     update({ tasks: { ...t, [col]: t[col].map((x) => x.id === id ? updated : x) } });
   }, [weekOffset, offWeekTasks]);
