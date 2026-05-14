@@ -59,10 +59,13 @@ function parseTimeFromText(raw) {
     const startTime = `${String(startH).padStart(2, "0")}:${String(sM).padStart(2, "0")}`;
     const endTime = `${String(endH).padStart(2, "0")}:${String(eM).padStart(2, "0")}`;
     const matchStart = text.indexOf(rm[0]);
+    const matchEnd = matchStart + rm[0].length;
     const isStart = matchStart === 0;
+    const isEnd = matchEnd >= text.length - 1;
     const isWholeString = rm[0].length >= text.length - 2;
     let cleanText = text;
-    if (isStart || isWholeString) cleanText = text.replace(rm[0], "").replace(/^[\s,:.\-\u2013]+/, "").replace(/\s+/g, " ").trim();
+    if (isStart || isEnd || isWholeString) cleanText = text.slice(0, matchStart).replace(/[\s,:.\-\u2013]+$/, "") + (isStart ? "" : " ") + text.slice(matchEnd).replace(/^[\s,:.\-\u2013]+/, "");
+    cleanText = cleanText.trim();
     return { startTime, endTime, cleanText: cleanText || text };
   }
   // Single time: "1pm", "1:30 pm", "13:30"
@@ -77,9 +80,12 @@ function parseTimeFromText(raw) {
     if (h > 23 || m > 59) return null;
     const startTime = `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
     const matchStart = text.indexOf(sm[0]);
+    const matchEnd = matchStart + sm[0].length;
     const isStart = matchStart === 0;
+    const isEnd = matchEnd >= text.length - 1;
     let cleanText = text;
-    if (isStart) cleanText = text.replace(sm[0], "").replace(/^[\s,:.\-\u2013]+/, "").replace(/\s+/g, " ").trim();
+    if (isStart || isEnd) cleanText = text.slice(0, matchStart).replace(/[\s,:.\-\u2013]+$/, "") + (isStart ? "" : " ") + text.slice(matchEnd).replace(/^[\s,:.\-\u2013]+/, "");
+    cleanText = cleanText.trim();
     return { startTime, endTime: null, cleanText: cleanText || text };
   }
   return null;
@@ -1053,7 +1059,7 @@ function TaskCard({ task, columnId, categories, onDragStart, onToggle, onDelete,
           <span onDoubleClick={() => { setEditing(true); setEditText(task.text); }}
             style={{ flex: 1, minWidth: 0, textDecoration: task.done ? "line-through" : "none", cursor: "pointer", color: task.done ? "var(--text-muted)" : "var(--text)", wordBreak: "break-word" }}>
             {task._isUpcoming && <span title="From upcoming" style={{ fontSize: 10, marginRight: 4, opacity: 0.6 }}>{"\u{1F4C5}"}</span>}
-            {task.startTime && <span style={{ fontSize: 10, color: "var(--text-muted)", marginRight: 5, fontFamily: "'JetBrains Mono', monospace", fontWeight: 600 }}>{formatTime12(task.startTime)}</span>}
+            {task.startTime && <span style={{ fontSize: 10, color: "var(--text-muted)", marginRight: 5, fontFamily: "'JetBrains Mono', monospace", fontWeight: 600 }}>{formatTime12(task.startTime)}{task.endTime ? " - " + formatTime12(task.endTime) : ""}</span>}
             <HighlightText text={task.text} query={highlightQuery} />
             {task.recurring && <span title={`Repeats ${task.recurring.type === "weeks" ? task.recurring.count + " weeks" : task.recurring.type === "monthly" ? "monthly" : "until " + task.recurring.until}`} style={{ fontSize: 9, marginLeft: 4, color: "var(--text-faint)" }}>{"\uD83D\uDD01"}</span>}
             {task.projectId && projects && (() => { const p = projects.find((pr) => pr.id === task.projectId); return p ? <span style={{ fontSize: 9, marginLeft: 6, color: "var(--text-faint)", background: "var(--border-light)", padding: "0px 4px", borderRadius: 3, fontFamily: "'JetBrains Mono', monospace", whiteSpace: "nowrap", textDecoration: "none" }}>{p.text}</span> : null; })()}
