@@ -1372,6 +1372,12 @@ function DaySection({ dayInfo, columnId, tasks, categories, onDragStart, onDrop,
           onMouseEnter={(e) => (e.target.style.color = "var(--text)")}
           onMouseLeave={(e) => (e.target.style.color = "var(--text-faint)")}>+</button>}
       </div>}
+      {isLater && onAdd && !adding && (
+        <div style={{ padding: "2px 10px", textAlign: "right" }}>
+          <button onClick={() => setAdding(true)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-faint)", fontSize: 13, fontFamily: "'JetBrains Mono', monospace", fontWeight: 400, padding: 0, lineHeight: 1 }}
+            onMouseEnter={(e) => e.target.style.color = "var(--text-muted)"} onMouseLeave={(e) => e.target.style.color = "var(--text-faint)"}>+</button>
+        </div>
+      )}
 
       {/* Task list */}
       <div>
@@ -2487,11 +2493,12 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
     }
   }, [pushUndo, onSaveArchive]);
 
-  const deleteTask = useCallback((col, id) => { pushUndo(); const t = dataRef.current.tasks; update({ tasks: { ...t, [col]: t[col].filter((x) => x.id !== id) } }); }, [pushUndo]);
-  const editTask = useCallback((col, id, text) => { const t = dataRef.current.tasks; update({ tasks: { ...t, [col]: t[col].map((x) => (x.id === id ? { ...x, text } : x)) } }); }, []);
-  const updateTask = useCallback((col, id, patch) => { const t = dataRef.current.tasks; update({ tasks: { ...t, [col]: t[col].map((x) => { if (x.id !== id) return x; const updated = { ...x, ...patch }; Object.keys(patch).forEach((k) => { if (patch[k] === undefined) delete updated[k]; }); return updated; }) } }); }, []);
+  const getViewedTasks = () => weekOffset === 0 ? dataRef.current.tasks : (offWeekTasks || { mon: [], tue: [], wed: [], thu: [], fri: [], sat: [], sun: [], later: [] });
+  const deleteTask = useCallback((col, id) => { pushUndo(); const t = getViewedTasks(); update({ tasks: { ...t, [col]: t[col].filter((x) => x.id !== id) } }); }, [pushUndo, weekOffset, offWeekTasks]);
+  const editTask = useCallback((col, id, text) => { const t = getViewedTasks(); update({ tasks: { ...t, [col]: t[col].map((x) => (x.id === id ? { ...x, text } : x)) } }); }, [weekOffset, offWeekTasks]);
+  const updateTask = useCallback((col, id, patch) => { const t = getViewedTasks(); update({ tasks: { ...t, [col]: t[col].map((x) => { if (x.id !== id) return x; const updated = { ...x, ...patch }; Object.keys(patch).forEach((k) => { if (patch[k] === undefined) delete updated[k]; }); return updated; }) } }); }, [weekOffset, offWeekTasks]);
   const setTaskTime = useCallback((col, id, newStartTime) => {
-    const t = dataRef.current.tasks;
+    const t = getViewedTasks();
     const task = t[col]?.find((x) => x.id === id);
     if (!task || !newStartTime) return;
     const [nh, nm] = newStartTime.split(":").map(Number);
@@ -2507,12 +2514,12 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
     const updated = { ...task, startTime: fmt(newStartMin), endTime: fmt(endMin) };
     delete updated.orderHint;
     update({ tasks: { ...t, [col]: t[col].map((x) => x.id === id ? updated : x) } });
-  }, []);
+  }, [weekOffset, offWeekTasks]);
   const removeTaskTime = useCallback((col, id) => {
-    const t = dataRef.current.tasks;
+    const t = getViewedTasks();
     const clearTime = (x) => { const c = { ...x }; delete c.startTime; delete c.endTime; return c; };
     update({ tasks: { ...t, [col]: t[col].map((x) => x.id === id ? clearTime(x) : x) } });
-  }, []);
+  }, [weekOffset, offWeekTasks]);
   const addTask = useCallback((col, text, catId, subtasks) => {
     const parsed = parseTimeFromText(text);
     const finalText = parsed ? parsed.cleanText : text;
@@ -2520,11 +2527,6 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
     if (parsed && col !== "later") {
       taskOpts.startTime = parsed.startTime;
       if (parsed.endTime) taskOpts.endTime = parsed.endTime;
-      else {
-        const [h, m] = parsed.startTime.split(":").map(Number);
-        const endMin = h * 60 + m + 15;
-        taskOpts.endTime = `${String(Math.floor(endMin / 60)).padStart(2, "0")}:${String(endMin % 60).padStart(2, "0")}`;
-      }
     }
     if (subtasks && subtasks.length > 0) taskOpts.subtasks = subtasks;
     const task = makeTask(finalText, taskOpts);
@@ -2540,10 +2542,10 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
       update({ tasks: { ...t, [col]: [...t[col], task] } });
     }
   }, [weekOffset, offWeekTasks, viewedWeekKey]);
-  const changeCategory = useCallback((col, id, catId) => { const t = dataRef.current.tasks; update({ tasks: { ...t, [col]: t[col].map((x) => (x.id === id ? { ...x, category: catId } : x)) } }); }, []);
+  const changeCategory = useCallback((col, id, catId) => { const t = getViewedTasks(); update({ tasks: { ...t, [col]: t[col].map((x) => (x.id === id ? { ...x, category: catId } : x)) } }); }, [weekOffset, offWeekTasks]);
 
   const setRecurring = useCallback((col, id, rule) => {
-    const t = dataRef.current.tasks;
+    const t = getViewedTasks();
     const task = t[col]?.find((x) => x.id === id);
     const newTasks = { ...t, [col]: t[col].map((x) => x.id === id ? { ...x, recurring: rule || undefined } : x) };
     update({ tasks: newTasks });
@@ -3268,11 +3270,13 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
                       </div>
                       {/* Later */}
                       <div style={{ background: "var(--bg-surface)", borderBottom: "1px solid var(--border)" }}>
-                        <button onClick={() => setLaterOpen(!laterOpen)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", fontSize: 10, padding: "6px 12px", display: "flex", alignItems: "center", gap: 4, width: "100%", textAlign: "left" }}>
-                          <span style={{ fontSize: 8, transition: "transform 0.2s", transform: laterOpen ? "rotate(90deg)" : "rotate(0deg)", display: "inline-block" }}>{"\u25B6"}</span>
-                          <span style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, fontSize: 9, letterSpacing: 1, textTransform: "uppercase" }}>Later</span>
-                          <span style={{ fontSize: 9, color: "var(--text-faint)" }}>({tasks.later?.length || 0})</span>
-                        </button>
+                        <div style={{ display: "flex", alignItems: "center" }}>
+                          <button onClick={() => setLaterOpen(!laterOpen)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", fontSize: 10, padding: "6px 12px", display: "flex", alignItems: "center", gap: 4, flex: 1, textAlign: "left" }}>
+                            <span style={{ fontSize: 8, transition: "transform 0.2s", transform: laterOpen ? "rotate(90deg)" : "rotate(0deg)", display: "inline-block" }}>{"\u25B6"}</span>
+                            <span style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, fontSize: 9, letterSpacing: 1, textTransform: "uppercase" }}>Later</span>
+                            <span style={{ fontSize: 9, color: "var(--text-faint)" }}>({tasks.later?.length || 0})</span>
+                          </button>
+                        </div>
                         {laterOpen && (
                           <div style={{ padding: "0px 8px 6px" }}>
                             <DaySection dayInfo={null} columnId="later" tasks={tasks.later} categories={categories} onDragStart={() => {}} onDrop={handleDrop}
