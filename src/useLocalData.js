@@ -255,6 +255,11 @@ export function useLocalData() {
     idbSet("moods", entries);
   }, []);
 
+  const saveHabitHistory = useCallback((weeks) => {
+    setData((p) => p ? { ...p, habitHistory: weeks } : p);
+    idbSet("habitHistory", weeks);
+  }, []);
+
   const loadWeekTasks = useCallback(async (weekKey) => {
     return await idbGet("tasks_" + weekKey);
   }, []);
@@ -319,5 +324,5 @@ export function useLocalData() {
     return () => { document.removeEventListener("visibilitychange", handler); window.removeEventListener("beforeunload", flushSave); };
   }, [flushSave]);
 
-  return { data, loading, save, saveQuiet, saveFuture, saveNotebooks, saveJournal, saveContacts, saveArchive, saveProjects, saveDailyHabits, saveWeeklyHabits, saveSettings, saveRecurringRules, saveMoods, loadWeekTasks, saveWeekTasks, getBackups, restoreBackup, exportData };
+  return { data, loading, save, saveQuiet, saveFuture, saveNotebooks, saveJournal, saveContacts, saveArchive, saveProjects, saveDailyHabits, saveWeeklyHabits, saveSettings, saveRecurringRules, saveMoods, saveHabitHistory, loadWeekTasks, saveWeekTasks, getBackups, restoreBackup, exportData };
 }

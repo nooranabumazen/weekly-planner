@@ -211,6 +211,7 @@ function CategoryManager({ categories, onChange, layout, onLayoutChange, darkMod
   const addRef = useRef(null);
   const editRef = useRef(null);
   useEffect(() => { if (adding && addRef.current) addRef.current.focus(); }, [adding]);
+  useEffect(() => { if (addTrigger > 0) setAdding(true); }, [addTrigger]);
   useEffect(() => { if (editingId && editRef.current) editRef.current.focus(); }, [editingId]);
 
   const PALETTE = [
@@ -762,7 +763,7 @@ function HabitsTracker({ dailyHabits, weeklyHabits, habitHistory, moods, onToggl
 }
 
 /* ─── Projects ─── */
-function ProjectsSection({ projects, onSave, onArchive, onSyncToDay, onUnlinkSubtask, addTrigger }) {
+function ProjectsSection({ projects, onSave, onArchive, onSyncToDay, onUnlinkSubtask, addTrigger, onAssignSubToDay, weekDates }) {
   const [expanded, setExpanded] = useState({});
   const [adding, setAdding] = useState(false);
   const [newName, setNewName] = useState("");
@@ -775,12 +776,14 @@ function ProjectsSection({ projects, onSave, onArchive, onSyncToDay, onUnlinkSub
   const [editingProject, setEditingProject] = useState(null);
   const [editProjText, setEditProjText] = useState("");
   const [dragSub, setDragSub] = useState(null); // { projectId, subtaskId }
+  const [subCtxMenu, setSubCtxMenu] = useState(null); // { projectId, subtaskId, x, y }
   const addRef = useRef(null);
   const subRef = useRef(null);
   const editSubRef = useRef(null);
   const editProjRef = useRef(null);
 
   useEffect(() => { if (adding && addRef.current) addRef.current.focus(); }, [adding]);
+  useEffect(() => { if (addTrigger > 0) setAdding(true); }, [addTrigger]);
   useEffect(() => { if (addingSubtask && subRef.current) subRef.current.focus(); }, [addingSubtask]);
   useEffect(() => { if (editingSubtask && editSubRef.current) { editSubRef.current.focus(); editSubRef.current.select(); } }, [editingSubtask]);
   useEffect(() => { if (editingProject && editProjRef.current) { editProjRef.current.focus(); editProjRef.current.select(); } }, [editingProject]);
@@ -907,6 +910,7 @@ function ProjectsSection({ projects, onSave, onArchive, onSyncToDay, onUnlinkSub
                     onDragStart={(e) => { setDragSub({ projectId: proj.id, subtaskId: sub.id }); e.dataTransfer.setData("text/plain", JSON.stringify({ from: "project", projectId: proj.id, subtaskId: sub.id, text: sub.text })); }}
                     onDragOver={(e) => e.preventDefault()}
                     onDrop={() => handleSubDrop(proj.id, sub.id)}
+                    onContextMenu={(e) => { e.preventDefault(); setSubCtxMenu({ projectId: proj.id, subtaskId: sub.id, text: sub.text, x: e.clientX, y: e.clientY }); }}
                     style={{ display: "flex", alignItems: "center", gap: 5, padding: "3px 0", cursor: "grab", borderBottom: "0.5px solid var(--border-light)" }}>
                     <div onClick={() => toggleSub(proj.id, sub.id)}
                       style={{ width: 14, height: 14, border: "1.5px solid var(--border)", borderRadius: 3, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", fontSize: 10, color: sub.done ? "#6a9955" : "transparent", background: sub.done ? "rgba(106,153,85,0.1)" : "transparent", flexShrink: 0 }}>
@@ -929,18 +933,14 @@ function ProjectsSection({ projects, onSave, onArchive, onSyncToDay, onUnlinkSub
                 {/* Drop zone at bottom for reorder */}
                 <div onDragOver={(e) => e.preventDefault()} onDrop={() => handleSubDrop(proj.id, null)}
                   style={{ height: 4 }} />
-                {/* Add subtask */}
-                {addingSubtask === proj.id ? (
+                {/* Add subtask input */}
+                {addingSubtask === proj.id && (
                   <div style={{ marginTop: 2 }}>
                     <input ref={subRef} value={newSubtask} onChange={(e) => setNewSubtask(e.target.value)}
                       onKeyDown={(e) => { if (e.key === "Enter") { addSub(proj.id); } if (e.key === "Escape") { setAddingSubtask(null); setNewSubtask(""); } }}
                       placeholder="Subtask..."
                       style={{ width: "100%", border: "1px solid var(--border)", borderRadius: 3, padding: "3px 6px", fontSize: 11, outline: "none", background: "var(--input-bg)", color: "var(--text)", boxSizing: "border-box" }} />
                   </div>
-                ) : (
-                  <button onClick={() => { setAddingSubtask(proj.id); setNewSubtask(""); }}
-                    style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-faint)", fontSize: 10, padding: "3px 0" }}
-                    onMouseEnter={(e) => e.target.style.color = "var(--text-muted)"} onMouseLeave={(e) => e.target.style.color = "var(--text-faint)"}>+ subtask</button>
                 )}
                 {/* Project actions */}
                 <div style={{ display: "flex", gap: 4, marginTop: 4, borderTop: "1px solid var(--border-light)", paddingTop: 4 }}>
@@ -948,6 +948,9 @@ function ProjectsSection({ projects, onSave, onArchive, onSyncToDay, onUnlinkSub
                     <button onClick={() => completeProject(proj.id)}
                       style={{ background: "none", border: "1px solid #6a9955", borderRadius: 3, padding: "2px 8px", cursor: "pointer", fontSize: 9, color: "#6a9955", fontWeight: 600 }}>Complete</button>
                   )}
+                  <button onClick={() => { setAddingSubtask(proj.id); setNewSubtask(""); }}
+                    style={{ background: "none", border: "1px solid var(--border)", borderRadius: 3, padding: "2px 8px", cursor: "pointer", fontSize: 9, color: "var(--text-faint)" }}
+                    onMouseEnter={(e) => { e.target.style.color = "var(--text-muted)"; }} onMouseLeave={(e) => { e.target.style.color = "var(--text-faint)"; }}>+ subtask</button>
                   <button onClick={() => deleteProject(proj.id)}
                     style={{ background: "none", border: "1px solid var(--border)", borderRadius: 3, padding: "2px 8px", cursor: "pointer", fontSize: 9, color: "var(--text-faint)" }}
                     onMouseEnter={(e) => { e.target.style.borderColor = "#c44"; e.target.style.color = "#c44"; }}
@@ -958,6 +961,24 @@ function ProjectsSection({ projects, onSave, onArchive, onSyncToDay, onUnlinkSub
           </div>
         );
       })}
+      {/* Subtask right-click context menu */}
+      {subCtxMenu && (
+        <div style={{ position: "fixed", top: subCtxMenu.y, left: subCtxMenu.x, background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 6, padding: "4px 0", zIndex: 9999, boxShadow: "0 4px 16px rgba(0,0,0,0.25)", minWidth: 140 }}
+          onClick={() => setSubCtxMenu(null)} onMouseLeave={() => setSubCtxMenu(null)}>
+          <div style={{ padding: "4px 12px", fontSize: 10, color: "var(--text-faint)", fontFamily: "'JetBrains Mono', monospace" }}>Add to day</div>
+          {["mon","tue","wed","thu","fri","sat","sun"].map((day, i) => {
+            const label = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"][i];
+            const dateLabel = weekDates ? weekDates[i]?.date : "";
+            return (
+              <div key={day} onClick={() => { onAssignSubToDay && onAssignSubToDay(subCtxMenu.projectId, subCtxMenu.subtaskId, subCtxMenu.text, day); setSubCtxMenu(null); }}
+                style={{ padding: "4px 12px", cursor: "pointer", fontSize: 11, color: "var(--text)" }}
+                onMouseEnter={(e) => e.currentTarget.style.background = "var(--bg-hover)"} onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}>
+                {label} <span style={{ fontSize: 9, color: "var(--text-faint)" }}>{dateLabel}</span>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
@@ -1289,7 +1310,7 @@ function DropZone({ onDrop }) {
 }
 
 /* ─── Day Section ─── */
-function DaySection({ dayInfo, columnId, tasks, categories, onDragStart, onDrop, onToggle, onDelete, onEdit, onAdd, onChangeCategory, isMobile, onMove, onSetRecurring, onSetTime, onRemoveTime, onSkipRecurring, projects, onAssignToProject, onUnlink, onUpdateTask, highlightQuery, taskFontSize, isReadOnly, hasJournalEntry, onOpenJournal }) {
+function DaySection({ dayInfo, columnId, tasks, categories, onDragStart, onDrop, onToggle, onDelete, onEdit, onAdd, onChangeCategory, isMobile, onMove, onSetRecurring, onSetTime, onRemoveTime, onSkipRecurring, projects, onAssignToProject, onUnlink, onUpdateTask, highlightQuery, taskFontSize, isReadOnly, hasJournalEntry, onOpenJournal, addTrigger }) {
   const [dragOver, setDragOver] = useState(false);
   const [adding, setAdding] = useState(false);
   const [newText, setNewText] = useState("");
@@ -1301,6 +1322,7 @@ function DaySection({ dayInfo, columnId, tasks, categories, onDragStart, onDrop,
   const addRef = useRef(null);
   const dragCounter = useRef(0);
   useEffect(() => { if (adding && addRef.current) addRef.current.focus(); }, [adding]);
+  useEffect(() => { if (addTrigger > 0) setAdding(true); }, [addTrigger]);
   const parseDrop = (e) => { try { return JSON.parse(e.dataTransfer.getData("text/plain")); } catch { return null; } };
   const handleDropAtIndex = (e, beforeTaskId) => { const d = parseDrop(e); if (d) onDrop(d.from, columnId, d.taskId, beforeTaskId, d); };
   const handleDropEnd = (e) => { e.preventDefault(); dragCounter.current = 0; setDragOver(false); const d = parseDrop(e); if (d) onDrop(d.from, columnId, d.taskId, null, d); };
@@ -1372,13 +1394,6 @@ function DaySection({ dayInfo, columnId, tasks, categories, onDragStart, onDrop,
           onMouseEnter={(e) => (e.target.style.color = "var(--text)")}
           onMouseLeave={(e) => (e.target.style.color = "var(--text-faint)")}>+</button>}
       </div>}
-      {isLater && onAdd && !adding && (
-        <div style={{ padding: "2px 10px", textAlign: "right" }}>
-          <button onClick={() => setAdding(true)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-faint)", fontSize: 13, fontFamily: "'JetBrains Mono', monospace", fontWeight: 400, padding: 0, lineHeight: 1 }}
-            onMouseEnter={(e) => e.target.style.color = "var(--text-muted)"} onMouseLeave={(e) => e.target.style.color = "var(--text-faint)"}>+</button>
-        </div>
-      )}
-
       {/* Task list */}
       <div>
         {incompleteTasks.map((task, idx) => (
@@ -1593,6 +1608,7 @@ function UnscheduledCol({ col, untimed, done, categories, taskFontSize, toggleDo
   const [repeatMenu, setRepeatMenu] = useState(false);
   const addRef = useRef(null);
   useEffect(() => { if (adding && addRef.current) addRef.current.focus(); }, [adding]);
+  useEffect(() => { if (addTrigger > 0) setAdding(true); }, [addTrigger]);
   useEffect(() => {
     if (!ctxMenu) return;
     const close = (e) => {
@@ -1747,6 +1763,7 @@ function DayColumn({ dayInfo, columnId, tasks, categories, onDragStart, onDrop, 
   const addRef = useRef(null);
   const dragCounter = useRef(0);
   useEffect(() => { if (adding && addRef.current) addRef.current.focus(); }, [adding]);
+  useEffect(() => { if (addTrigger > 0) setAdding(true); }, [addTrigger]);
   const parseDrop = (e) => { try { return JSON.parse(e.dataTransfer.getData("text/plain")); } catch { return null; } };
   const handleDropAtIndex = (e, beforeTaskId) => { const d = parseDrop(e); if (d) onDrop(d.from, columnId, d.taskId, beforeTaskId, d); };
   const handleDropEnd = (e) => { e.preventDefault(); dragCounter.current = 0; setDragOver(false); const d = parseDrop(e); if (d) onDrop(d.from, columnId, d.taskId, null, d); };
@@ -1836,6 +1853,7 @@ function FutureSidebar({ futureTasks, onAddFuture, onDeleteFuture, onEditFuture,
   const editRef = useRef(null);
   const listRef = useRef(null);
   useEffect(() => { if (adding && addRef.current) addRef.current.focus(); }, [adding]);
+  useEffect(() => { if (addTrigger > 0) setAdding(true); }, [addTrigger]);
   useEffect(() => { if (editingId && editRef.current) editRef.current.focus(); }, [editingId]);
   const grouped = {};
   futureTasks.forEach((t) => { if (!grouped[t.date]) grouped[t.date] = []; grouped[t.date].push(t); });
@@ -1992,7 +2010,7 @@ function FutureSidebar({ futureTasks, onAddFuture, onDeleteFuture, onEditFuture,
 }
 
 /* ─── Main Planner ─── */
-export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSaveNotebooks, onSaveJournal, onSaveContacts, onSaveArchive, onSaveProjects, onSaveDailyHabits, onSaveWeeklyHabits, onSaveSettings, onSaveRecurringRules, onSaveMoods, onLoadWeekTasks, onSaveWeekTasks, onGetBackups, onRestoreBackup, onExportData, onLogout, userEmail, userId }) {
+export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSaveNotebooks, onSaveJournal, onSaveContacts, onSaveArchive, onSaveProjects, onSaveDailyHabits, onSaveWeeklyHabits, onSaveSettings, onSaveRecurringRules, onSaveMoods, onSaveHabitHistory, onLoadWeekTasks, onSaveWeekTasks, onGetBackups, onRestoreBackup, onExportData, onLogout, userEmail, userId }) {
   const isMobile = useIsMobile();
   const [mobileAddingFuture, setMobileAddingFuture] = useState(false);
   const [mobileFutureCtx, setMobileFutureCtx] = useState(null);
@@ -2093,6 +2111,7 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
   const [notesOpen, setNotesOpenState] = useState(() => { try { return localStorage.getItem("planner_notesOpen") !== "false"; } catch { return true; } });
   const [projectsOpen, setProjectsOpenState] = useState(() => { try { return localStorage.getItem("planner_projectsOpen") !== "false"; } catch { return true; } });
   const [projectAddTrigger, setProjectAddTrigger] = useState(0);
+  const [laterAddTrigger, setLaterAddTrigger] = useState(0);
   const [habitsOpen, setHabitsOpenState] = useState(() => { try { return localStorage.getItem("planner_habitsOpen") !== "false"; } catch { return true; } });
   const setLaterOpen = (v) => { setLaterOpenState(v); try { localStorage.setItem("planner_laterOpen", v); } catch {} };
   const setNotesOpen = (v) => { setNotesOpenState(v); try { localStorage.setItem("planner_notesOpen", v); } catch {} };
@@ -2583,6 +2602,14 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
   }, [onSaveRecurringRules, viewedWeekKey]);
   const toggleDaily = (hid, day) => { const updated = dailyHabits.map((h) => h.id === hid ? { ...h, checks: { ...h.checks, [day]: !h.checks[day] } } : h); update({ dailyHabits: updated }); onSaveDailyHabits(updated); };
   const toggleWeekly = (hid) => { const updated = weeklyHabits.map((h) => h.id === hid ? { ...h, done: !h.done } : h); update({ weeklyHabits: updated }); onSaveWeeklyHabits(updated); };
+  const toggleWeeklyPast = (hid) => {
+    const hh = { ...(dataRef.current.habitHistory || {}) };
+    const wk = viewedWeekKey;
+    if (!hh[wk]?.weekly) return;
+    hh[wk] = { ...hh[wk], weekly: hh[wk].weekly.map((h) => h.id === hid ? { ...h, done: !h.done } : h) };
+    dataRef.current = { ...dataRef.current, habitHistory: hh };
+    onSaveHabitHistory(hh);
+  };
   const addDailyHabit = (name) => { const updated = [...dailyHabits, { id: "dh" + Date.now(), name, checks: { mon: false, tue: false, wed: false, thu: false, fri: false, sat: false, sun: false } }]; update({ dailyHabits: updated }); onSaveDailyHabits(updated); };
   const addWeeklyHabit = (name) => { const updated = [...weeklyHabits, { id: "wh" + Date.now(), name, done: false }]; update({ weeklyHabits: updated }); onSaveWeeklyHabits(updated); };
   const deleteDaily = (id) => { const updated = dailyHabits.filter((h) => h.id !== id); update({ dailyHabits: updated }); onSaveDailyHabits(updated); };
@@ -2617,6 +2644,18 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
     saveProjectsData(newProjects);
     // Mark the day-task as linked
     const newTasks = { ...t, [col]: t[col].map((x) => x.id === taskId ? { ...x, projectId, subtaskId: subId } : x) };
+    update({ tasks: newTasks });
+  };
+  // Assign a project subtask to a specific day as a linked copy
+  const assignSubToDay = (projectId, subtaskId, text, dayCol) => {
+    const t = getViewedTasks();
+    const dayKeys = ["mon","tue","wed","thu","fri","sat","sun","later"];
+    // Check if already linked on any day
+    let alreadyLinked = false;
+    dayKeys.forEach((dk) => { if ((t[dk] || []).some((x) => x.projectId === projectId && x.subtaskId === subtaskId)) alreadyLinked = true; });
+    if (alreadyLinked) return;
+    const newTask = makeTask(text, { category: "cat_none", projectId, subtaskId });
+    const newTasks = { ...t, [dayCol]: [...(t[dayCol] || []), newTask] };
     update({ tasks: newTasks });
   };
   // Sync: when a linked task is toggled/edited, update the project subtask too
@@ -2912,7 +2951,7 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
               const viewWeeklyHabits = histWeek?.weekly || weeklyHabits;
               const noop = () => {};
               return (
-              <HabitsTracker dailyHabits={viewDailyHabits} weeklyHabits={viewWeeklyHabits} habitHistory={habitHistory || {}} moods={moods || {}} onSaveMoods={isPastWeek ? noop : onSaveMoods} onToggleDaily={isPastWeek ? noop : toggleDaily} onToggleWeekly={isPastWeek ? noop : toggleWeekly}
+              <HabitsTracker dailyHabits={viewDailyHabits} weeklyHabits={viewWeeklyHabits} habitHistory={habitHistory || {}} moods={moods || {}} onSaveMoods={isPastWeek ? noop : onSaveMoods} onToggleDaily={isPastWeek ? noop : toggleDaily} onToggleWeekly={isPastWeek ? toggleWeeklyPast : toggleWeekly}
                 onAddDaily={isPastWeek ? noop : addDailyHabit} onAddWeekly={isPastWeek ? noop : addWeeklyHabit} onDeleteDaily={isPastWeek ? noop : deleteDaily} onDeleteWeekly={isPastWeek ? noop : deleteWeekly} onEditDaily={isPastWeek ? noop : editDaily} onEditWeekly={isPastWeek ? noop : editWeekly} onEditWeeklyNote={isPastWeek ? noop : editWeeklyNote} onReorderDaily={isPastWeek ? noop : reorderDaily} onReorderWeekly={isPastWeek ? noop : reorderWeekly} weekOffset={weekOffset} />
               );
             })()}
@@ -3263,7 +3302,7 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
                           const viewWeeklyHabits = histWeek?.weekly || weeklyHabits;
                           const noop = () => {};
                           return (
-                          <HabitsTracker dailyHabits={viewDailyHabits} weeklyHabits={viewWeeklyHabits} habitHistory={habitHistory || {}} moods={moods || {}} onSaveMoods={isPastWeek ? noop : onSaveMoods} onToggleDaily={isPastWeek ? noop : toggleDaily} onToggleWeekly={isPastWeek ? noop : toggleWeekly}
+                          <HabitsTracker dailyHabits={viewDailyHabits} weeklyHabits={viewWeeklyHabits} habitHistory={habitHistory || {}} moods={moods || {}} onSaveMoods={isPastWeek ? noop : onSaveMoods} onToggleDaily={isPastWeek ? noop : toggleDaily} onToggleWeekly={isPastWeek ? toggleWeeklyPast : toggleWeekly}
                             onAddDaily={isPastWeek ? noop : addDailyHabit} onAddWeekly={isPastWeek ? noop : addWeeklyHabit} onDeleteDaily={isPastWeek ? noop : deleteDaily} onDeleteWeekly={isPastWeek ? noop : deleteWeekly} onEditDaily={isPastWeek ? noop : editDaily} onEditWeekly={isPastWeek ? noop : editWeekly} onEditWeeklyNote={isPastWeek ? noop : editWeeklyNote} onReorderDaily={isPastWeek ? noop : reorderDaily} onReorderWeekly={isPastWeek ? noop : reorderWeekly} weekOffset={weekOffset} />
                           );
                         })()}
@@ -3276,11 +3315,13 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
                             <span style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, fontSize: 9, letterSpacing: 1, textTransform: "uppercase" }}>Later</span>
                             <span style={{ fontSize: 9, color: "var(--text-faint)" }}>({tasks.later?.length || 0})</span>
                           </button>
+                          {!isReadOnly && <button onClick={(e) => { e.stopPropagation(); setLaterOpen(true); setLaterAddTrigger((v) => v + 1); }} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-faint)", fontSize: 13, fontFamily: "'JetBrains Mono', monospace", fontWeight: 400, padding: "0 12px 0 0", lineHeight: 1 }}
+                            onMouseEnter={(e) => e.target.style.color = "var(--text-muted)"} onMouseLeave={(e) => e.target.style.color = "var(--text-faint)"}>+</button>}
                         </div>
                         {laterOpen && (
                           <div style={{ padding: "0px 8px 6px" }}>
                             <DaySection dayInfo={null} columnId="later" tasks={tasks.later} categories={categories} onDragStart={() => {}} onDrop={handleDrop}
-                              onToggle={toggleDone} onDelete={deleteTask} onEdit={editTask} onAdd={addTask} onChangeCategory={changeCategory} onMove={moveTask} onSetRecurring={setRecurring} onSkipRecurring={skipRecurring} onSetTime={setTaskTime} onRemoveTime={removeTaskTime} projects={projects || []} onAssignToProject={assignToProject} onUnlink={unlinkTask} onUpdateTask={updateTask} highlightQuery={highlightQuery} taskFontSize={taskFontSize} />
+                              onToggle={toggleDone} onDelete={deleteTask} onEdit={editTask} onAdd={addTask} onChangeCategory={changeCategory} onMove={moveTask} onSetRecurring={setRecurring} onSkipRecurring={skipRecurring} onSetTime={setTaskTime} onRemoveTime={removeTaskTime} projects={projects || []} onAssignToProject={assignToProject} onUnlink={unlinkTask} onUpdateTask={updateTask} highlightQuery={highlightQuery} taskFontSize={taskFontSize} addTrigger={laterAddTrigger} />
                           </div>
                         )}
                       </div>
@@ -3296,7 +3337,7 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
                             onMouseEnter={(e) => e.target.style.color = "var(--text-muted)"} onMouseLeave={(e) => e.target.style.color = "var(--text-faint)"}>+</button>
                         </div>
                         {projectsOpen && (
-                          <ProjectsSection projects={projects || []} onSave={saveProjectsData} onArchive={archiveProject} onSyncToDay={syncProjectToDay} onUnlinkSubtask={unlinkSubtask} addTrigger={projectAddTrigger} />
+                          <ProjectsSection projects={projects || []} onSave={saveProjectsData} onArchive={archiveProject} onSyncToDay={syncProjectToDay} onUnlinkSubtask={unlinkSubtask} addTrigger={projectAddTrigger} onAssignSubToDay={assignSubToDay} weekDates={weekDates} />
                         )}
                       </div>
                       {/* Quick Notes */}
@@ -3322,15 +3363,19 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
                   <>
                 {/* Collapsible Later section */}
                 <div style={{ borderTop: "1px solid var(--border)", background: "var(--bg-surface)", flexShrink: 0 }}>
-                    <button onClick={() => setLaterOpen(!laterOpen)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", fontSize: 10, padding: "6px 12px", display: "flex", alignItems: "center", gap: 4, width: "100%", textAlign: "left" }}>
-                      <span style={{ fontSize: 8, transition: "transform 0.2s", transform: laterOpen ? "rotate(90deg)" : "rotate(0deg)", display: "inline-block" }}>{"\u25B6"}</span>
-                      <span style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, fontSize: 9, letterSpacing: 1, textTransform: "uppercase" }}>Later</span>
-                      <span style={{ fontSize: 9, color: "var(--text-faint)" }}>({tasks.later?.length || 0})</span>
-                    </button>
+                    <div style={{ display: "flex", alignItems: "center" }}>
+                      <button onClick={() => setLaterOpen(!laterOpen)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", fontSize: 10, padding: "6px 12px", display: "flex", alignItems: "center", gap: 4, flex: 1, textAlign: "left" }}>
+                        <span style={{ fontSize: 8, transition: "transform 0.2s", transform: laterOpen ? "rotate(90deg)" : "rotate(0deg)", display: "inline-block" }}>{"\u25B6"}</span>
+                        <span style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, fontSize: 9, letterSpacing: 1, textTransform: "uppercase" }}>Later</span>
+                        <span style={{ fontSize: 9, color: "var(--text-faint)" }}>({tasks.later?.length || 0})</span>
+                      </button>
+                      {!isReadOnly && <button onClick={(e) => { e.stopPropagation(); setLaterOpen(true); setLaterAddTrigger((v) => v + 1); }} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-faint)", fontSize: 13, fontFamily: "'JetBrains Mono', monospace", fontWeight: 400, padding: "0 12px 0 0", lineHeight: 1 }}
+                        onMouseEnter={(e) => e.target.style.color = "var(--text-muted)"} onMouseLeave={(e) => e.target.style.color = "var(--text-faint)"}>+</button>}
+                    </div>
                     {laterOpen && (
                       <div style={{ padding: "0px 8px 6px" }}>
                         <DaySection dayInfo={null} columnId="later" tasks={tasks.later} categories={categories} onDragStart={() => {}} onDrop={handleDrop}
-                          onToggle={toggleDone} onDelete={deleteTask} onEdit={editTask} onAdd={addTask} onChangeCategory={changeCategory} onMove={moveTask} onSetRecurring={setRecurring} onSkipRecurring={skipRecurring} onSetTime={setTaskTime} onRemoveTime={removeTaskTime} projects={projects || []} onAssignToProject={assignToProject} onUnlink={unlinkTask} onUpdateTask={updateTask} highlightQuery={highlightQuery} taskFontSize={taskFontSize} />
+                          onToggle={toggleDone} onDelete={deleteTask} onEdit={editTask} onAdd={addTask} onChangeCategory={changeCategory} onMove={moveTask} onSetRecurring={setRecurring} onSkipRecurring={skipRecurring} onSetTime={setTaskTime} onRemoveTime={removeTaskTime} projects={projects || []} onAssignToProject={assignToProject} onUnlink={unlinkTask} onUpdateTask={updateTask} highlightQuery={highlightQuery} taskFontSize={taskFontSize} addTrigger={laterAddTrigger} />
                       </div>
                     )}
                 </div>
@@ -3346,7 +3391,7 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
                         onMouseEnter={(e) => e.target.style.color = "var(--text-muted)"} onMouseLeave={(e) => e.target.style.color = "var(--text-faint)"}>+</button>
                     </div>
                     {projectsOpen && (
-                      <ProjectsSection projects={projects || []} onSave={saveProjectsData} onArchive={archiveProject} onSyncToDay={syncProjectToDay} onUnlinkSubtask={unlinkSubtask} addTrigger={projectAddTrigger} />
+                      <ProjectsSection projects={projects || []} onSave={saveProjectsData} onArchive={archiveProject} onSyncToDay={syncProjectToDay} onUnlinkSubtask={unlinkSubtask} addTrigger={projectAddTrigger} onAssignSubToDay={assignSubToDay} weekDates={weekDates} />
                     )}
                 </div>
                 {/* Collapsible Quick Notes */}

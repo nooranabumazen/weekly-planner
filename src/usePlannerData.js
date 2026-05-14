@@ -583,6 +583,7 @@ export function usePlannerData(userId) {
   const saveSettings = useCallback((s) => { setData((p) => p ? { ...p, categories: s.categories, layout: s.layout, notes: s.notes, darkMode: s.darkMode, taskFontSize: s.taskFontSize } : p); writeDoc(`users/${userId}/meta/settings`, s); }, [userId]);
   const saveRecurringRules = useCallback((items) => { setData((p) => p ? { ...p, recurringRules: items } : p); writeDoc(`users/${userId}/meta/recurringRules`, { items }); }, [userId]);
   const saveMoods = useCallback((entries) => { setData((p) => p ? { ...p, moods: entries } : p); writeDoc(`users/${userId}/meta/moods`, { entries }); }, [userId]);
+  const saveHabitHistory = useCallback((weeks) => { setData((p) => p ? { ...p, habitHistory: weeks } : p); writeDoc(`users/${userId}/meta/habitHistory`, { weeks }); }, [userId]);
   const saveProjects = useCallback((items) => { setData((p) => p ? { ...p, projects: items } : p); writeDoc(`users/${userId}/meta/projects`, { items }); }, [userId]);
 
   // ─── Non-current week read/write ───
@@ -737,7 +738,7 @@ export function usePlannerData(userId) {
     return () => clearInterval(interval);
   }, [userId, data !== null, createBackup]);
 
-  return { data, loading, save, saveQuiet, saveFuture, saveNotebooks, saveJournal, saveContacts, saveArchive, saveProjects, saveDailyHabits, saveWeeklyHabits, saveSettings, saveRecurringRules, saveMoods, loadWeekTasks, saveWeekTasks, getBackups, restoreBackup, exportData };
+  return { data, loading, save, saveQuiet, saveFuture, saveNotebooks, saveJournal, saveContacts, saveArchive, saveProjects, saveDailyHabits, saveWeeklyHabits, saveSettings, saveRecurringRules, saveMoods, saveHabitHistory, loadWeekTasks, saveWeekTasks, getBackups, restoreBackup, exportData };
 }
 
 export const DEFAULT_CATEGORIES = [
