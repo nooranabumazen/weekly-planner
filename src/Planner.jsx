@@ -211,7 +211,6 @@ function CategoryManager({ categories, onChange, layout, onLayoutChange, darkMod
   const addRef = useRef(null);
   const editRef = useRef(null);
   useEffect(() => { if (adding && addRef.current) addRef.current.focus(); }, [adding]);
-  useEffect(() => { if (addTrigger > 0) setAdding(true); }, [addTrigger]);
   useEffect(() => { if (editingId && editRef.current) editRef.current.focus(); }, [editingId]);
 
   const PALETTE = [
@@ -783,7 +782,6 @@ function ProjectsSection({ projects, onSave, onArchive, onSyncToDay, onUnlinkSub
   const editProjRef = useRef(null);
 
   useEffect(() => { if (adding && addRef.current) addRef.current.focus(); }, [adding]);
-  useEffect(() => { if (addTrigger > 0) setAdding(true); }, [addTrigger]);
   useEffect(() => { if (addingSubtask && subRef.current) subRef.current.focus(); }, [addingSubtask]);
   useEffect(() => { if (editingSubtask && editSubRef.current) { editSubRef.current.focus(); editSubRef.current.select(); } }, [editingSubtask]);
   useEffect(() => { if (editingProject && editProjRef.current) { editProjRef.current.focus(); editProjRef.current.select(); } }, [editingProject]);
@@ -997,6 +995,7 @@ function NotesSection({ notes, onChange }) {
 function TaskCard({ task, columnId, categories, onDragStart, onToggle, onDelete, onEdit, onChangeCategory, isMobile, onMove, onSetRecurring, onSkipRecurring, onSetTime, onRemoveTime, projects, onAssignToProject, onUnlink, onUpdateTask, highlightQuery, taskFontSize }) {
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [timeInput, setTimeInput] = useState(task.startTime || "09:00");
+  const [endTimeInput, setEndTimeInput] = useState(task.endTime || "");
   const [showProjectMenu, setShowProjectMenu] = useState(false);
   const [subtasksOpen, setSubtasksOpen] = useState(true);
   const [newSubtaskText, setNewSubtaskText] = useState("");
@@ -1170,12 +1169,22 @@ function TaskCard({ task, columnId, categories, onDragStart, onToggle, onDelete,
             {task.startTime ? "Change time" : "Set time"}
           </div>
           {showTimePicker && (
-            <div style={{ padding: "6px 14px", display: "flex", gap: 4, alignItems: "center" }}>
-              <input type="time" value={timeInput} onChange={(e) => setTimeInput(e.target.value)}
-                onKeyDown={(e) => { if (e.key === "Enter") { onSetTime && onSetTime(columnId, task.id, timeInput); setShowTimePicker(false); setCtxMenu(null); } }}
-                style={{ flex: 1, border: "1px solid var(--border)", borderRadius: 3, padding: "3px 5px", fontSize: 11, background: "var(--input-bg)", color: "var(--text)", outline: "none", colorScheme: "dark" }} />
-              <button onClick={() => { onSetTime && onSetTime(columnId, task.id, timeInput); setShowTimePicker(false); setCtxMenu(null); }}
-                style={{ background: "var(--accent)", color: "#fff", border: "none", borderRadius: 3, padding: "3px 8px", fontSize: 10, cursor: "pointer", fontWeight: 600 }}>Set</button>
+            <div style={{ padding: "6px 14px", display: "flex", flexDirection: "column", gap: 4 }}>
+              <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
+                <span style={{ fontSize: 10, color: "var(--text-muted)", width: 30 }}>Start</span>
+                <input type="time" value={timeInput} onChange={(e) => setTimeInput(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") { onSetTime && onSetTime(columnId, task.id, timeInput, endTimeInput || null); setShowTimePicker(false); setCtxMenu(null); } }}
+                  style={{ flex: 1, border: "1px solid var(--border)", borderRadius: 3, padding: "3px 5px", fontSize: 11, background: "var(--input-bg)", color: "var(--text)", outline: "none", colorScheme: "dark" }} />
+              </div>
+              <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
+                <span style={{ fontSize: 10, color: "var(--text-muted)", width: 30 }}>End</span>
+                <input type="time" value={endTimeInput} onChange={(e) => setEndTimeInput(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") { onSetTime && onSetTime(columnId, task.id, timeInput, endTimeInput || null); setShowTimePicker(false); setCtxMenu(null); } }}
+                  placeholder="optional"
+                  style={{ flex: 1, border: "1px solid var(--border)", borderRadius: 3, padding: "3px 5px", fontSize: 11, background: "var(--input-bg)", color: "var(--text)", outline: "none", colorScheme: "dark" }} />
+              </div>
+              <button onClick={() => { onSetTime && onSetTime(columnId, task.id, timeInput, endTimeInput || null); setShowTimePicker(false); setCtxMenu(null); }}
+                style={{ background: "var(--accent)", color: "#fff", border: "none", borderRadius: 3, padding: "3px 8px", fontSize: 10, cursor: "pointer", fontWeight: 600, alignSelf: "flex-end" }}>Set</button>
             </div>
           )}
           {task.startTime && (
@@ -1608,7 +1617,6 @@ function UnscheduledCol({ col, untimed, done, categories, taskFontSize, toggleDo
   const [repeatMenu, setRepeatMenu] = useState(false);
   const addRef = useRef(null);
   useEffect(() => { if (adding && addRef.current) addRef.current.focus(); }, [adding]);
-  useEffect(() => { if (addTrigger > 0) setAdding(true); }, [addTrigger]);
   useEffect(() => {
     if (!ctxMenu) return;
     const close = (e) => {
@@ -1853,7 +1861,6 @@ function FutureSidebar({ futureTasks, onAddFuture, onDeleteFuture, onEditFuture,
   const editRef = useRef(null);
   const listRef = useRef(null);
   useEffect(() => { if (adding && addRef.current) addRef.current.focus(); }, [adding]);
-  useEffect(() => { if (addTrigger > 0) setAdding(true); }, [addTrigger]);
   useEffect(() => { if (editingId && editRef.current) editRef.current.focus(); }, [editingId]);
   const grouped = {};
   futureTasks.forEach((t) => { if (!grouped[t.date]) grouped[t.date] = []; grouped[t.date].push(t); });
@@ -2516,21 +2523,18 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
   const deleteTask = useCallback((col, id) => { pushUndo(); const t = getViewedTasks(); update({ tasks: { ...t, [col]: t[col].filter((x) => x.id !== id) } }); }, [pushUndo, weekOffset, offWeekTasks]);
   const editTask = useCallback((col, id, text) => { const t = getViewedTasks(); update({ tasks: { ...t, [col]: t[col].map((x) => (x.id === id ? { ...x, text } : x)) } }); }, [weekOffset, offWeekTasks]);
   const updateTask = useCallback((col, id, patch) => { const t = getViewedTasks(); update({ tasks: { ...t, [col]: t[col].map((x) => { if (x.id !== id) return x; const updated = { ...x, ...patch }; Object.keys(patch).forEach((k) => { if (patch[k] === undefined) delete updated[k]; }); return updated; }) } }); }, [weekOffset, offWeekTasks]);
-  const setTaskTime = useCallback((col, id, newStartTime) => {
+  const setTaskTime = useCallback((col, id, newStartTime, newEndTime) => {
     const t = getViewedTasks();
     const task = t[col]?.find((x) => x.id === id);
     if (!task || !newStartTime) return;
-    const [nh, nm] = newStartTime.split(":").map(Number);
-    const newStartMin = nh * 60 + (nm || 0);
-    let durationMin = 15;
-    if (task.startTime && task.endTime) {
-      const [sh, sm] = task.startTime.split(":").map(Number);
-      const [eh, em] = task.endTime.split(":").map(Number);
-      durationMin = Math.max(15, (eh * 60 + (em || 0)) - (sh * 60 + (sm || 0)));
+    const updated = { ...task, startTime: newStartTime };
+    if (newEndTime) {
+      updated.endTime = newEndTime;
+    } else if (!task.endTime) {
+      // No existing end time and none provided: don't auto-generate
+      delete updated.endTime;
     }
-    const endMin = newStartMin + durationMin;
-    const fmt = (m) => `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
-    const updated = { ...task, startTime: fmt(newStartMin), endTime: fmt(endMin) };
+    // If end time existed before and user cleared it, keep existing
     delete updated.orderHint;
     update({ tasks: { ...t, [col]: t[col].map((x) => x.id === id ? updated : x) } });
   }, [weekOffset, offWeekTasks]);
