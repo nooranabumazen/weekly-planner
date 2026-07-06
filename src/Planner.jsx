@@ -2077,7 +2077,9 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
         const dayCol = weekDateMap[ft.date];
         if (dayCol) {
           if (!merged[dayCol].some((t) => t.text === ft.text && t._futureId === ft.id)) {
-            merged[dayCol].push({ id: ft.id, text: ft.text, done: false, category: "cat_none", startTime: ft.startTime || undefined, _futureId: ft.id, _isUpcoming: true });
+            const mt = { id: ft.id, text: ft.text, done: false, category: "cat_none", _futureId: ft.id, _isUpcoming: true };
+            if (ft.startTime) mt.startTime = ft.startTime;
+            merged[dayCol].push(mt);
           }
         }
       });
@@ -2569,7 +2571,7 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
   const setRecurring = useCallback((col, id, rule) => {
     const t = getViewedTasks();
     const task = t[col]?.find((x) => x.id === id);
-    const newTasks = { ...t, [col]: t[col].map((x) => x.id === id ? { ...x, recurring: rule || undefined } : x) };
+    const newTasks = { ...t, [col]: t[col].map((x) => { if (x.id !== id) return x; const u = { ...x }; if (rule) u.recurring = rule; else delete u.recurring; return u; }) };
     update({ tasks: newTasks });
     if (task && onSaveRecurringRules) {
       const existing = dataRef.current.recurringRules || [];

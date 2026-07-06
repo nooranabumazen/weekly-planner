@@ -95,14 +95,27 @@ async function readDoc(path) {
   }
 }
 
+// Recursively strip undefined values (Firestore rejects them)
+function stripUndefined(obj) {
+  if (Array.isArray(obj)) return obj.map(stripUndefined);
+  if (obj && typeof obj === "object") {
+    const clean = {};
+    for (const k in obj) {
+      if (obj[k] !== undefined) clean[k] = stripUndefined(obj[k]);
+    }
+    return clean;
+  }
+  return obj;
+}
+
 function writeDoc(path, data) {
-  setDoc(doc(db, path), data).catch((err) => console.error("Write error:", path, err));
+  setDoc(doc(db, path), stripUndefined(data)).catch((err) => console.error("Write error:", path, err));
 }
 
 // Synchronous write using sendBeacon for page unload reliability
 function writeDocSync(path, data) {
   // Use regular setDoc - sendBeacon doesn't work with Firestore SDK
-  setDoc(doc(db, path), data).catch((err) => console.error("Write error:", path, err));
+  setDoc(doc(db, path), stripUndefined(data)).catch((err) => console.error("Write error:", path, err));
 }
 
 // Check if a monthly recurring rule should generate a task this week, and which day
