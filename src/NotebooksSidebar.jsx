@@ -378,16 +378,18 @@ function RichEditor({ content, onChange, userId }) {
             if (!sel.rangeCount) return;
             const node = sel.anchorNode;
             if (node?.nodeType !== 3) return;
-            const text = node.textContent.slice(0, sel.anchorOffset);
-            if (text === "-" || text === "*") {
+            const offset = sel.anchorOffset;
+            const text = node.textContent.slice(0, offset);
+            if (text === "-" || text === "*" || /^\d+\.$/.test(text)) {
               e.preventDefault();
-              node.textContent = node.textContent.slice(sel.anchorOffset);
-              document.execCommand("insertUnorderedList");
-              handleInput();
-            } else if (/^\d+\.$/.test(text)) {
-              e.preventDefault();
-              node.textContent = node.textContent.slice(sel.anchorOffset);
-              document.execCommand("insertOrderedList");
+              // Select the marker chars and delete them via selection API (keeps cursor on current line)
+              const range = document.createRange();
+              range.setStart(node, 0);
+              range.setEnd(node, offset);
+              sel.removeAllRanges();
+              sel.addRange(range);
+              document.execCommand("delete");
+              document.execCommand(/^\d+\.$/.test(text) ? "insertOrderedList" : "insertUnorderedList");
               handleInput();
             }
           }

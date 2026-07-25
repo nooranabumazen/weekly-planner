@@ -316,6 +316,30 @@ export function useLocalData() {
     URL.revokeObjectURL(url);
   }, []);
 
+  const exportJournal = useCallback(() => {
+    const data = dataRef.current;
+    if (!data || !data.journal) return;
+    const entries = data.journal;
+    const dates = Object.keys(entries).filter((d) => entries[d] && entries[d].trim() && entries[d] !== "<p></p>" && entries[d] !== "<br>").sort();
+    if (dates.length === 0) return;
+    const htmlToText = (html) => {
+      const tmp = document.createElement("div");
+      tmp.innerHTML = html.replace(/<\/(p|div|h[1-6]|li)>/gi, "\n").replace(/<br\s*\/?>/gi, "\n").replace(/<li[^>]*>/gi, "  - ");
+      return (tmp.textContent || tmp.innerText || "").replace(/\n{3,}/g, "\n\n").trim();
+    };
+    let out = "JOURNAL EXPORT\n" + "=".repeat(40) + "\n\n";
+    dates.forEach((date) => {
+      const d = new Date(date + "T00:00:00");
+      const heading = d.toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
+      out += heading + "\n" + "-".repeat(heading.length) + "\n" + htmlToText(entries[date]) + "\n\n\n";
+    });
+    const blob = new Blob([out], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = `journal-${new Date().toISOString().slice(0, 10)}.txt`; a.click();
+    URL.revokeObjectURL(url);
+  }, []);
+
   // Flush on page hide
   useEffect(() => {
     const handler = () => { if (document.visibilityState === "hidden") flushSave(); };
@@ -324,5 +348,5 @@ export function useLocalData() {
     return () => { document.removeEventListener("visibilitychange", handler); window.removeEventListener("beforeunload", flushSave); };
   }, [flushSave]);
 
-  return { data, loading, save, saveQuiet, saveFuture, saveNotebooks, saveJournal, saveContacts, saveArchive, saveProjects, saveDailyHabits, saveWeeklyHabits, saveSettings, saveRecurringRules, saveMoods, saveHabitHistory, loadWeekTasks, saveWeekTasks, getBackups, restoreBackup, exportData };
+  return { data, loading, save, saveQuiet, saveFuture, saveNotebooks, saveJournal, saveContacts, saveArchive, saveProjects, saveDailyHabits, saveWeeklyHabits, saveSettings, saveRecurringRules, saveMoods, saveHabitHistory, loadWeekTasks, saveWeekTasks, getBackups, restoreBackup, exportData, exportJournal };
 }

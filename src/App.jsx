@@ -23,7 +23,7 @@ function useAuthMode() {
 
 function CloudApp() {
   const { user, loading: authLoading, login, signup, logout } = useAuth();
-  const { data, loading: dataLoading, save, saveQuiet, saveFuture, saveNotebooks, saveJournal, saveContacts, saveArchive, saveProjects, saveDailyHabits, saveWeeklyHabits, saveSettings, saveRecurringRules, saveMoods, saveHabitHistory, loadWeekTasks, saveWeekTasks, getBackups, restoreBackup, exportData } = usePlannerData(user?.uid);
+  const { data, loading: dataLoading, save, saveQuiet, saveFuture, saveNotebooks, saveJournal, saveContacts, saveArchive, saveProjects, saveDailyHabits, saveWeeklyHabits, saveSettings, saveRecurringRules, saveMoods, saveHabitHistory, loadWeekTasks, saveWeekTasks, getBackups, restoreBackup, exportData, exportJournal } = usePlannerData(user?.uid);
 
   if (authLoading) {
     return (
@@ -64,14 +64,14 @@ function CloudApp() {
       onSaveRecurringRules={saveRecurringRules} onSaveMoods={saveMoods}
       onSaveHabitHistory={saveHabitHistory}
       onLoadWeekTasks={loadWeekTasks} onSaveWeekTasks={saveWeekTasks}
-      onGetBackups={getBackups} onRestoreBackup={restoreBackup} onExportData={exportData}
+      onGetBackups={getBackups} onRestoreBackup={restoreBackup} onExportData={exportData} onExportJournal={exportJournal}
       onLogout={() => { try { localStorage.removeItem('planner_cloud_mode'); } catch {} logout(); }} userEmail={user.email} userId={user.uid}
     />
   );
 }
 
 function LocalApp() {
-  const { data, loading, save, saveQuiet, saveFuture, saveNotebooks, saveJournal, saveContacts, saveArchive, saveProjects, saveDailyHabits, saveWeeklyHabits, saveSettings, saveRecurringRules, saveMoods, saveHabitHistory, loadWeekTasks, saveWeekTasks, getBackups, restoreBackup, exportData } = useLocalData();
+  const { data, loading, save, saveQuiet, saveFuture, saveNotebooks, saveJournal, saveContacts, saveArchive, saveProjects, saveDailyHabits, saveWeeklyHabits, saveSettings, saveRecurringRules, saveMoods, saveHabitHistory, loadWeekTasks, saveWeekTasks, getBackups, restoreBackup, exportData, exportJournal } = useLocalData();
 
   if (loading) {
     return (
@@ -99,7 +99,7 @@ function LocalApp() {
       onSaveRecurringRules={saveRecurringRules} onSaveMoods={saveMoods}
       onSaveHabitHistory={saveHabitHistory}
       onLoadWeekTasks={loadWeekTasks} onSaveWeekTasks={saveWeekTasks}
-      onGetBackups={getBackups} onRestoreBackup={restoreBackup} onExportData={exportData}
+      onGetBackups={getBackups} onRestoreBackup={restoreBackup} onExportData={exportData} onExportJournal={exportJournal}
       onLogout={() => { window.location.href = window.location.pathname; }}
       userEmail="local" userId="local"
     />

@@ -195,7 +195,7 @@ function CategoryDot({ categories, selected, onSelect }) {
 }
 
 /* ─── Category Manager (full panel) ─── */
-function CategoryManager({ categories, onChange, layout, onLayoutChange, darkMode, onDarkModeChange, taskFontSize, onTaskFontSizeChange, onGetBackups, onRestoreBackup, onExportData }) {
+function CategoryManager({ categories, onChange, layout, onLayoutChange, darkMode, onDarkModeChange, taskFontSize, onTaskFontSizeChange, onGetBackups, onRestoreBackup, onExportData, onExportJournal }) {
   const [adding, setAdding] = useState(false);
   const [newName, setNewName] = useState("");
   const [newColor, setNewColor] = useState("#B7D5E8");
@@ -423,6 +423,13 @@ function CategoryManager({ categories, onChange, layout, onLayoutChange, darkMod
             fontSize: 12, fontWeight: 500, display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
           }}>
             {"\u2B07"} Export JSON
+          </button>
+          <button onClick={onExportJournal} style={{
+            flex: 1, padding: "8px 12px", borderRadius: 6, cursor: "pointer",
+            border: "1.5px solid var(--border)", background: "var(--bg-card)", color: "var(--text)",
+            fontSize: 12, fontWeight: 500, display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+          }}>
+            {"\u2B07"} Journal .txt
           </button>
           <button onClick={async () => { setBackupsLoading(true); setShowBackups(true); const b = await onGetBackups(); setBackups(b); setBackupsLoading(false); }} style={{
             flex: 1, padding: "8px 12px", borderRadius: 6, cursor: "pointer",
@@ -1865,6 +1872,8 @@ function FutureSidebar({ futureTasks, onAddFuture, onDeleteFuture, onEditFuture,
   useEffect(() => { if (editingId && editRef.current) editRef.current.focus(); }, [editingId]);
   const grouped = {};
   futureTasks.forEach((t) => { if (!grouped[t.date]) grouped[t.date] = []; grouped[t.date].push(t); });
+  // Sort each day's tasks chronologically by start time (timed first, then untimed)
+  Object.keys(grouped).forEach((d) => { grouped[d].sort((a, b) => { if (a.startTime && b.startTime) return a.startTime.localeCompare(b.startTime); if (a.startTime) return -1; if (b.startTime) return 1; return 0; }); });
   const sortedDates = Object.keys(grouped).sort();
   const submitAdd = () => { if (newText.trim() && newDate) { onAddFuture(newText.trim(), newDate); setNewText(""); setNewDate(""); } setAdding(false); };
   const count = futureTasks.length;
@@ -2018,7 +2027,7 @@ function FutureSidebar({ futureTasks, onAddFuture, onDeleteFuture, onEditFuture,
 }
 
 /* ─── Main Planner ─── */
-export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSaveNotebooks, onSaveJournal, onSaveContacts, onSaveArchive, onSaveProjects, onSaveDailyHabits, onSaveWeeklyHabits, onSaveSettings, onSaveRecurringRules, onSaveMoods, onSaveHabitHistory, onLoadWeekTasks, onSaveWeekTasks, onGetBackups, onRestoreBackup, onExportData, onLogout, userEmail, userId }) {
+export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSaveNotebooks, onSaveJournal, onSaveContacts, onSaveArchive, onSaveProjects, onSaveDailyHabits, onSaveWeeklyHabits, onSaveSettings, onSaveRecurringRules, onSaveMoods, onSaveHabitHistory, onLoadWeekTasks, onSaveWeekTasks, onGetBackups, onRestoreBackup, onExportData, onExportJournal, onLogout, userEmail, userId }) {
   const isMobile = useIsMobile();
   const [mobileAddingFuture, setMobileAddingFuture] = useState(false);
   const [mobileFutureCtx, setMobileFutureCtx] = useState(null);
@@ -2985,6 +2994,7 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
                     {isMobile && (() => {
                       const grouped = {};
                       futureTasks.forEach((t) => { if (!grouped[t.date]) grouped[t.date] = []; grouped[t.date].push(t); });
+                      Object.keys(grouped).forEach((d) => { grouped[d].sort((a, b) => { if (a.startTime && b.startTime) return a.startTime.localeCompare(b.startTime); if (a.startTime) return -1; if (b.startTime) return 1; return 0; }); });
                       const sortedDates = Object.keys(grouped).sort();
                       return (
                         <div style={{ padding: "8px 4px" }}>
@@ -3424,7 +3434,7 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
         {activeView === "notebooks" && <NotebooksPanel notebooks={notebooks} onChange={updateNotebooks} userId={userId} isMobile={isMobile} />}
         {activeView === "journal" && <JournalPanel journal={journal} onChange={updateJournal} userId={userId} isMobile={isMobile} initialDate={journalDate} />}
         {activeView === "contacts" && <ContactsPanel contacts={contacts} onChange={updateContacts} highlightQuery={highlightQuery} taskFontSize={taskFontSize} />}
-        {activeView === "categories" && <CategoryManager categories={categories} onChange={updateCategories} layout={layout} onLayoutChange={(l) => { update({ layout: l }); onSaveSettings({ categories, layout: l, notes, darkMode, taskFontSize }); }} darkMode={darkMode} onDarkModeChange={(dm) => { update({ darkMode: dm }); onSaveSettings({ categories, layout, notes, darkMode: dm, taskFontSize }); }} taskFontSize={taskFontSize} onTaskFontSizeChange={(sz) => { update({ taskFontSize: sz }); onSaveSettings({ categories, layout, notes, darkMode, taskFontSize: sz }); }} onGetBackups={onGetBackups} onRestoreBackup={onRestoreBackup} onExportData={onExportData} />}
+        {activeView === "categories" && <CategoryManager categories={categories} onChange={updateCategories} layout={layout} onLayoutChange={(l) => { update({ layout: l }); onSaveSettings({ categories, layout: l, notes, darkMode, taskFontSize }); }} darkMode={darkMode} onDarkModeChange={(dm) => { update({ darkMode: dm }); onSaveSettings({ categories, layout, notes, darkMode: dm, taskFontSize }); }} taskFontSize={taskFontSize} onTaskFontSizeChange={(sz) => { update({ taskFontSize: sz }); onSaveSettings({ categories, layout, notes, darkMode, taskFontSize: sz }); }} onGetBackups={onGetBackups} onRestoreBackup={onRestoreBackup} onExportData={onExportData} onExportJournal={onExportJournal} />}
 
         {activeView === "habits" && (
           <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>

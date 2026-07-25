@@ -734,6 +734,36 @@ export function usePlannerData(userId) {
     URL.revokeObjectURL(url);
   }, [data]);
 
+  const exportJournal = useCallback(() => {
+    if (!data || !data.journal) return;
+    const entries = data.journal;
+    const dates = Object.keys(entries).filter((d) => entries[d] && entries[d].trim() && entries[d] !== "<p></p>" && entries[d] !== "<br>").sort();
+    if (dates.length === 0) return;
+    // Convert HTML to readable plain text
+    const htmlToText = (html) => {
+      const tmp = document.createElement("div");
+      tmp.innerHTML = html
+        .replace(/<\/(p|div|h[1-6]|li)>/gi, "\n")
+        .replace(/<br\s*\/?>/gi, "\n")
+        .replace(/<li[^>]*>/gi, "  - ");
+      return (tmp.textContent || tmp.innerText || "").replace(/\n{3,}/g, "\n\n").trim();
+    };
+    let out = "JOURNAL EXPORT\n" + "=".repeat(40) + "\n\n";
+    dates.forEach((date) => {
+      const d = new Date(date + "T00:00:00");
+      const heading = d.toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
+      out += heading + "\n" + "-".repeat(heading.length) + "\n";
+      out += htmlToText(entries[date]) + "\n\n\n";
+    });
+    const blob = new Blob([out], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `journal-${new Date().toISOString().slice(0, 10)}.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }, [data]);
+
   // Auto-backup twice daily: around 12 AM and 12 PM
   // Checks every 5 minutes if inside a backup window. 10-hour throttle ensures max 2/day.
   useEffect(() => {
@@ -751,7 +781,7 @@ export function usePlannerData(userId) {
     return () => clearInterval(interval);
   }, [userId, data !== null, createBackup]);
 
-  return { data, loading, save, saveQuiet, saveFuture, saveNotebooks, saveJournal, saveContacts, saveArchive, saveProjects, saveDailyHabits, saveWeeklyHabits, saveSettings, saveRecurringRules, saveMoods, saveHabitHistory, loadWeekTasks, saveWeekTasks, getBackups, restoreBackup, exportData };
+  return { data, loading, save, saveQuiet, saveFuture, saveNotebooks, saveJournal, saveContacts, saveArchive, saveProjects, saveDailyHabits, saveWeeklyHabits, saveSettings, saveRecurringRules, saveMoods, saveHabitHistory, loadWeekTasks, saveWeekTasks, getBackups, restoreBackup, exportData, exportJournal };
 }
 
 export const DEFAULT_CATEGORIES = [
