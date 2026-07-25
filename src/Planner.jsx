@@ -1978,6 +1978,7 @@ function FutureSidebar({ futureTasks, onAddFuture, onDeleteFuture, onEditFuture,
   const [futureCtxMenu, setFutureCtxMenu] = useState(null); // { x, y, task }
   const [futureTimePickerOpen, setFutureTimePickerOpen] = useState(false);
   const [futureTimeInput, setFutureTimeInput] = useState("09:00");
+  const [futureEndTimeInput, setFutureEndTimeInput] = useState("");
   useEffect(() => {
     if (!futureCtxMenu) return;
     const close = (e) => { if (e.target.closest && e.target.closest("[data-ctx-menu]")) return; setFutureCtxMenu(null); setFutureTimePickerOpen(false); };
@@ -2085,11 +2086,11 @@ function FutureSidebar({ futureTasks, onAddFuture, onDeleteFuture, onEditFuture,
                     </div>
                   </div>
                 ) : (<div key={task.id}
-                  onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); setFutureCtxMenu({ x: e.clientX, y: e.clientY, task }); setFutureTimeInput(task.startTime || "09:00"); }}
+                  onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); setFutureCtxMenu({ x: e.clientX, y: e.clientY, task }); setFutureTimeInput(task.startTime || "09:00"); setFutureEndTimeInput(task.endTime || ""); }}
                   style={{ background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 4, padding: "5px 7px", marginBottom: 3, fontSize: 12 }}
                   onMouseEnter={(e) => { e.currentTarget.style.boxShadow = "0 2px 6px rgba(0,0,0,0.1)"; }} onMouseLeave={(e) => { e.currentTarget.style.boxShadow = "none"; }}>
                   <span onDoubleClick={() => { setEditingId(task.id); setEditText(task.text); setEditDate(task.date); }} style={{ wordBreak: "break-word", cursor: "text" }}>
-                    {task.startTime && <span style={{ fontSize: 10, color: "var(--text-muted)", marginRight: 4, fontFamily: "'JetBrains Mono', monospace", fontWeight: 600 }}>{formatTime12(task.startTime)}</span>}
+                    {task.startTime && <span style={{ fontSize: 10, color: "var(--text-muted)", marginRight: 4, fontFamily: "'JetBrains Mono', monospace", fontWeight: 600 }}>{formatTime12(task.startTime)}{task.endTime ? "-" + formatTime12(task.endTime) : ""}</span>}
                     <HighlightText text={task.text} query={highlightQuery} />
                   </span>
                 </div>))}</div>);
@@ -2106,12 +2107,22 @@ function FutureSidebar({ futureTasks, onAddFuture, onDeleteFuture, onEditFuture,
                   style={{ padding: "5px 12px", cursor: "pointer", fontSize: 11, color: "var(--text)" }}
                   onMouseEnter={(e) => e.currentTarget.style.background = "var(--bg-hover)"} onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}>{futureCtxMenu.task.startTime ? "Change time" : "Set time"}</div>
                 {futureTimePickerOpen && (
-                  <div style={{ padding: "4px 12px", display: "flex", gap: 3, alignItems: "center" }}>
-                    <input type="time" value={futureTimeInput} onChange={(e) => setFutureTimeInput(e.target.value)}
-                      onKeyDown={(e) => { if (e.key === "Enter") { onEditFuture(futureCtxMenu.task.id, undefined, undefined, futureTimeInput); setFutureTimePickerOpen(false); setFutureCtxMenu(null); } }}
-                      style={{ flex: 1, border: "1px solid var(--border)", borderRadius: 3, padding: "2px 4px", fontSize: 10, background: "var(--input-bg)", color: "var(--text)", outline: "none", colorScheme: "dark" }} />
-                    <button onClick={() => { onEditFuture(futureCtxMenu.task.id, undefined, undefined, futureTimeInput); setFutureTimePickerOpen(false); setFutureCtxMenu(null); }}
-                      style={{ background: "var(--accent)", color: "#fff", border: "none", borderRadius: 3, padding: "2px 6px", fontSize: 9, cursor: "pointer", fontWeight: 600 }}>Set</button>
+                  <div style={{ padding: "4px 12px", display: "flex", flexDirection: "column", gap: 3 }}>
+                    <div style={{ display: "flex", gap: 3, alignItems: "center" }}>
+                      <span style={{ fontSize: 9, color: "var(--text-muted)", width: 26 }}>Start</span>
+                      <input type="time" value={futureTimeInput} onChange={(e) => setFutureTimeInput(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === "Enter") { onEditFuture(futureCtxMenu.task.id, undefined, undefined, futureTimeInput, futureEndTimeInput || null); setFutureTimePickerOpen(false); setFutureCtxMenu(null); } }}
+                        style={{ flex: 1, border: "1px solid var(--border)", borderRadius: 3, padding: "2px 4px", fontSize: 10, background: "var(--input-bg)", color: "var(--text)", outline: "none", colorScheme: "dark" }} />
+                    </div>
+                    <div style={{ display: "flex", gap: 3, alignItems: "center" }}>
+                      <span style={{ fontSize: 9, color: "var(--text-muted)", width: 26 }}>End</span>
+                      <input type="time" value={futureEndTimeInput} onChange={(e) => setFutureEndTimeInput(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === "Enter") { onEditFuture(futureCtxMenu.task.id, undefined, undefined, futureTimeInput, futureEndTimeInput || null); setFutureTimePickerOpen(false); setFutureCtxMenu(null); } }}
+                        style={{ flex: 1, border: "1px solid var(--border)", borderRadius: 3, padding: "2px 4px", fontSize: 10, background: "var(--input-bg)", color: "var(--text)", outline: "none", colorScheme: "dark" }} />
+                      {futureEndTimeInput && <span onClick={() => setFutureEndTimeInput("")} style={{ cursor: "pointer", color: "var(--text-faint)", fontSize: 10 }}>&times;</span>}
+                    </div>
+                    <button onClick={() => { onEditFuture(futureCtxMenu.task.id, undefined, undefined, futureTimeInput, futureEndTimeInput || null); setFutureTimePickerOpen(false); setFutureCtxMenu(null); }}
+                      style={{ background: "var(--accent)", color: "#fff", border: "none", borderRadius: 3, padding: "2px 6px", fontSize: 9, cursor: "pointer", fontWeight: 600, alignSelf: "flex-end" }}>Set</button>
                   </div>
                 )}
                 {futureCtxMenu.task.startTime && (
@@ -2211,6 +2222,7 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
           if (!merged[dayCol].some((t) => t.text === ft.text && t._futureId === ft.id)) {
             const mt = { id: ft.id, text: ft.text, done: false, category: "cat_none", _futureId: ft.id, _isUpcoming: true };
             if (ft.startTime) mt.startTime = ft.startTime;
+            if (ft.endTime) mt.endTime = ft.endTime;
             merged[dayCol].push(mt);
           }
         }
@@ -2402,9 +2414,7 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
       const newTask = makeTask(ft.text, { category: detectedCat });
       if (ft.startTime) {
         newTask.startTime = ft.startTime;
-        const [h, m] = ft.startTime.split(":").map(Number);
-        const endMin = h * 60 + (m || 0) + 15;
-        newTask.endTime = `${String(Math.floor(endMin / 60)).padStart(2, "0")}:${String(endMin % 60).padStart(2, "0")}`;
+        if (ft.endTime) newTask.endTime = ft.endTime;
       }
       newTasks[dayCol] = [...(newTasks[dayCol] || []), newTask];
     }
@@ -2754,9 +2764,9 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
   const editWeeklyNote = (id, note) => { const updated = weeklyHabits.map((h) => h.id === id ? { ...h, note } : h); update({ weeklyHabits: updated }); onSaveWeeklyHabits(updated); };
   const reorderDaily = (items) => { update({ dailyHabits: items }); onSaveDailyHabits(items); };
   const reorderWeekly = (items) => { update({ weeklyHabits: items }); onSaveWeeklyHabits(items); };
-  const addFuture = (text, date) => { const parsed = parseTimeFromText(text); const finalText = parsed ? parsed.cleanText : text; const entry = { id: "f" + Date.now(), text: finalText, date }; if (parsed) entry.startTime = parsed.startTime; const nf = [...futureTasks, entry]; update({ futureTasks: nf }); onSaveFuture(nf); };
+  const addFuture = (text, date) => { const parsed = parseTimeFromText(text); const finalText = parsed ? parsed.cleanText : text; const entry = { id: "f" + Date.now(), text: finalText, date }; if (parsed) { entry.startTime = parsed.startTime; if (parsed.endTime) entry.endTime = parsed.endTime; } const nf = [...futureTasks, entry]; update({ futureTasks: nf }); onSaveFuture(nf); };
   const deleteFuture = (id) => { pushUndo(); const nf = futureTasks.filter((t) => t.id !== id); update({ futureTasks: nf }); onSaveFuture(nf); };
-  const editFuture = (id, text, date, startTime) => { const nf = futureTasks.map((t) => { if (t.id !== id) return t; const u = { ...t, text: text !== undefined ? text : t.text, date: date !== undefined ? date : t.date }; if (startTime === null) delete u.startTime; else if (startTime !== undefined) u.startTime = startTime; return u; }); update({ futureTasks: nf }); onSaveFuture(nf); };
+  const editFuture = (id, text, date, startTime, endTime) => { const nf = futureTasks.map((t) => { if (t.id !== id) return t; const u = { ...t, text: text !== undefined ? text : t.text, date: date !== undefined ? date : t.date }; if (startTime === null) { delete u.startTime; delete u.endTime; } else if (startTime !== undefined) u.startTime = startTime; if (endTime === null) delete u.endTime; else if (endTime !== undefined) u.endTime = endTime; return u; }); update({ futureTasks: nf }); onSaveFuture(nf); };
 
   // ─── Project helpers ───
   const saveProjectsData = (newProjects) => { dataRef.current = { ...dataRef.current, projects: newProjects }; onSaveProjects(newProjects); };
@@ -3108,8 +3118,14 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
                         onDragStart={() => {}} onDrop={isReadOnly ? () => {} : handleDrop} onToggle={isReadOnly ? () => {} : wrappedToggleDone} onDelete={isReadOnly ? () => {} : wrappedDeleteTask} onEdit={isReadOnly ? () => {} : wrappedEditTask} onAdd={isReadOnly ? null : addTask} onChangeCategory={isReadOnly ? () => {} : changeCategory} isMobile={isMobile} onMove={isReadOnly ? () => {} : moveTask} onSetRecurring={isReadOnly ? () => {} : setRecurring} onSkipRecurring={isReadOnly ? () => {} : skipRecurring} onSetTime={isReadOnly ? () => {} : setTaskTime} onRemoveTime={isReadOnly ? () => {} : removeTaskTime} projects={projects || []} onAssignToProject={assignToProject} onUnlink={unlinkTask} onUpdateTask={updateTask} highlightQuery={highlightQuery} taskFontSize={taskFontSize} isReadOnly={isReadOnly} hasJournalEntry={journalEntryDates.has(weekDates[i]?.fullDate)} onOpenJournal={openJournal} />
                     ))}
                     {isMobile && (
-                      <DaySection dayInfo={null} columnId="later" tasks={tasks.later} categories={categories} onDragStart={() => {}} onDrop={handleDrop}
-                        onToggle={toggleDone} onDelete={deleteTask} onEdit={editTask} onAdd={addTask} onChangeCategory={changeCategory} isMobile={isMobile} onMove={moveTask} onSetRecurring={setRecurring} onSkipRecurring={skipRecurring} onSetTime={setTaskTime} onRemoveTime={removeTaskTime} projects={projects || []} onAssignToProject={assignToProject} onUnlink={unlinkTask} onUpdateTask={updateTask} highlightQuery={highlightQuery} taskFontSize={taskFontSize} />
+                      <div style={{ marginTop: 8 }}>
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "4px 6px 4px" }}>
+                          <div style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, fontSize: 14, color: "var(--text-muted)", letterSpacing: 0.5, textTransform: "uppercase" }}>Later</div>
+                          <button onClick={() => setLaterAddTrigger((v) => v + 1)} style={{ background: "none", border: "1px solid var(--border)", borderRadius: 4, padding: "4px 10px", fontSize: 13, color: "var(--text-muted)", cursor: "pointer" }}>+ Add</button>
+                        </div>
+                        <DaySection dayInfo={null} columnId="later" tasks={tasks.later} categories={categories} onDragStart={() => {}} onDrop={handleDrop}
+                          onToggle={toggleDone} onDelete={deleteTask} onEdit={editTask} onAdd={addTask} onChangeCategory={changeCategory} isMobile={isMobile} onMove={moveTask} onSetRecurring={setRecurring} onSkipRecurring={skipRecurring} onSetTime={setTaskTime} onRemoveTime={removeTaskTime} projects={projects || []} onAssignToProject={assignToProject} onUnlink={unlinkTask} onUpdateTask={updateTask} highlightQuery={highlightQuery} taskFontSize={taskFontSize} addTrigger={laterAddTrigger} />
+                      </div>
                     )}
                     {/* Mobile upcoming section */}
                     {isMobile && (() => {
@@ -3182,6 +3198,7 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
                     {/* Mobile quick notes inside scroll */}
                     {isMobile && (
                     <div style={{ padding: "8px 6px 12px" }}>
+                      <div style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, fontSize: 14, color: "var(--text-muted)", letterSpacing: 0.5, textTransform: "uppercase", padding: "4px 0 6px" }}>Notes</div>
                       <textarea value={notes} onChange={(e) => { const val = e.target.value; update({ notes: val }); onSaveSettings({ categories, layout, notes: val, darkMode, taskFontSize }); }} placeholder="Quick notes..."
                         style={{ width: "100%", minHeight: 50, border: "1px solid var(--border)", borderRadius: 6, padding: "8px 10px", fontSize: 15, lineHeight: 1.5, outline: "none", background: "var(--input-bg)", color: "var(--text)", fontFamily: "'DM Sans', sans-serif", resize: "none", boxSizing: "border-box", overflow: "hidden" }}
                         ref={(el) => { if (el) { el.style.height = "auto"; el.style.height = Math.max(50, el.scrollHeight) + "px"; } }} />
