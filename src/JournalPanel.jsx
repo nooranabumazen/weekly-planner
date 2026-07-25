@@ -22,7 +22,7 @@ function MiniCalendar({ selectedDate, onSelect, entryDates }) {
   let startDow = firstDay.getDay();
   if (startDow === 0) startDow = 7;
   const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
-  const today = new Date().toISOString().split("T")[0];
+  const today = (() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; })();
 
   const cells = [];
   for (let i = 1; i < startDow; i++) cells.push(null);
@@ -202,7 +202,7 @@ function JournalEditor({ content, onChange, userId }) {
 }
 
 export default function JournalPanel({ journal, onChange, userId, isMobile, initialDate }) {
-  const today = new Date().toISOString().split("T")[0];
+  const today = (() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; })();
   const [selectedDate, setSelectedDate] = useState(initialDate || today);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mobileEditing, setMobileEditing] = useState(false);

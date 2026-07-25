@@ -988,6 +988,129 @@ function ProjectsSection({ projects, onSave, onArchive, onSyncToDay, onUnlinkSub
   );
 }
 
+/* ─── Recurring Tasks Manager ─── */
+function RecurringManager({ rules, onSave }) {
+  const [editingId, setEditingId] = useState(null);
+  const [adding, setAdding] = useState(false);
+  const dayNames = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
+  const dayKeys = ["mon","tue","wed","thu","fri","sat","sun"];
+  const weekdayNamesFromSun = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+  const ordinals = ["1st","2nd","3rd","4th","5th"];
+
+  const blank = { text: "", freq: "weekly", day: "mon", nth: 1, weekday: 4, dayOfMonth: 1, monthlyPattern: "nth_weekday" };
+  const [form, setForm] = useState(blank);
+
+  const describeRule = (r) => {
+    if (r.type === "weeks") return `Every ${r.count === 1 ? "week" : r.count + " weeks"} on ${dayNames[dayKeys.indexOf(r.day)] || r.day}`;
+    if (r.type === "until") return `Weekly on ${dayNames[dayKeys.indexOf(r.day)] || r.day} until ${r.until}`;
+    if (r.type === "monthly") {
+      if (r.pattern === "nth_weekday") return `${ordinals[r.nth - 1]} ${weekdayNamesFromSun[r.weekday]} of each month`;
+      if (r.pattern === "day_of_month") return `Day ${r.dayOfMonth} of each month`;
+      if (r.pattern === "last_day") return `Last day of each month`;
+    }
+    return "Custom";
+  };
+
+  const buildRule = (f) => {
+    const base = { text: f.text.trim() };
+    if (f.freq === "weekly") return { ...base, type: "weeks", count: 1, day: f.day };
+    if (f.freq === "biweekly") return { ...base, type: "weeks", count: 2, day: f.day };
+    if (f.freq === "monthly_nth") return { ...base, type: "monthly", pattern: "nth_weekday", nth: f.nth, weekday: f.weekday, day: dayKeys[(f.weekday + 6) % 7] };
+    if (f.freq === "monthly_day") return { ...base, type: "monthly", pattern: "day_of_month", dayOfMonth: f.dayOfMonth };
+    if (f.freq === "monthly_last") return { ...base, type: "monthly", pattern: "last_day" };
+    return { ...base, type: "weeks", count: 1, day: f.day };
+  };
+
+  const formFromRule = (r) => {
+    if (r.type === "weeks") return { text: r.text, freq: r.count === 2 ? "biweekly" : "weekly", day: r.day, nth: 1, weekday: 4, dayOfMonth: 1 };
+    if (r.type === "monthly" && r.pattern === "nth_weekday") return { text: r.text, freq: "monthly_nth", day: r.day || "mon", nth: r.nth, weekday: r.weekday, dayOfMonth: 1 };
+    if (r.type === "monthly" && r.pattern === "day_of_month") return { text: r.text, freq: "monthly_day", day: "mon", nth: 1, weekday: 4, dayOfMonth: r.dayOfMonth };
+    if (r.type === "monthly" && r.pattern === "last_day") return { text: r.text, freq: "monthly_last", day: "mon", nth: 1, weekday: 4, dayOfMonth: 1 };
+    return { ...blank, text: r.text };
+  };
+
+  const saveForm = () => {
+    if (!form.text.trim()) return;
+    const rule = buildRule(form);
+    if (editingId !== null) {
+      const updated = rules.map((r, i) => i === editingId ? { ...r, ...rule } : r);
+      onSave(updated);
+      setEditingId(null);
+    } else {
+      onSave([...rules, rule]);
+      setAdding(false);
+    }
+    setForm(blank);
+  };
+
+  const deleteRule = (idx) => { onSave(rules.filter((_, i) => i !== idx)); };
+
+  const inputStyle = { border: "1px solid var(--border)", borderRadius: 4, padding: "4px 6px", fontSize: 12, background: "var(--input-bg)", color: "var(--text)", outline: "none" };
+  const selectStyle = { ...inputStyle, cursor: "pointer" };
+
+  const renderForm = () => (
+    <div style={{ display: "flex", flexDirection: "column", gap: 6, padding: "8px 0" }}>
+      <input value={form.text} onChange={(e) => setForm({ ...form, text: e.target.value })} placeholder="Task name..." style={inputStyle} autoFocus />
+      <select value={form.freq} onChange={(e) => setForm({ ...form, freq: e.target.value })} style={selectStyle}>
+        <option value="weekly">Weekly</option>
+        <option value="biweekly">Every 2 weeks</option>
+        <option value="monthly_nth">Monthly (nth weekday)</option>
+        <option value="monthly_day">Monthly (day of month)</option>
+        <option value="monthly_last">Monthly (last day)</option>
+      </select>
+      {(form.freq === "weekly" || form.freq === "biweekly") && (
+        <select value={form.day} onChange={(e) => setForm({ ...form, day: e.target.value })} style={selectStyle}>
+          {dayKeys.map((d, i) => <option key={d} value={d}>{dayNames[i]}</option>)}
+        </select>
+      )}
+      {form.freq === "monthly_nth" && (
+        <div style={{ display: "flex", gap: 4 }}>
+          <select value={form.nth} onChange={(e) => setForm({ ...form, nth: parseInt(e.target.value) })} style={{ ...selectStyle, flex: 1 }}>
+            {ordinals.map((o, i) => <option key={o} value={i + 1}>{o}</option>)}
+          </select>
+          <select value={form.weekday} onChange={(e) => setForm({ ...form, weekday: parseInt(e.target.value) })} style={{ ...selectStyle, flex: 2 }}>
+            {weekdayNamesFromSun.map((w, i) => <option key={w} value={i}>{w}</option>)}
+          </select>
+        </div>
+      )}
+      {form.freq === "monthly_day" && (
+        <select value={form.dayOfMonth} onChange={(e) => setForm({ ...form, dayOfMonth: parseInt(e.target.value) })} style={selectStyle}>
+          {Array.from({ length: 31 }, (_, i) => <option key={i + 1} value={i + 1}>Day {i + 1}</option>)}
+        </select>
+      )}
+      <div style={{ display: "flex", gap: 6 }}>
+        <button onClick={saveForm} style={{ background: "#555", color: "#fff", border: "none", borderRadius: 4, padding: "5px 14px", cursor: "pointer", fontSize: 12 }}>Save</button>
+        <button onClick={() => { setAdding(false); setEditingId(null); setForm(blank); }} style={{ background: "var(--border)", color: "var(--text-muted)", border: "none", borderRadius: 4, padding: "5px 12px", cursor: "pointer", fontSize: 12 }}>Cancel</button>
+      </div>
+    </div>
+  );
+
+  return (
+    <div style={{ padding: "8px 16px", maxWidth: 500 }}>
+      <div style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, fontSize: 9, color: "var(--text-muted)", letterSpacing: 1, textTransform: "uppercase", marginBottom: 10 }}>Recurring Tasks</div>
+      {rules.length === 0 && !adding && <div style={{ fontSize: 11, color: "var(--text-faint)", padding: "4px 0" }}>No recurring tasks yet.</div>}
+      {rules.map((r, idx) => (
+        <div key={idx} style={{ borderBottom: "1px solid var(--border-light)", padding: "6px 0" }}>
+          {editingId === idx ? renderForm() : (
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 12, color: "var(--text)", fontWeight: 500 }}>{r.text}</div>
+                <div style={{ fontSize: 10, color: "var(--text-faint)" }}>{describeRule(r)}</div>
+              </div>
+              <button onClick={() => { setEditingId(idx); setAdding(false); setForm(formFromRule(r)); }} style={{ background: "none", border: "1px solid var(--border)", borderRadius: 3, padding: "2px 8px", cursor: "pointer", fontSize: 10, color: "var(--text-muted)" }}>Edit</button>
+              <button onClick={() => deleteRule(idx)} style={{ background: "none", border: "1px solid var(--border)", borderRadius: 3, padding: "2px 8px", cursor: "pointer", fontSize: 10, color: "var(--text-faint)" }}
+                onMouseEnter={(e) => { e.target.style.borderColor = "#c44"; e.target.style.color = "#c44"; }} onMouseLeave={(e) => { e.target.style.borderColor = "var(--border)"; e.target.style.color = "var(--text-faint)"; }}>Delete</button>
+            </div>
+          )}
+        </div>
+      ))}
+      {adding ? renderForm() : (
+        <button onClick={() => { setAdding(true); setForm(blank); }} style={{ marginTop: 10, background: "none", border: "1px dashed var(--border)", borderRadius: 4, padding: "6px 12px", cursor: "pointer", fontSize: 11, color: "var(--text-muted)", width: "100%" }}>+ Add recurring task</button>
+      )}
+    </div>
+  );
+}
+
 /* ─── Notes ─── */
 function NotesSection({ notes, onChange }) {
   return (
@@ -2293,7 +2416,8 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
 
   // Auto-generate birthday reminders from contacts (shows up 2 weeks before, dated on actual birthday)
   useEffect(() => {
-    if (!contacts || contacts.length === 0 || !futureTasks) return;
+    if (!contacts || contacts.length === 0) return;
+    const currentFuture = dataRef.current.futureTasks || [];
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
@@ -2313,8 +2437,6 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
       return null;
     };
 
-    const twoWeeksFromNow = new Date(today);
-    twoWeeksFromNow.setDate(today.getDate() + 14);
     const threeMonths = new Date(today);
     threeMonths.setMonth(today.getMonth() + 3);
 
@@ -2322,29 +2444,28 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
     for (const c of contacts) {
       const bd = parseBirthday(c.birthday);
       if (!bd) continue;
-      const alreadyExists = futureTasks.some((t) => t.text.includes(c.name) && t.text.includes("birthday"));
-      if (alreadyExists) continue;
-      // Check this year and next year
       for (const year of [today.getFullYear(), today.getFullYear() + 1]) {
         const bdDate = new Date(year, bd.month, bd.day);
-        // Only create if: birthday is in the future, and it's within 2 weeks from now (the reminder window)
-        // but date the task on the actual birthday
         const twoWeeksBefore = new Date(bdDate);
         twoWeeksBefore.setDate(bdDate.getDate() - 14);
         if (twoWeeksBefore <= today && bdDate >= today && bdDate <= threeMonths) {
           const dateStr = formatLocalDate(bdDate);
+          const bdayKey = `bday_${c.id}_${dateStr}`;
+          // Dedup: skip if a reminder with this exact key OR same contact+date already exists
+          const exists = currentFuture.some((t) => t._bdayKey === bdayKey || (t.date === dateStr && t.text && t.text.includes(c.name) && t.text.includes("birthday")));
+          if (exists) break;
           const taskText = `\u{1F382} ${c.name}'s birthday (${c.birthday})`;
-          newReminders.push({ id: "bday" + Date.now() + "_" + Math.random().toString(36).slice(2, 5), text: taskText, date: dateStr });
-          break; // Only one reminder per contact
+          newReminders.push({ id: "bday" + Date.now() + "_" + Math.random().toString(36).slice(2, 5), text: taskText, date: dateStr, _bdayKey: bdayKey });
+          break;
         }
       }
     }
     if (newReminders.length > 0) {
-      const updated = [...futureTasks, ...newReminders];
+      const updated = [...currentFuture, ...newReminders];
       update({ futureTasks: updated });
       onSaveFuture(updated);
     }
-  }, [contacts?.length]); // Re-run when contacts change
+  }, [contacts]); // Re-run when contacts change
 
   const handleDrop = useCallback((fromCol, toCol, taskId, beforeTaskId, dropData) => {
     const d = dataRef.current;
@@ -3434,7 +3555,7 @@ export default function Planner({ data, onSave, onSaveQuiet, onSaveFuture, onSav
         {activeView === "notebooks" && <NotebooksPanel notebooks={notebooks} onChange={updateNotebooks} userId={userId} isMobile={isMobile} />}
         {activeView === "journal" && <JournalPanel journal={journal} onChange={updateJournal} userId={userId} isMobile={isMobile} initialDate={journalDate} />}
         {activeView === "contacts" && <ContactsPanel contacts={contacts} onChange={updateContacts} highlightQuery={highlightQuery} taskFontSize={taskFontSize} />}
-        {activeView === "categories" && <CategoryManager categories={categories} onChange={updateCategories} layout={layout} onLayoutChange={(l) => { update({ layout: l }); onSaveSettings({ categories, layout: l, notes, darkMode, taskFontSize }); }} darkMode={darkMode} onDarkModeChange={(dm) => { update({ darkMode: dm }); onSaveSettings({ categories, layout, notes, darkMode: dm, taskFontSize }); }} taskFontSize={taskFontSize} onTaskFontSizeChange={(sz) => { update({ taskFontSize: sz }); onSaveSettings({ categories, layout, notes, darkMode, taskFontSize: sz }); }} onGetBackups={onGetBackups} onRestoreBackup={onRestoreBackup} onExportData={onExportData} onExportJournal={onExportJournal} />}
+        {activeView === "categories" && <div style={{ overflowY: "auto" }}><CategoryManager categories={categories} onChange={updateCategories} layout={layout} onLayoutChange={(l) => { update({ layout: l }); onSaveSettings({ categories, layout: l, notes, darkMode, taskFontSize }); }} darkMode={darkMode} onDarkModeChange={(dm) => { update({ darkMode: dm }); onSaveSettings({ categories, layout, notes, darkMode: dm, taskFontSize }); }} taskFontSize={taskFontSize} onTaskFontSizeChange={(sz) => { update({ taskFontSize: sz }); onSaveSettings({ categories, layout, notes, darkMode, taskFontSize: sz }); }} onGetBackups={onGetBackups} onRestoreBackup={onRestoreBackup} onExportData={onExportData} onExportJournal={onExportJournal} /><RecurringManager rules={recurringRules || []} onSave={(items) => { update({ recurringRules: items }); onSaveRecurringRules(items); }} /></div>}
 
         {activeView === "habits" && (
           <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
