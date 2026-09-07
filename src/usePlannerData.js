@@ -311,8 +311,8 @@ export function usePlannerData(userId) {
                 }
                 if (shouldRepeat) {
                   const day = targetDay || rule.day || d;
-                  const newTask = { id: "t" + Date.now() + "_" + Math.random().toString(36).slice(2,6), text: t.text, done: false, category: t.category || "cat_none", recurring: newRule || undefined };
-                  // Check if already carried forward (avoid duplicate)
+                  const newTask = { id: "t" + Date.now() + "_" + Math.random().toString(36).slice(2,6), text: t.text, done: false, category: t.category || "cat_none" };
+                  if (newRule) newTask.recurring = newRule;
                   const existing = carry.find((c) => c.text === t.text && !c.done);
                   if (!existing) {
                     if (dayKeys.includes(day)) {
@@ -321,8 +321,8 @@ export function usePlannerData(userId) {
                       carry.push(newTask);
                     }
                   } else {
-                    // Update recurring rule on the carried-forward copy
-                    existing.recurring = newRule || undefined;
+                    if (newRule) existing.recurring = newRule;
+                    else delete existing.recurring;
                   }
                 }
               }
@@ -359,7 +359,9 @@ export function usePlannerData(userId) {
                 if (targetDay) { shouldRepeat = true; newRule = { ...rule }; }
               }
               if (shouldRepeat && !newTasks.later.some((c) => c.text === t.text)) {
-                newTasks.later.push({ id: "t" + Date.now() + "_" + Math.random().toString(36).slice(2,6), text: t.text, done: false, category: t.category || "cat_none", recurring: newRule || undefined });
+                const laterTask = { id: "t" + Date.now() + "_" + Math.random().toString(36).slice(2,6), text: t.text, done: false, category: t.category || "cat_none" };
+                if (newRule) laterTask.recurring = newRule;
+                newTasks.later.push(laterTask);
               }
             }
           });
@@ -393,7 +395,8 @@ export function usePlannerData(userId) {
                 const day = targetDay || rule.day || "mon";
                 const existing = dayKeys.includes(day) ? newTasks[day].some((t) => t.text === rule.text) : newTasks.later.some((t) => t.text === rule.text);
                 if (!existing) {
-                  const newTask = { id: "t" + Date.now() + "_" + Math.random().toString(36).slice(2,6), text: rule.text, done: false, category: rule.category || "cat_none", recurring: newRule || undefined };
+                  const newTask = { id: "t" + Date.now() + "_" + Math.random().toString(36).slice(2,6), text: rule.text, done: false, category: rule.category || "cat_none" };
+                  if (newRule) newTask.recurring = newRule;
                   if (dayKeys.includes(day)) newTasks[day].push(newTask);
                   else newTasks.later.push(newTask);
                 }
